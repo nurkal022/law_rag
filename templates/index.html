@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд - Правовые Инструменты{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Заголовок дашборда -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <h1 class="display-4 text-primary mb-3">
+                <i class="fas fa-balance-scale me-3"></i>
+                Правовые Инструменты Казахстана
+            </h1>
+            <p class="lead text-muted">Комплексная платформа для работы с правовой информацией</p>
+        </div>
+    </div>
+
+    <!-- Сетка инструментов -->
+    <div class="row g-4">
+        <!-- 1. RAG Система - Юридический консультант -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="rag">
+                <div class="card-body text-center p-4">
+                    <div class="tool-icon mb-3">
+                        <i class="fas fa-robot fa-3x text-primary"></i>
+                    </div>
+                    <h4 class="card-title mb-3">Юридический Консультант</h4>
+                    <p class="card-text text-muted mb-4">
+                        AI-помощник для получения ответов на правовые вопросы с ссылками на источники
+                    </p>
+                    <a href="/chat" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-comments me-2"></i>Начать консультацию
+                    </a>
+                </div>
+                <div class="card-footer bg-light border-0">
+                    <small class="text-muted">
+                        <i class="fas fa-check-circle text-success me-1"></i>Активен
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Поиск по документам -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="search">
+                <div class="card-body text-center p-4">
+                    <div class="tool-icon mb-3">
+                        <i class="fas fa-search fa-3x text-info"></i>
+                    </div>
+                    <h4 class="card-title mb-3">Поиск по документам</h4>
+                    <p class="card-text text-muted mb-4">
+                        Расширенный поиск по базе правовых документов с фильтрацией и сортировкой
+                    </p>
+                    <button class="btn btn-info btn-lg w-100" onclick="showComingSoon('Поиск по документам')">
+                        <i class="fas fa-file-search me-2"></i>Открыть поиск
+                    </button>
+                </div>
+                <div class="card-footer bg-light border-0">
+                    <small class="text-muted">
+                        <i class="fas fa-clock text-warning me-1"></i>В разработке
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Анализ договоров -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="contracts">
+                <div class="card-body text-center p-4">
+                    <div class="tool-icon mb-3">
+                        <i class="fas fa-file-contract fa-3x text-success"></i>
+                    </div>
+                    <h4 class="card-title mb-3">Анализ договоров</h4>
+                    <p class="card-text text-muted mb-4">
+                        Автоматический анализ договоров на соответствие законодательству Казахстана
+                    </p>
+                    <button class="btn btn-success btn-lg w-100" onclick="showComingSoon('Анализ договоров')">
+                        <i class="fas fa-file-signature me-2"></i>Загрузить договор
+                    </button>
+                </div>
+                <div class="card-footer bg-light border-0">
+                    <small class="text-muted">
+                        <i class="fas fa-clock text-warning me-1"></i>В разработке
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Генератор документов -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="generator">
+                <div class="card-body text-center p-4">
+                    <div class="tool-icon mb-3">
+                        <i class="fas fa-file-alt fa-3x text-warning"></i>
+                    </div>
+                    <h4 class="card-title mb-3">Генератор документов</h4>
+                    <p class="card-text text-muted mb-4">
+                        Создание типовых правовых документов на основе шаблонов и данных пользователя
+                    </p>
+                    <button class="btn btn-warning btn-lg w-100" onclick="showComingSoon('Генератор документов')">
+                        <i class="fas fa-magic me-2"></i>Создать документ
+                    </button>
+                </div>
+                <div class="card-footer bg-light border-0">
+                    <small class="text-muted">
+                        <i class="fas fa-clock text-warning me-1"></i>В разработке
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Правовой календарь -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="calendar">
+                <div class="card-body text-center p-4">
+                    <div class="tool-icon mb-3">
+                        <i class="fas fa-calendar-alt fa-3x text-danger"></i>
+                    </div>
+                    <h4 class="card-title mb-3">Правовой календарь</h4>
+                    <p class="card-text text-muted mb-4">
+                        Отслеживание сроков, изменений в законодательстве и важных правовых событий
+                    </p>
+                    <button class="btn btn-danger btn-lg w-100" onclick="showComingSoon('Правовой календарь')">
+                        <i class="fas fa-calendar-check me-2"></i>Открыть календарь
+                    </button>
+                </div>
+                <div class="card-footer bg-light border-0">
+                    <small class="text-muted">
+                        <i class="fas fa-clock text-warning me-1"></i>В разработке
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Правовая аналитика -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="analytics">
+                <div class="card-body text-center p-4">
+                    <div class="tool-icon mb-3">
+                        <i class="fas fa-chart-line fa-3x text-secondary"></i>
+                    </div>
+                    <h4 class="card-title mb-3">Правовая аналитика</h4>
+                    <p class="card-text text-muted mb-4">
+                        Анализ тенденций в законодательстве, статистика применения норм права
+                    </p>
+                    <button class="btn btn-secondary btn-lg w-100" onclick="showComingSoon('Правовая аналитика')">
+                        <i class="fas fa-chart-bar me-2"></i>Открыть аналитику
+                    </button>
+                </div>
+                <div class="card-footer bg-light border-0">
+                    <small class="text-muted">
+                        <i class="fas fa-clock text-warning me-1"></i>В разработке
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Дополнительная информация -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center p-4">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        О платформе
+                    </h5>
+                    <p class="card-text text-muted mb-3">
+                        Наша платформа объединяет современные AI-технологии с глубокими знаниями 
+                        законодательства Казахстана для предоставления комплексных правовых услуг.
+                    </p>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-database me-1"></i>
+                                <span id="docs-count">5000+</span> документов
+                            </small>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                Обновлено сегодня
+                            </small>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Безопасно и конфиденциально
+                            </small>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-support me-1"></i>
+                                24/7 поддержка
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно "Скоро будет" -->
+<div class="modal fade" id="comingSoonModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-rocket text-primary me-2"></i>
+                    Скоро будет доступно
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-cogs fa-3x text-muted"></i>
+                </div>
+                <h6 id="coming-soon-title" class="mb-3"></h6>
+                <p class="text-muted">
+                    Этот инструмент находится в разработке. Мы работаем над его созданием 
+                    и скоро добавим его на платформу.
+                </p>
+                <div class="alert alert-info">
+                    <i class="fas fa-bell me-2"></i>
+                    Хотите получить уведомление о запуске? Свяжитесь с нами!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Понятно</button>
+                <a href="/chat" class="btn btn-primary">
+                    <i class="fas fa-comments me-2"></i>Попробовать RAG-систему
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.tool-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.tool-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.tool-icon {
+    transition: transform 0.3s ease;
+}
+
+.tool-card:hover .tool-icon {
+    transform: scale(1.1);
+}
+
+.card-footer {
+    font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .tool-card .btn {
+        padding: 0.75rem 1rem;
+    }
+}
+</style>
+
+<script>
+function showComingSoon(toolName) {
+    document.getElementById('coming-soon-title').textContent = toolName;
+    const modal = new bootstrap.Modal(document.getElementById('comingSoonModal'));
+    modal.show();
+}
+
+// Анимация появления карточек
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.tool-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+
+// Обновление счетчика документов
+async function updateStats() {
+    try {
+        const response = await fetch('/api/admin/stats');
+        const data = await response.json();
+        if (data.documents > 0) {
+            document.getElementById('docs-count').textContent = data.documents.toLocaleString() + '+';
+        }
+    } catch (error) {
+        console.log('Не удалось загрузить статистику');
+    }
+}
+
+// Загружаем статистику при загрузке страницы
+updateStats();
+</script>
+{% endblock %} 

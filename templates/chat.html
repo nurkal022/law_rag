@@ -1,0 +1,723 @@
+{% extends "base.html" %}
+
+{% block title %}Чат - RAG Система Юридических документов Казахстана{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Statistics Sidebar -->
+    <div class="col-lg-3 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Статистика
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Документов в базе</small>
+                    <div class="h5 text-primary mb-0">{{ stats.documents_count }}</div>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">Текстовых блоков</small>
+                    <div class="h5 text-info mb-0">{{ stats.chunks_count }}</div>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">Готовность к поиску</small>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar" style="width: {{ stats.embedding_progress }}%"></div>
+                    </div>
+                    <small class="text-muted">{{ "%.1f"|format(stats.embedding_progress) }}%</small>
+                </div>
+                {% if stats.embedding_progress < 100 %}
+                <div class="alert alert-warning p-2 mt-3">
+                    <small>
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Некоторые документы еще обрабатываются. 
+                        <a href="/admin" class="alert-link">Перейти в админ панель</a>
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Examples -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Примеры вопросов
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
+                            data-query="Какие права имеют граждане Казахстана согласно Конституции?">
+                        Права граждан по Конституции
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
+                            data-query="Как подать жалобу на действия государственных органов?">
+                        Подача жалоб на госорганы
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
+                            data-query="Какие документы нужны для регистрации брака в Казахстане?">
+                        Регистрация брака
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
+                            data-query="Ответственность за нарушение трудового законодательства">
+                        Трудовое законодательство
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Interface -->
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot me-2"></i>Юридический помощник
+                </h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" id="clearChatBtn">
+                        <i class="fas fa-trash me-1"></i>Очистить
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" id="historyBtn">
+                        <i class="fas fa-history me-1"></i>История
+                    </button>
+                    <a href="/" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-home me-1"></i>Дашборд
+                    </a>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="card-body p-0">
+                <div id="chatContainer" class="chat-container p-3">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-comments fa-3x mb-3"></i>
+                        <h6>Добро пожаловать в юридический чат-бот!</h6>
+                        <p>Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="card-footer">
+                <form id="chatForm">
+                    <div class="input-group">
+                        <input type="text" 
+                               id="userInput" 
+                               class="form-control" 
+                               placeholder="Задайте вопрос о законодательстве Казахстана..."
+                               autocomplete="off">
+                        <button type="submit" 
+                                id="sendBtn" 
+                                class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Нажмите Enter для отправки сообщения
+                    </small>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-history me-2"></i>История чата
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="historyContent">
+                    <div class="text-center text-muted py-4">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let isLoading = false;
+    let messageCounter = 0;
+
+    // Auto-scroll to bottom of chat
+    function scrollToBottom() {
+        const chatContainer = document.getElementById('chatContainer');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Add typing animation
+    function addTypingIndicator() {
+        const chatContainer = document.getElementById('chatContainer');
+        
+        const typingDiv = document.createElement('div');
+        typingDiv.id = 'typing-indicator';
+        typingDiv.className = 'message ai-message fade-in';
+        
+        typingDiv.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-robot text-primary me-2"></i>
+                        <small class="text-muted">AI Assistant</small>
+                        <span class="ms-auto">
+                            <i class="fas fa-brain text-primary me-1"></i>
+                            <small class="text-muted">думает...</small>
+                        </span>
+                    </div>
+                    <div class="typing-animation">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-text ms-2">Анализирую документы и формирую ответ</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        chatContainer.appendChild(typingDiv);
+        scrollToBottom();
+    }
+
+    // Remove typing indicator
+    function removeTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+
+    // Add message to chat with improved design
+    function addMessage(message, isUser = false, sources = null, confidence = null) {
+        const chatContainer = document.getElementById('chatContainer');
+        messageCounter++;
+        
+        // Remove welcome message if it exists
+        const welcomeMsg = chatContainer.querySelector('.text-center.text-muted');
+        if (welcomeMsg) {
+            welcomeMsg.remove();
+        }
+
+        const messageDiv = document.createElement('div');
+        const messageId = `message-${messageCounter}`;
+        messageDiv.id = messageId;
+        messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'} fade-in`;
+        
+        let confidenceIcon = '';
+        let confidenceClass = '';
+        let confidenceText = '';
+        if (confidence !== null) {
+            if (confidence > 0.7) {
+                confidenceIcon = '<i class="fas fa-check-circle confidence-high"></i>';
+                confidenceClass = 'confidence-high';
+                confidenceText = 'Высокая уверенность';
+            } else if (confidence > 0.4) {
+                confidenceIcon = '<i class="fas fa-exclamation-circle confidence-medium"></i>';
+                confidenceClass = 'confidence-medium';
+                confidenceText = 'Средняя уверенность';
+            } else {
+                confidenceIcon = '<i class="fas fa-times-circle confidence-low"></i>';
+                confidenceClass = 'confidence-low';
+                confidenceText = 'Низкая уверенность';
+            }
+        }
+
+        // Process message to highlight source references
+        let processedMessage = message;
+        let sourceButtons = '';
+        
+        if (sources && sources.length > 0) {
+            // Replace [Источник X] with clickable badges
+            processedMessage = message.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
+                const sourceIndex = parseInt(sourceNum) - 1;
+                if (sourceIndex < sources.length) {
+                    return `<span class="source-ref-badge" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник">
+                        <i class="fas fa-book me-1"></i>Источник ${sourceNum}
+                    </span>`;
+                }
+                return match;
+            });
+
+            // Create collapsible sources section
+            sourceButtons = `
+                <div class="sources-section mt-3">
+                    <button class="btn btn-outline-secondary btn-sm sources-toggle" data-message="${messageId}">
+                        <i class="fas fa-book me-1"></i>
+                        Показать источники (${sources.length})
+                        <i class="fas fa-chevron-down ms-1"></i>
+                    </button>
+                    <div class="sources-content" id="sources-${messageId}" style="display: none;">
+                        <div class="sources-list mt-3">
+                            ${sources.map((source, index) => {
+                                const score = (source.similarity_score * 100).toFixed(1);
+                                return `
+                                    <div class="source-item" data-source-index="${index}">
+                                        <div class="source-header">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="source-info">
+                                                    <div class="source-number">
+                                                        <i class="fas fa-file-text me-1"></i>
+                                                        Источник ${index + 1}
+                                                    </div>
+                                                    <div class="source-title">
+                                                        <strong>${source.title}</strong>
+                                                    </div>
+                                                    <div class="source-position">
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                                            ${source.position}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="source-score">
+                                                    <span class="score-badge" title="Релевантность">
+                                                        ${score}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="source-preview mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-quote-left me-1"></i>
+                                                ${source.preview}
+                                            </small>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        messageDiv.innerHTML = `
+            <div class="card message-card">
+                <div class="card-body">
+                    ${isUser ? '' : `
+                        <div class="d-flex align-items-center mb-2 message-header">
+                            <i class="fas fa-robot text-primary me-2"></i>
+                            <small class="text-muted">AI Assistant</small>
+                            ${confidenceIcon ? `
+                                <span class="ms-auto confidence-indicator ${confidenceClass}" title="${confidenceText}">
+                                    ${confidenceIcon} 
+                                    <small>${(confidence * 100).toFixed(0)}%</small>
+                                </span>
+                            ` : ''}
+                        </div>
+                    `}
+                    <div class="message-content">${processedMessage}</div>
+                    ${sourceButtons}
+                </div>
+            </div>
+        `;
+
+        chatContainer.appendChild(messageDiv);
+        
+        // Add event listeners for source interactions
+        addSourceEventListeners(messageId);
+        
+        scrollToBottom();
+    }
+
+    // Add event listeners for source interactions
+    function addSourceEventListeners(messageId) {
+        const messageDiv = document.getElementById(messageId);
+        
+        // Toggle sources visibility
+        const sourcesToggle = messageDiv.querySelector('.sources-toggle');
+        if (sourcesToggle) {
+            sourcesToggle.addEventListener('click', function() {
+                const sourcesContent = document.getElementById(`sources-${messageId}`);
+                const chevron = this.querySelector('.fas.fa-chevron-down, .fas.fa-chevron-up');
+                
+                if (sourcesContent.style.display === 'none') {
+                    sourcesContent.style.display = 'block';
+                    sourcesContent.classList.add('sources-slide-in');
+                    chevron.className = 'fas fa-chevron-up ms-1';
+                    this.innerHTML = this.innerHTML.replace('Показать источники', 'Скрыть источники');
+                } else {
+                    sourcesContent.style.display = 'none';
+                    sourcesContent.classList.remove('sources-slide-in');
+                    chevron.className = 'fas fa-chevron-down ms-1';
+                    this.innerHTML = this.innerHTML.replace('Скрыть источники', 'Показать источники');
+                }
+            });
+        }
+
+        // Click on source reference badges
+        const sourceRefs = messageDiv.querySelectorAll('.source-ref-badge');
+        sourceRefs.forEach(ref => {
+            ref.addEventListener('click', function() {
+                const sourceIndex = this.dataset.source;
+                const sourcesContent = document.getElementById(`sources-${messageId}`);
+                const sourcesToggle = messageDiv.querySelector('.sources-toggle');
+                
+                // Show sources if hidden
+                if (sourcesContent.style.display === 'none') {
+                    sourcesToggle.click();
+                }
+                
+                // Highlight the specific source
+                setTimeout(() => {
+                    const sourceItem = sourcesContent.querySelector(`[data-source-index="${sourceIndex}"]`);
+                    if (sourceItem) {
+                        sourceItem.classList.add('source-highlight');
+                        sourceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        setTimeout(() => {
+                            sourceItem.classList.remove('source-highlight');
+                        }, 2000);
+                    }
+                }, 300);
+            });
+        });
+    }
+
+    // Handle form submission
+    document.getElementById('chatForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (isLoading) return;
+
+        const userInput = document.getElementById('userInput');
+        const query = userInput.value.trim();
+        
+        if (!query) return;
+
+        // Add user message
+        addMessage(query, true);
+        userInput.value = '';
+
+        // Show typing animation
+        addTypingIndicator();
+
+        // Show loading state
+        isLoading = true;
+        const sendBtn = document.getElementById('sendBtn');
+        const originalBtnContent = sendBtn.innerHTML;
+        sendBtn.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div>';
+        sendBtn.disabled = true;
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+
+            // Remove typing indicator
+            removeTypingIndicator();
+
+            if (data.error) {
+                addMessage(`❌ Ошибка: ${data.error}`, false);
+            } else {
+                addMessage(data.answer, false, data.sources, data.confidence);
+            }
+        } catch (error) {
+            removeTypingIndicator();
+            addMessage(`❌ Ошибка подключения: ${error.message}`, false);
+        } finally {
+            isLoading = false;
+            sendBtn.innerHTML = originalBtnContent;
+            sendBtn.disabled = false;
+            userInput.focus();
+        }
+    });
+
+    // Example questions
+    document.querySelectorAll('.example-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('userInput').value = this.dataset.query;
+            document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+        });
+    });
+
+    // Clear chat
+    document.getElementById('clearChatBtn').addEventListener('click', function() {
+        const chatContainer = document.getElementById('chatContainer');
+        chatContainer.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-comments fa-3x mb-3"></i>
+                <h6>Чат очищен</h6>
+                <p>Задайте новый вопрос для продолжения.</p>
+            </div>
+        `;
+        messageCounter = 0;
+    });
+
+    // Show history
+    document.getElementById('historyBtn').addEventListener('click', async function() {
+        const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+        modal.show();
+
+        try {
+            const response = await fetch('/api/history');
+            const data = await response.json();
+            
+            const historyContent = document.getElementById('historyContent');
+            
+            if (data.history && data.history.length > 0) {
+                let historyHtml = '';
+                data.history.forEach(item => {
+                    historyHtml += `
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Вопрос:</strong>
+                                        <p class="text-muted">${item.user_query}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Ответ:</strong>
+                                        <p class="text-muted">${item.ai_response.substring(0, 200)}...</p>
+                                        <small class="text-muted">${new Date(item.created_at).toLocaleString('ru')}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                historyContent.innerHTML = historyHtml;
+            } else {
+                historyContent.innerHTML = '<div class="text-center text-muted py-4">История чата пуста</div>';
+            }
+        } catch (error) {
+            document.getElementById('historyContent').innerHTML = '<div class="alert alert-danger">Ошибка загрузки истории</div>';
+        }
+    });
+
+    // Focus on input
+    document.getElementById('userInput').focus();
+});
+</script>
+
+<style>
+/* Improved message styles */
+.message-card {
+    transition: all 0.3s ease;
+}
+
+.message-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Typing animation */
+.typing-animation {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    margin: 0 2px;
+    animation: typing 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.typing-text {
+    color: var(--secondary-color);
+    font-style: italic;
+}
+
+/* Source reference badges */
+.source-ref-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #90caf9;
+    margin: 0 2px;
+}
+
+.source-ref-badge:hover {
+    background: linear-gradient(135deg, #bbdefb, #90caf9);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
+}
+
+/* Sources section */
+.sources-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+}
+
+.sources-toggle {
+    transition: all 0.3s ease;
+}
+
+.sources-toggle:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.sources-content {
+    transition: all 0.3s ease;
+}
+
+.sources-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Source items */
+.source-item {
+    background: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.source-item:hover {
+    background: #e9ecef;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.source-highlight {
+    background: linear-gradient(135deg, #fff3e0, #ffe0b2) !important;
+    border-color: #ff9800 !important;
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
+    animation: highlight-pulse 1s ease-in-out;
+}
+
+@keyframes highlight-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.source-number {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+.source-title {
+    margin: 5px 0;
+    font-size: 0.95rem;
+}
+
+.source-position {
+    margin-bottom: 8px;
+}
+
+.score-badge {
+    background: linear-gradient(135deg, var(--success-color), #059669);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.source-preview {
+    background: white;
+    border-radius: 8px;
+    padding: 10px;
+    border-left: 3px solid var(--primary-color);
+    font-style: italic;
+}
+
+/* Confidence indicators */
+.confidence-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.confidence-high { color: var(--success-color); }
+.confidence-medium { color: var(--warning-color); }
+.confidence-low { color: var(--danger-color); }
+
+/* Enhanced animations */
+.fade-in {
+    animation: messageSlideIn 0.4s ease-out;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Message content styling */
+.message-content {
+    line-height: 1.6;
+    color: var(--dark-color);
+}
+
+.message-content p {
+    margin-bottom: 1rem;
+}
+
+.message-content strong {
+    color: var(--primary-color);
+}
+</style>
+{% endblock %} 

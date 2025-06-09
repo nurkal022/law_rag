@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Админ панель - RAG Система{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-cog me-2"></i>Администрирование системы
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- System Status -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-server me-2"></i>Статус системы
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h4 class="text-primary">{{ stats.documents_count }}</h4>
+                        <small class="text-muted">Документов</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-info">{{ stats.chunks_count }}</h4>
+                        <small class="text-muted">Чанков</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-success">{{ stats.embedded_chunks }}</h4>
+                        <small class="text-muted">С embeddings</small>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <small>Готовность системы:</small>
+                        <small>{{ "%.1f"|format(stats.embedding_progress) }}%</small>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar 
+                            {% if stats.embedding_progress >= 100 %}bg-success
+                            {% elif stats.embedding_progress >= 50 %}bg-warning
+                            {% else %}bg-danger{% endif %}" 
+                            style="width: {{ stats.embedding_progress }}%">
+                        </div>
+                    </div>
+                </div>
+                
+                {% if stats.embedding_progress < 100 %}
+                <div class="alert alert-warning p-2">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <small>Система не полностью готова к работе</small>
+                </div>
+                {% else %}
+                <div class="alert alert-success p-2">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <small>Система готова к работе</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Processing -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-text me-2"></i>Обработка документов
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Автоматическая настройка</h6>
+                        <p class="text-muted small">
+                            Автоматическая загрузка документов и создание embeddings
+                        </p>
+                        <button id="autoSetupBtn" class="btn btn-success">
+                            <i class="fas fa-magic me-2"></i>Автоматическая настройка
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Ручная обработка</h6>
+                        <p class="text-muted small">
+                            Пошаговая обработка документов
+                        </p>
+                        <div class="d-grid gap-2">
+                            <button id="processDocsBtn" class="btn btn-primary btn-sm">
+                                <i class="fas fa-cogs me-2"></i>Обработать все документы
+                            </button>
+                            <button id="updateEmbeddingsBtn" class="btn btn-info btn-sm">
+                                <i class="fas fa-sync me-2"></i>Обновить embeddings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Area -->
+                <div id="progressArea" class="mt-4" style="display: none;">
+                    <hr>
+                    <h6>Прогресс обработки</h6>
+                    <div class="progress mb-2">
+                        <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div id="progressLog" class="border rounded p-3" style="height: 200px; overflow-y: auto; background-color: #f8f9fa; font-family: monospace; font-size: 0.85rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- System Management -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tools me-2"></i>Управление системой
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button id="clearHistoryBtn" class="btn btn-warning">
+                        <i class="fas fa-trash me-2"></i>Очистить историю чатов
+                    </button>
+                    <button id="refreshStatsBtn" class="btn btn-secondary">
+                        <i class="fas fa-refresh me-2"></i>Обновить статистику
+                    </button>
+                    <a href="/" class="btn btn-success">
+                        <i class="fas fa-comments me-2"></i>Перейти к чату
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Status -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-plug me-2"></i>Статус API
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="apiStatus">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Проверка...</span>
+                        </div>
+                        <p class="text-muted mt-2">Проверка статуса API...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for confirmations -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Вы уверены, что хотите выполнить это действие?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" id="confirmBtn" class="btn btn-danger">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let currentAction = null;
+
+    // Check API status on load
+    checkApiStatus();
+
+    function checkApiStatus() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('apiStatus');
+                if (data.error) {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-danger p-2">
+                            <i class="fas fa-times-circle me-2"></i>
+                            <strong>Ошибка:</strong> ${data.error}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-success p-2">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>API работает нормально</strong>
+                        </div>
+                        <small class="text-muted">
+                            Документов: ${data.documents_count} | 
+                            Чанков: ${data.chunks_count} | 
+                            Готовность: ${data.embedding_progress.toFixed(1)}%
+                        </small>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('apiStatus').innerHTML = `
+                    <div class="alert alert-danger p-2">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Нет связи с API</strong>
+                    </div>
+                `;
+            });
+    }
+
+    function showProgress() {
+        document.getElementById('progressArea').style.display = 'block';
+        document.getElementById('progressLog').innerHTML = '';
+        document.getElementById('progressBar').style.width = '0%';
+    }
+
+    function addLogMessage(message, type = 'info') {
+        const log = document.getElementById('progressLog');
+        const timestamp = new Date().toLocaleTimeString();
+        const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+        
+        log.innerHTML += `<div>[${timestamp}] ${icon} ${message}</div>`;
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function updateProgress(percent) {
+        document.getElementById('progressBar').style.width = percent + '%';
+    }
+
+    // Auto-setup functionality
+    document.getElementById('autoSetupBtn').addEventListener('click', function() {
+        if (this.disabled) return;
+        
+        showProgress();
+        addLogMessage('🚀 Запуск автоматической настройки системы...');
+        
+        this.disabled = true;
+        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Настройка...';
+        
+        fetch('/api/admin/auto_setup', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addLogMessage('✅ Автоматическая настройка завершена успешно!', 'success');
+                
+                // Показываем результаты каждого шага
+                data.steps.forEach(step => {
+                    const icon = step.status === 'completed' ? '✅' : 
+                                step.status === 'skipped' ? '⏭️' : '❌';
+                    const type = step.status === 'completed' ? 'success' : 
+                                step.status === 'skipped' ? 'info' : 'error';
+                    addLogMessage(`${icon} ${step.step}: ${step.message}`, type);
+                });
+                
+                // Показываем финальную статистику
+                const stats = data.final_stats;
+                addLogMessage(`📊 Итого: ${stats.documents_count} документов, ${stats.chunks_count} чанков, готовность ${stats.embedding_progress.toFixed(1)}%`, 'success');
+                
+                updateProgress(100);
+                
+                // Обновляем страницу через 3 секунды
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            } else {
+                addLogMessage(`❌ Ошибка автоматической настройки: ${data.error}`, 'error');
+                
+                if (data.steps) {
+                    data.steps.forEach(step => {
+                        addLogMessage(`${step.step}: ${step.message}`, 'error');
+                    });
+                }
+                
+                updateProgress(0);
+            }
+        })
+        .catch(error => {
+            addLogMessage(`❌ Ошибка сети: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-magic me-2"></i>Автоматическая настройка';
+        });
+    });
+
+    // Process all documents
+    document.getElementById('processDocsBtn').addEventListener('click', function() {
+        if (this.disabled) return;
+        
+        showProgress();
+        addLogMessage('Начинаем обработку всех документов...');
+        
+        this.disabled = true;
+        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Обработка...';
+        
+        fetch('/api/admin/process_documents', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addLogMessage(`Успешно обработано: ${data.result.processed} документов`, 'success');
+                addLogMessage(`Ошибок: ${data.result.failed}`, data.result.failed > 0 ? 'error' : 'info');
+                addLogMessage(`Всего документов: ${data.result.total}`, 'info');
+                
+                if (data.result.errors && data.result.errors.length > 0) {
+                    data.result.errors.forEach(error => {
+                        addLogMessage(error, 'error');
+                    });
+                }
+                
+                updateProgress(100);
+                
+                // Refresh page after delay
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                addLogMessage(`Ошибка: ${data.error}`, 'error');
+                updateProgress(0);
+            }
+        })
+        .catch(error => {
+            addLogMessage(`Ошибка сети: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-cogs me-2"></i>Обработать все документы';
+        });
+    });
+
+    // Update embeddings
+    document.getElementById('updateEmbeddingsBtn').addEventListener('click', function() {
+        if (this.disabled) return;
+        
+        showProgress();
+        addLogMessage('Обновляем embeddings...');
+        
+        this.disabled = true;
+        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Обновление...';
+        
+        fetch('/api/admin/update_embeddings', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addLogMessage('Embeddings успешно обновлены', 'success');
+                updateProgress(100);
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                addLogMessage(`Ошибка: ${data.error || 'Неизвестная ошибка'}`, 'error');
+            }
+        })
+        .catch(error => {
+            addLogMessage(`Ошибка сети: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync me-2"></i>Обновить embeddings';
+        });
+    });
+
+    // Clear history with confirmation
+    document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+        currentAction = 'clearHistory';
+        document.getElementById('confirmMessage').textContent = 
+            'Вы уверены, что хотите очистить всю историю чатов? Это действие нельзя отменить.';
+        
+        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        modal.show();
+    });
+
+    // Confirm action
+    document.getElementById('confirmBtn').addEventListener('click', function() {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+        modal.hide();
+        
+        if (currentAction === 'clearHistory') {
+            clearChatHistory();
+        }
+    });
+
+    function clearChatHistory() {
+        const btn = document.getElementById('clearHistoryBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Очистка...';
+        
+        fetch('/api/admin/clear_history', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('История чатов успешно очищена');
+            } else {
+                alert(`Ошибка: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            alert(`Ошибка: ${error.message}`);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash me-2"></i>Очистить историю чатов';
+        });
+    }
+
+    // Refresh stats
+    document.getElementById('refreshStatsBtn').addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Обновление...';
+        
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    });
+});
+</script>
+{% endblock %} 

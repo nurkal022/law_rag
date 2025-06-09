@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Внутренняя ошибка сервера - 500{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="text-center">
+            <h1 class="display-1 text-danger">500</h1>
+            <h2>Внутренняя ошибка сервера</h2>
+            <p class="text-muted mb-4">
+                Произошла ошибка на сервере. Попробуйте повторить запрос позже.
+            </p>
+            <a href="/" class="btn btn-primary">
+                <i class="fas fa-home me-2"></i>Вернуться на главную
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %} 
