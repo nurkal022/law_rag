@@ -11,7 +11,14 @@ class Config:
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
     
     # База данных
-    DATABASE_PATH = 'database/law_database.db'
+    DATABASE_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database', 'law_database.db')
+    SQLALCHEMY_DATABASE_URI = f'sqlite:///{DATABASE_PATH}'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_timeout': 20,
+        'pool_recycle': -1,
+        'pool_pre_ping': True
+    }
     
     # Обработка документов
     CHUNK_SIZE = 1000  # Размер чанка в символах

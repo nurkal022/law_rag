@@ -1,0 +1,967 @@
+{% extends "base.html" %}
+
+{% block title %}Генератор законопроектов{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Заголовок -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                    <li class="breadcrumb-item active">Генератор законопроектов</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-5 text-primary mb-2">
+                        <i class="fas fa-gavel me-3"></i>
+                        Генератор законопроектов РК
+                    </h1>
+                    <p class="lead text-muted">Создание полного документа законопроекта по стандартам Республики Казахстан</p>
+                </div>
+                
+                <div class="text-end">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body p-3">
+                            <h6 class="card-title mb-1">Статистика</h6>
+                            <small class="text-muted">
+                                Всего проектов: <span class="fw-bold">{{ law_stats.total_projects }}</span><br>
+                                За месяц: <span class="fw-bold">{{ law_stats.recent_projects }}</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Левая панель - Прогресс и навигация -->
+        <div class="col-lg-3">
+            <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list-check me-2"></i>
+                        Прогресс заполнения
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Прогресс-бар -->
+                    <div class="p-3 border-bottom">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Готовность</small>
+                            <small class="text-muted"><span id="progress-percentage">0</span>%</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div id="progress-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Список разделов -->
+                    <div class="list-group list-group-flush" id="sections-nav">
+                        {% for section in questions %}
+                        <div class="list-group-item list-group-item-action section-nav-item" 
+                             data-section="{{ section.id }}" 
+                             data-index="{{ loop.index0 }}">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-circle text-muted section-status-icon" style="font-size: 0.7rem;"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 fw-normal">{{ section.title }}</h6>
+                                    <small class="text-muted">{{ section.questions|length }} полей</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Настройки генерации -->
+                <div class="card-footer bg-light">
+                    <!-- Выбор языка -->
+                    <div class="mb-3">
+                        <label for="generation-language" class="form-label small text-muted">Язык документа:</label>
+                        <select id="generation-language" class="form-select form-select-sm">
+                            <option value="ru">🇷🇺 Русский (основной)</option>
+                            <option value="kz">🇰🇿 Қазақша (негізгі)</option>
+                            <option value="bilingual">🌍 Двуязычный (ерікті)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Кнопки управления -->
+                    <div class="d-grid gap-2">
+                        <button id="fill-test-data-btn" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-flask me-2"></i>Заполнить тестовыми данными
+                        </button>
+                        <button id="validate-btn" class="btn btn-outline-primary btn-sm" disabled>
+                            <i class="fas fa-check-circle me-2"></i>Проверить данные
+                        </button>
+                        <button id="generate-btn" class="btn btn-success btn-sm" disabled>
+                            <i class="fas fa-magic me-2"></i>Сгенерировать документ
+                        </button>
+                        <hr class="my-2">
+                        <button id="history-btn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#historyModal">
+                            <i class="fas fa-history me-2"></i>История проектов
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Основная область - Форма -->
+        <div class="col-lg-9">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1" id="current-section-title">Основная информация</h5>
+                            <small class="text-muted" id="current-section-description">Заполните базовые данные о законопроекте</small>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button id="prev-section" class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-chevron-left"></i> Назад
+                            </button>
+                            <button id="next-section" class="btn btn-outline-primary btn-sm">
+                                Далее <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Форма -->
+                    <form id="law-generator-form">
+                        {% for section in questions %}
+                        <div class="form-section{% if not loop.first %} d-none{% endif %}" 
+                             id="section-{{ section.id }}" 
+                             data-section="{{ section.id }}">
+                            
+                            <div class="row">
+                                {% for question in section.questions %}
+                                <div class="col-md-{% if question.type == 'textarea' %}12{% else %}6{% endif %} mb-4">
+                                    <label for="{{ question.field }}" class="form-label">
+                                        {{ question.question }}
+                                        {% if question.required %}
+                                        <span class="text-danger">*</span>
+                                        {% endif %}
+                                        <i class="fas fa-question-circle text-muted ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           data-field="{{ question.field }}"
+                                           title="Нажмите для получения справки"></i>
+                                    </label>
+                                    
+                                    {% if question.type == 'text' %}
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="{{ question.field }}" 
+                                           name="{{ question.field }}"
+                                           data-required="{{ question.required|lower }}"
+                                           placeholder="Введите {{ question.question.lower() }}">
+                                    
+                                    {% elif question.type == 'textarea' %}
+                                    <textarea class="form-control" 
+                                              id="{{ question.field }}" 
+                                              name="{{ question.field }}"
+                                              data-required="{{ question.required|lower }}"
+                                              rows="4"
+                                              placeholder="Подробно опишите {{ question.question.lower() }}"></textarea>
+                                    
+                                    {% elif question.type == 'select' %}
+                                    <select class="form-select" 
+                                            id="{{ question.field }}" 
+                                            name="{{ question.field }}"
+                                            data-required="{{ question.required|lower }}">
+                                        <option value="">Выберите...</option>
+                                        {% for option in question.options %}
+                                        <option value="{{ option }}">{{ option }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% endif %}
+                                    
+                                    <div class="form-text text-muted" id="{{ question.field }}-help"></div>
+                                    <div class="invalid-feedback" id="{{ question.field }}-error"></div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Результаты валидации -->
+            <div id="validation-results" class="mt-4 d-none">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>
+                            Результаты проверки
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="validation-content">
+                            <!-- Содержимое валидации будет добавлено здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Результат генерации -->
+            <div id="generation-results" class="mt-4 d-none">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-file-text me-2"></i>
+                            Сгенерированный документ
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="generation-content">
+                            <!-- Содержимое генерации будет добавлено здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно справки -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Справка по полю</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="help-content">
+                <!-- Содержимое справки -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно загрузки -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <h6 id="loading-message">Генерация документа...</h6>
+                <p class="text-muted mb-0" id="loading-description">Пожалуйста, подождите. Это может занять несколько минут.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Данные для JavaScript -->
+<script type="application/json" id="sections-data">{{ questions | tojson | safe }}</script>
+
+<script>
+// JavaScript для управления формой
+document.addEventListener('DOMContentLoaded', function() {
+    // Загружаем данные разделов
+    window.sectionsData = JSON.parse(document.getElementById('sections-data').textContent);
+    const form = document.getElementById('law-generator-form');
+    const sections = document.querySelectorAll('.form-section');
+    const navItems = document.querySelectorAll('.section-nav-item');
+    const prevBtn = document.getElementById('prev-section');
+    const nextBtn = document.getElementById('next-section');
+    const validateBtn = document.getElementById('validate-btn');
+    const generateBtn = document.getElementById('generate-btn');
+    const progressBar = document.getElementById('progress-bar');
+    const progressPercentage = document.getElementById('progress-percentage');
+    
+    let currentSection = 0;
+    let formData = {};
+    let validationResults = {};
+    
+    // Инициализация
+    updateNavigation();
+    updateProgress();
+    
+    // Навигация по разделам
+    function showSection(index) {
+        sections.forEach((section, i) => {
+            if (i === index) {
+                section.classList.remove('d-none');
+                section.classList.add('d-block');
+            } else {
+                section.classList.remove('d-block');
+                section.classList.add('d-none');
+            }
+        });
+        
+        navItems.forEach((item, i) => {
+            item.classList.toggle('active', i === index);
+        });
+        
+        currentSection = index;
+        updateNavigation();
+        updateCurrentSectionInfo();
+    }
+    
+    function updateNavigation() {
+        prevBtn.disabled = currentSection === 0;
+        nextBtn.disabled = currentSection === sections.length - 1;
+    }
+    
+    function updateCurrentSectionInfo() {
+        const sectionData = window.sectionsData;
+        const current = sectionData[currentSection];
+        document.getElementById('current-section-title').textContent = current.title;
+        document.getElementById('current-section-description').textContent = 
+            `Раздел ${currentSection + 1} из ${sections.length}`;
+    }
+    
+    // Обработчики навигации
+    prevBtn.addEventListener('click', () => {
+        if (currentSection > 0) {
+            showSection(currentSection - 1);
+        }
+    });
+    
+    nextBtn.addEventListener('click', () => {
+        if (currentSection < sections.length - 1) {
+            collectCurrentSectionData();
+            showSection(currentSection + 1);
+        }
+    });
+    
+    // Навигация через боковую панель
+    navItems.forEach((item, index) => {
+        item.addEventListener('click', () => {
+            collectCurrentSectionData();
+            showSection(index);
+        });
+    });
+    
+    // Сбор данных текущего раздела
+    function collectCurrentSectionData() {
+        const currentFormSection = sections[currentSection];
+        const inputs = currentFormSection.querySelectorAll('input, textarea, select');
+        
+        inputs.forEach(input => {
+            if (input.value.trim()) {
+                formData[input.name] = input.value.trim();
+            }
+        });
+        
+        updateProgress();
+        validateRequiredFields();
+    }
+    
+    // Обновление прогресса
+    function updateProgress() {
+        const totalFields = form.querySelectorAll('input, textarea, select').length;
+        const filledFields = Object.keys(formData).length;
+        const percentage = Math.round((filledFields / totalFields) * 100);
+        
+        progressBar.style.width = percentage + '%';
+        progressPercentage.textContent = percentage;
+        
+        // Обновление статуса разделов
+        const sectionData = window.sectionsData;
+        sectionData.forEach((section, index) => {
+            const sectionFields = section.questions.map(q => q.field);
+            const sectionFilledFields = sectionFields.filter(field => formData[field]);
+            const sectionProgress = sectionFilledFields.length / sectionFields.length;
+            
+            const navItem = navItems[index];
+            const statusIcon = navItem.querySelector('.section-status-icon');
+            
+            if (sectionProgress === 1) {
+                statusIcon.className = 'fas fa-check-circle text-success section-status-icon';
+            } else if (sectionProgress > 0) {
+                statusIcon.className = 'fas fa-clock text-warning section-status-icon';
+            } else {
+                statusIcon.className = 'fas fa-circle text-muted section-status-icon';
+            }
+        });
+    }
+    
+    // Проверка обязательных полей
+    function validateRequiredFields() {
+        const requiredFields = form.querySelectorAll('[data-required="true"]');
+        const allRequiredFilled = Array.from(requiredFields).every(field => {
+            const fieldName = field.getAttribute('name');
+            return formData[fieldName] && formData[fieldName].toString().trim().length > 0;
+        });
+        
+        // Минимум 5 полей заполнено
+        const minFieldsFilled = Object.keys(formData).length >= 5;
+        
+        validateBtn.disabled = !(allRequiredFilled && minFieldsFilled);
+    }
+    
+    // Обработчики изменения полей
+    form.addEventListener('input', function(e) {
+        collectCurrentSectionData();
+    });
+    
+    // Заполнение тестовыми данными
+    const fillTestDataBtn = document.getElementById('fill-test-data-btn');
+    fillTestDataBtn.addEventListener('click', function() {
+        if (confirm('Заполнить форму тестовыми данными? Это перезапишет все текущие данные.')) {
+            fillTestData();
+        }
+    });
+    
+    function fillTestData() {
+        // Тестовые данные для законопроекта об электросамокатах
+        const testData = {
+            // Основная информация (basic_info)
+            'title_ru': 'О внесении изменений в некоторые законодательные акты Республики Казахстан по вопросам регулирования использования электросамокатов',
+            'title_kz': 'Электр самокаттарын пайдалануды реттеу мәселелері бойынша Қазақстан Республикасының кейбір заңнамалық актілеріне өзгерістер енгізу туралы',
+            'initiator': 'Министерство внутренних дел Республики Казахстан',
+            'initiator_type': 'министерство',
+            
+            // Анализ проблемы (problem_analysis)
+            'problem_description': 'Резкий рост ДТП и травм с участием электросамокатов в городах Казахстана. Существующие нормы ПДД регулируют только механические транспортные средства, что создаёт правовой вакуум. Статистика МВД показывает 1482 ДТП с участием легкого персонального электротранспорта в 2024 году.',
+            'current_legislation_gaps': 'Отсутствие классификации электросамокатов в ПДД РК. Неопределённость правового статуса водителей электросамокатов. Отсутствие требований к техническому состоянию устройств. Пробелы в страховом покрытии сервисов кик-шеринга.',
+            'target_audience': 'Пользователи электросамокатов, сервисы кик-шеринга, пешеходы, водители автотранспорта, органы дорожной полиции',
+            
+            // Цели и задачи (goals_objectives)
+            'goals': 'Снизить количество ДТП с электросамокатами на 30% к 2027 г., Обеспечить 100% страховое покрытие для сервисов кик-шеринга, Ввести чёткую классификацию лёгкого персонального электротранспорта (ЛПЭТ), Установить правила безопасного использования электросамокатов',
+            'international_experience': 'Регламент ЕС 2021/241 по микромобильности. Модельный закон МПА СНГ «О безопасном использовании ЛПЭТ». Опыт Германии по ограничению скорости до 20 км/ч. Практика Франции по обязательному страхованию операторов.',
+            
+            // Правовая основа (legal_basis)
+            'constitutional_basis': 'Статья 6 Конституции РК - обеспечение общественного порядка и безопасности. Статья 31 - право на безопасную окружающую среду. Статья 77 - регулирование транспортной деятельности.',
+            'hierarchy_compliance': 'Изменения вносятся в КоАП РК и Закон "О дорожном движении" в соответствии с иерархией НПА. Не противоречит Конституции РК и международным договорам.',
+            
+            // Экономическое воздействие (economic_impact)
+            'budget_impact': 'Увеличение доходов от штрафов на 50-100 млн тенге в год. Экономия на медицинских расходах за счет снижения травматизма на 200-300 млн тенге. Расходы на переобучение сотрудников полиции 15 млн тенге.',
+            'economic_benefits': 'Снижение расходов на медицинское обслуживание пострадавших в ДТП. Развитие безопасной городской мобильности. Стимулирование ответственного бизнеса в сфере кик-шеринга. Создание рабочих мест в сфере технического обслуживания.',
+            'funding_sources': 'Государственный бюджет, штрафные санкции, страховые взносы операторов',
+            
+            // Регулирующее воздействие (regulatory_impact)
+            'business_impact': 'Операторы кик-шеринга: обязательное страхование, техническое обслуживание устройств. Производители: соответствие стандартам безопасности. Новые требования могут увеличить операционные расходы на 10-15%.',
+            'citizen_impact': 'Повышение безопасности пешеходов и участников дорожного движения. Ограничения на использование в определенных зонах. Штрафы за нарушения ПДД. Возможное увеличение стоимости аренды электросамокатов.',
+            'administrative_burden': 'Дополнительная нагрузка на органы полиции по контролю за соблюдением новых норм. Необходимость переобучения сотрудников. Создание механизмов контроля операторов кик-шеринга.',
+            
+            // Риски и последствия (risks_consequences)
+            'corruption_risks': 'Минимальные. Четкие критерии нарушений снижают субъективность. Автоматизированные системы фиксации нарушений. Прозрачная процедура лицензирования операторов.',
+            'social_consequences': 'Повышение безопасности дорожного движения. Развитие экологически чистого транспорта. Возможное недовольство части пользователей новыми ограничениями. Улучшение городской мобильности.',
+            'implementation_timeline': 'Подготовка нормативной базы: 3 месяца. Обучение сотрудников полиции: 2 месяца. Переходный период для операторов: 6 месяцев. Полное вступление в силу: с 1 января 2026 года.'
+        };
+        
+        // Заполняем все поля формы
+        Object.entries(testData).forEach(([name, value]) => {
+            const field = form.querySelector(`[name="${name}"]`);
+            if (field) {
+                field.value = value;
+                // Генерируем событие input для обновления валидации
+                field.dispatchEvent(new Event('input', { bubbles: true }));
+                field.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+        
+        // Обновляем данные формы
+        formData = {...testData};
+        
+        // Принудительно собираем данные текущего раздела
+        collectCurrentSectionData();
+        
+        // Обновляем прогресс и валидацию
+        updateProgress();
+        validateRequiredFields();
+        
+        // Переходим на первый раздел
+        showSection(0);
+        
+        // Показываем уведомление
+        showNotification('Форма заполнена тестовыми данными!', 'success');
+    }
+    
+    // Функция для показа уведомлений
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Автоматически скрываем через 3 секунды
+        setTimeout(() => {
+            if (notification && notification.parentNode) {
+                notification.remove();
+            }
+        }, 3000);
+    }
+    
+    // Валидация данных
+    validateBtn.addEventListener('click', function() {
+        collectCurrentSectionData();
+        
+        fetch('/api/law-generator/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayValidationResults(data);
+            generateBtn.disabled = !data.is_valid;
+            validationResults = data;
+        })
+        .catch(error => {
+            console.error('Ошибка валидации:', error);
+            alert('Ошибка при проверке данных');
+        });
+    });
+    
+    // Отображение результатов валидации
+    function displayValidationResults(results) {
+        const container = document.getElementById('validation-results');
+        const content = document.getElementById('validation-content');
+        
+        let html = '';
+        
+        if (results.is_valid) {
+            html += '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Все данные корректны!</div>';
+        } else {
+            html += '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Обнаружены ошибки</div>';
+            
+            if (results.errors && results.errors.length > 0) {
+                html += '<h6>Ошибки:</h6><ul class="text-danger">';
+                results.errors.forEach(error => {
+                    html += `<li>${error}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            if (results.missing_required && results.missing_required.length > 0) {
+                html += '<h6>Отсутствуют обязательные поля:</h6><ul class="text-warning">';
+                results.missing_required.forEach(field => {
+                    html += `<li>${field}</li>`;
+                });
+                html += '</ul>';
+            }
+        }
+        
+        if (results.warnings && results.warnings.length > 0) {
+            html += '<h6>Предупреждения:</h6><ul class="text-info">';
+            results.warnings.forEach(warning => {
+                html += `<li>${warning}</li>`;
+            });
+            html += '</ul>';
+        }
+        
+        if (results.suggestions && results.suggestions.length > 0) {
+            html += '<h6>Рекомендации:</h6><ul class="text-muted">';
+            results.suggestions.forEach(suggestion => {
+                html += `<li>${suggestion}</li>`;
+            });
+            html += '</ul>';
+        }
+        
+        html += `<p class="mb-0"><small class="text-muted">Заполненность: ${results.completeness_score || 0}%</small></p>`;
+        
+        content.innerHTML = html;
+        container.classList.remove('d-none');
+        container.classList.add('d-block');
+    }
+    
+    // Генерация документа
+    generateBtn.addEventListener('click', function() {
+        collectCurrentSectionData();
+        
+        // Получаем выбранный язык
+        const selectedLanguage = document.getElementById('generation-language').value;
+        
+        // Подготавливаем данные для отправки
+        const requestData = {
+            ...formData,
+            generation_language: selectedLanguage
+        };
+        
+        // Обновляем сообщение в зависимости от языка
+        const loadingMessages = {
+            'ru': {
+                title: 'Генерация законопроекта на русском языке',
+                description: 'Создаем документ с русскими разделами и казахскими переводами...'
+            },
+            'kz': {
+                title: 'Заң жобасын қазақ тілінде жасау',
+                description: 'Қазақ тіліндегі бөлімдермен құжат жасап жатырмыз...'
+            },
+            'bilingual': {
+                title: 'Генерация двуязычного законопроекта',
+                description: 'Создаем документ с полными версиями на обоих языках...'
+            }
+        };
+        
+        const messages = loadingMessages[selectedLanguage];
+        document.getElementById('loading-message').textContent = messages.title;
+        document.getElementById('loading-description').textContent = messages.description;
+        
+        // Показываем модальное окно загрузки
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        loadingModal.show();
+        
+        fetch('/api/law-generator/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingModal.hide();
+            displayGenerationResults(data);
+        })
+        .catch(error => {
+            loadingModal.hide();
+            console.error('Ошибка генерации:', error);
+            alert('Ошибка при генерации документа');
+        });
+    });
+    
+    // Отображение результатов генерации
+    function displayGenerationResults(results) {
+        const container = document.getElementById('generation-results');
+        const content = document.getElementById('generation-content');
+        
+        if (results.success) {
+            let html = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Документ успешно сгенерирован! ID: ${results.project_id}
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Информация о документе:</h6>
+                        <ul>
+                            <li>Название: ${results.metadata.title_ru}</li>
+                            <li>Разделов: ${results.metadata.total_sections}</li>
+                            <li>Дата генерации: ${new Date(results.generation_date).toLocaleString('ru')}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Действия:</h6>
+                        <div class="d-grid gap-2">
+                            <a href="/api/law-projects/${results.project_id}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye me-2"></i>Просмотреть
+                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-download me-2"></i>Скачать
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="/api/law-projects/${results.project_id}/export?format=pdf">
+                                        <i class="fas fa-file-pdf me-2 text-danger"></i>PDF документ
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="/api/law-projects/${results.project_id}/export?format=html">
+                                        <i class="fas fa-code me-2 text-info"></i>HTML документ
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="/api/law-projects/${results.project_id}/export?format=txt">
+                                        <i class="fas fa-file-alt me-2 text-secondary"></i>Текстовый файл
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="/api/law-projects/${results.project_id}/export?format=json">
+                                        <i class="fas fa-file-code me-2 text-warning"></i>JSON файл
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (results.sections) {
+                html += '<h6 class="mt-3">Сгенерированные разделы:</h6>';
+                html += '<div class="accordion" id="sectionsAccordion">';
+                
+                Object.entries(results.sections).forEach(([key, section], index) => {
+                    html += `
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#section-${index}">
+                                    ${getSectionTitle(key)}
+                                </button>
+                            </h2>
+                            <div id="section-${index}" class="accordion-collapse collapse" 
+                                 data-bs-parent="#sectionsAccordion">
+                                <div class="accordion-body">
+                                    <pre class="small">${section.content || JSON.stringify(section, null, 2)}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            content.innerHTML = html;
+        } else {
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Ошибка генерации: ${results.error}
+                </div>
+            `;
+        }
+        
+        container.classList.remove('d-none');
+        container.classList.add('d-block');
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Справка по полям
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('[data-field]')) {
+            const fieldName = e.target.getAttribute('data-field');
+            showFieldHelp(fieldName);
+        }
+    });
+    
+    function showFieldHelp(fieldName) {
+        fetch(`/api/law-generator/help/${fieldName}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const modal = new bootstrap.Modal(document.getElementById('helpModal'));
+                document.getElementById('help-content').innerHTML = `
+                    <p><strong>Описание:</strong> ${data.help.description}</p>
+                    <p><strong>Обязательное поле:</strong> ${data.help.required ? 'Да' : 'Нет'}</p>
+                `;
+                modal.show();
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка получения справки:', error);
+        });
+    }
+    
+    // Вспомогательная функция для названий разделов
+    function getSectionTitle(key) {
+        const titles = {
+            'title_page': '1. Титульный лист',
+            'annotation': '2. Аннотация',
+            'explanatory_note': '3. Пояснительная записка',
+            'main_text': '4. Основной текст закона',
+            'comparison_table': '5. Сравнительная таблица',
+            'financial_justification': '6. Финансово-экономическое обоснование',
+            'regulatory_impact': '7. Оценка регулирующего воздействия',
+            'compliance_act': '8. Акт соответствия',
+            'anticorruption_review': '9. Антикоррупционная экспертиза',
+            'impact_forecast': '10. Прогноз последствий',
+            'glossary': '11. Глоссарий терминов',
+            'machine_readable': '12. Машиночитаемое приложение',
+            'audit_log': '13. Аудит-лог версий'
+        };
+        return titles[key] || key;
+    }
+    
+    // Автосохранение данных
+    setInterval(() => {
+        if (Object.keys(formData).length > 0) {
+            localStorage.setItem('law_generator_data', JSON.stringify(formData));
+        }
+    }, 30000); // каждые 30 секунд
+    
+    // Восстановление данных при загрузке
+    const savedData = localStorage.getItem('law_generator_data');
+    if (savedData) {
+        formData = JSON.parse(savedData);
+        
+        // Заполняем форму сохраненными данными
+        Object.entries(formData).forEach(([name, value]) => {
+            const field = form.querySelector(`[name="${name}"]`);
+            if (field) {
+                field.value = value;
+            }
+        });
+        
+        updateProgress();
+        validateRequiredFields();
+    }
+    // Загрузка истории проектов
+    function loadProjectHistory() {
+        fetch('/api/law-projects')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayProjectHistory(data.projects, data.stats);
+            } else {
+                console.error('Ошибка загрузки истории:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки истории:', error);
+        });
+    }
+    
+    // Отображение истории проектов
+    function displayProjectHistory(projects, stats) {
+        const container = document.getElementById('history-content');
+        
+        if (projects.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-file-alt text-muted" style="font-size: 3rem;"></i>
+                    <h6 class="mt-3 text-muted">Нет сохраненных проектов</h6>
+                    <p class="text-muted">Создайте первый законопроект, и он появится здесь</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="mb-3">
+                <small class="text-muted">
+                    Всего проектов: ${stats.total_projects} | 
+                    За месяц: ${stats.recent_projects} | 
+                    Завершенных: ${stats.completed_projects || 0}
+                </small>
+            </div>
+        `;
+        
+        projects.forEach(project => {
+            const createdDate = new Date(project.created_at).toLocaleString('ru');
+            
+            html += `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="card-title mb-1">${project.title_ru || 'Без названия'}</h6>
+                                <p class="card-text text-muted small mb-2">${project.title_kz || 'Атауы көрсетілмеген'}</p>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-${project.status === 'completed' ? 'success' : 'warning'} me-2">
+                                        ${project.status === 'completed' ? 'Завершен' : 'В работе'}
+                                    </span>
+                                    <small class="text-muted">
+                                        <i class="fas fa-user me-1"></i>${project.initiator || 'Не указан'} | 
+                                        <i class="fas fa-calendar me-1"></i>${createdDate}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="btn-group-vertical w-100">
+                                    <a href="/api/law-projects/${project.project_id}" class="btn btn-outline-primary btn-sm mb-1">
+                                        <i class="fas fa-eye me-1"></i>Просмотр
+                                    </a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-success btn-sm dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-download me-1"></i>Скачать
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="/api/law-projects/${project.project_id}/export?format=pdf">
+                                                <i class="fas fa-file-pdf me-2 text-danger"></i>PDF
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="/api/law-projects/${project.project_id}/export?format=html">
+                                                <i class="fas fa-code me-2 text-info"></i>HTML
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="/api/law-projects/${project.project_id}/export?format=txt">
+                                                <i class="fas fa-file-alt me-2 text-secondary"></i>TXT
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="/api/law-projects/${project.project_id}/export?format=json">
+                                                <i class="fas fa-file-code me-2 text-warning"></i>JSON
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // Загрузка истории при открытии модального окна
+    document.getElementById('historyModal').addEventListener('show.bs.modal', function() {
+        loadProjectHistory();
+    });
+});
+</script>
+
+<!-- Модальные окна -->
+
+<!-- Модальное окно истории проектов -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-history me-2"></i>
+                    История законопроектов
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="history-content">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Загрузка истории проектов...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно загрузки -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Генерация...</span>
+                </div>
+                <h6>Генерация законопроекта</h6>
+                <p class="text-muted mb-0">Пожалуйста, подождите. Это может занять несколько минут...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно справки -->
+<div class="modal fade" id="helpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Справка по полю
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="help-content">
+                    <!-- Содержимое справки будет добавлено здесь -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %} 

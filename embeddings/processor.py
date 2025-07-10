@@ -6,7 +6,6 @@ from sentence_transformers import SentenceTransformer
 import tiktoken
 from config import Config
 from database.models import DatabaseManager
-import sqlite3
 
 class DocumentProcessor:
     def __init__(self, db_manager: DatabaseManager):
@@ -301,31 +300,31 @@ class DocumentProcessor:
                 print("  ⚠️  Модель недоступна, пропускаем создание embeddings")
                 return True
             
-            # Обновляем embeddings в базе данных
-            with sqlite3.connect(self.db_manager.db_path) as conn:
-                cursor = conn.cursor()
-                
-                update_data = []
+            # Обновляем embeddings в базе данных через SQLAlchemy
+            from database.models import DocumentChunk, db
+            
+            try:
                 for i, chunk in enumerate(chunks_data):
                     if i < len(embeddings):
-                        embedding_blob = embeddings[i].tobytes()
-                        update_data.append((
-                            embedding_blob,
-                            chunk['document_id'],
-                            chunk['chunk_index']
-                        ))
+                        # Находим чанк в базе
+                        db_chunk = DocumentChunk.query.filter_by(
+                            document_id=chunk['document_id'],
+                            chunk_index=chunk['chunk_index']
+                        ).first()
+                        
+                        if db_chunk:
+                            # Устанавливаем embedding
+                            db_chunk.set_embedding(embeddings[i])
                 
-                # Массовое обновление embeddings
-                cursor.executemany('''
-                    UPDATE document_chunks 
-                    SET embedding = ? 
-                    WHERE document_id = ? AND chunk_index = ?
-                ''', update_data)
+                # Сохраняем изменения
+                db.session.commit()
+                print(f"  ✅ Embeddings созданы и сохранены")
+                return True
                 
-                conn.commit()
-            
-            print(f"  ✅ Embeddings созданы и сохранены")
-            return True
+            except Exception as db_error:
+                db.session.rollback()
+                print(f"  ❌ Ошибка сохранения в базу: {db_error}")
+                return False
             
         except Exception as e:
             print(f"  ❌ Ошибка создания embeddings: {e}")
@@ -338,15 +337,12 @@ class DocumentProcessor:
             return True
             
         try:
-            # Получаем чанки без embeddings
-            chunks_without_embeddings = []
-            with sqlite3.connect(self.db_manager.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT id, content FROM document_chunks 
-                    WHERE embedding IS NULL
-                ''')
-                chunks_without_embeddings = cursor.fetchall()
+            # Получаем чанки без embeddings через SQLAlchemy
+            from database.models import DocumentChunk, db
+            
+            chunks_without_embeddings = DocumentChunk.query.filter(
+                DocumentChunk.embedding.is_(None)
+            ).all()
             
             if not chunks_without_embeddings:
                 print("Все чанки уже имеют embeddings")
@@ -355,7 +351,7 @@ class DocumentProcessor:
             print(f"Создаем embeddings для {len(chunks_without_embeddings)} чанков")
             
             # Создаем embeddings
-            contents = [chunk[1] for chunk in chunks_without_embeddings]
+            contents = [chunk.content for chunk in chunks_without_embeddings]
             embeddings = self.create_embeddings(contents)
             
             if len(embeddings) == 0:
@@ -363,19 +359,19 @@ class DocumentProcessor:
                 return False
             
             # Обновляем базу данных
-            with sqlite3.connect(self.db_manager.db_path) as conn:
-                cursor = conn.cursor()
-                for i, (chunk_id, _) in enumerate(chunks_without_embeddings):
+            try:
+                for i, chunk in enumerate(chunks_without_embeddings):
                     if i < len(embeddings):
-                        embedding_blob = embeddings[i].tobytes()
-                        cursor.execute(
-                            'UPDATE document_chunks SET embedding = ? WHERE id = ?',
-                            (embedding_blob, chunk_id)
-                        )
-                conn.commit()
-            
-            print("Embeddings успешно обновлены")
-            return True
+                        chunk.set_embedding(embeddings[i])
+                
+                db.session.commit()
+                print("Embeddings успешно обновлены")
+                return True
+                
+            except Exception as db_error:
+                db.session.rollback()
+                print(f"Ошибка сохранения embeddings: {db_error}")
+                return False
             
         except Exception as e:
             print(f"Ошибка при обновлении embeddings: {e}")
