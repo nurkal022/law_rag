@@ -1,11 +1,31 @@
-import openai
 from typing import List, Dict, Tuple
 import json
 from config import Config
+from llm_providers.factory import LLMProviderFactory
+from llm_providers.base import LLMProvider
 
 class ResponseGenerator:
-    def __init__(self, api_key: str):
-        self.client = openai.OpenAI(api_key=api_key)
+    def __init__(self, provider: LLMProvider = None, api_key: str = None):
+        """
+        Инициализация генератора ответов
+        
+        Args:
+            provider: Провайдер LLM (если None, создается из конфигурации)
+            api_key: API ключ (для обратной совместимости с OpenAI)
+        """
+        if provider:
+            self.provider = provider
+        else:
+            # Если передан api_key, используем OpenAI
+            if api_key:
+                from llm_providers.openai_provider import OpenAIProvider
+                self.provider = OpenAIProvider(api_key=api_key, default_model=Config.LLM_MODEL)
+            else:
+                # Иначе используем провайдер из конфигурации
+                self.provider = LLMProviderFactory.get_current_provider()
+        
+        if not self.provider:
+            raise ValueError("Не удалось инициализировать LLM провайдер. Проверьте настройки.")
         
     def _prepare_context(self, search_results: List[Dict]) -> str:
         """Подготовка контекста из найденных документов"""
@@ -82,10 +102,10 @@ class ResponseGenerator:
         messages.append({"role": "user", "content": user_query})
         
         try:
-            # Вызываем OpenAI API
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            # Вызываем LLM через провайдер
+            response = self.provider.chat_completion(
                 messages=messages,
+                model=Config.LLM_MODEL,
                 temperature=Config.TEMPERATURE,
                 max_tokens=Config.MAX_TOKENS,
                 top_p=0.9,
@@ -93,7 +113,7 @@ class ResponseGenerator:
                 presence_penalty=0.1
             )
             
-            answer = response.choices[0].message.content.strip()
+            answer = response['content']
             
             # Вычисляем уверенность на основе количества и качества источников
             confidence = min(0.9, len(search_results) * 0.15 + 
@@ -104,8 +124,8 @@ class ResponseGenerator:
                 'answer': answer,
                 'sources': sources,
                 'confidence': confidence,
-                'model_used': 'gpt-4o',
-                'tokens_used': response.usage.total_tokens if response.usage else 0
+                'model_used': response.get('model', Config.LLM_MODEL),
+                'tokens_used': response.get('usage', {}).get('total_tokens', 0) if response.get('usage') else 0
             }
             
         except Exception as e:
@@ -139,14 +159,14 @@ class ResponseGenerator:
 Включите ссылки на источники [Источник 1], [Источник 2] и т.д."""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=800
             )
             
-            return response.choices[0].message.content.strip()
+            return response['content']
             
         except Exception as e:
             return f"Ошибка при создании резюме: {str(e)}"
@@ -165,14 +185,14 @@ class ResponseGenerator:
 Формат: просто список без нумерации."""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.2,
                 max_tokens=600
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             # Разбиваем на строки и очищаем
             points = [line.strip() for line in content.split('\n') if line.strip()]
             return points[:10]  # Максимум 10 пунктов
@@ -202,14 +222,14 @@ class ResponseGenerator:
 }}"""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.1,
                 max_tokens=400
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             # Пытаемся распарсить JSON
             try:

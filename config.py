@@ -7,8 +7,15 @@ load_dotenv()
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 class Config:
+    # LLM Provider настройки
+    LLM_PROVIDER_TYPE = os.getenv('LLM_PROVIDER_TYPE', 'openai')  # 'openai' или 'ollama'
+    LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-4o')  # Модель по умолчанию
+    
     # OpenAI настройки
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+    
+    # Ollama настройки
+    OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
     
     # База данных
     DATABASE_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database', 'law_database.db')

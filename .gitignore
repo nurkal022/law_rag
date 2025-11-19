@@ -219,7 +219,12 @@ transformers_cache/
 .cache/torch/sentence_transformers/
 
 # Document directories (содержат конфиденциальные данные)
-current/
+# Игнорируем всю директорию current, кроме examples
+current/*
+!current/examples
+current/examples/*
+!current/examples/*.txt
+!current/examples/README.md
 documents/
 data/
 uploads/

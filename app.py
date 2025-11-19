@@ -27,15 +27,31 @@ retriever = None
 rag_initialized = False
 rag_initializing = False
 
-# Проверяем наличие API ключа
-if not Config.OPENAI_API_KEY:
-    print("ВНИМАНИЕ: OpenAI API ключ не установлен!")
-    print("Добавьте OPENAI_API_KEY в переменные окружения или файл .env")
-    generator = None
-    law_generator = None
-else:
-    generator = ResponseGenerator(Config.OPENAI_API_KEY)
-    law_generator = LawProjectGenerator(Config.OPENAI_API_KEY, db_manager)
+# Инициализация генераторов с поддержкой провайдеров
+generator = None
+law_generator = None
+
+try:
+    from llm_providers.factory import LLMProviderFactory
+    provider = LLMProviderFactory.get_current_provider()
+    if provider:
+        generator = ResponseGenerator(provider=provider)
+        law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
+        print(f"✅ LLM провайдер инициализирован: {Config.LLM_PROVIDER_TYPE}")
+    else:
+        print("⚠️  ВНИМАНИЕ: LLM провайдер не настроен!")
+        print("   Для OpenAI: добавьте OPENAI_API_KEY в переменные окружения")
+        print("   Для Ollama: убедитесь, что Ollama запущена на http://localhost:11434")
+except Exception as e:
+    print(f"⚠️  Ошибка инициализации LLM провайдера: {e}")
+    # Пытаемся использовать старый способ для обратной совместимости
+    if Config.OPENAI_API_KEY:
+        try:
+            generator = ResponseGenerator(api_key=Config.OPENAI_API_KEY)
+            law_generator = LawProjectGenerator(api_key=Config.OPENAI_API_KEY, database_manager=db_manager)
+            print("✅ Использован OpenAI провайдер (старый способ)")
+        except Exception as e2:
+            print(f"❌ Не удалось инициализировать генераторы: {e2}")
 
 # Инициализация валидатора данных и экспортера
 data_validator = DataValidator()
@@ -1015,6 +1031,171 @@ def get_ml_insights():
             'error': str(e)
         }), 500
 
+# API endpoints для управления моделями
+
+@app.route('/api/settings/llm', methods=['GET'])
+def get_llm_settings():
+    """Получение текущих настроек LLM"""
+    try:
+        from llm_providers.factory import LLMProviderFactory
+        provider = LLMProviderFactory.get_current_provider()
+        
+        settings = {
+            'provider_type': Config.LLM_PROVIDER_TYPE,
+            'model': Config.LLM_MODEL,
+            'available': provider.is_available() if provider else False,
+            'ollama_base_url': Config.OLLAMA_BASE_URL if Config.LLM_PROVIDER_TYPE == 'ollama' else None,
+            'has_openai_key': bool(Config.OPENAI_API_KEY) if Config.LLM_PROVIDER_TYPE == 'openai' else None
+        }
+        
+        # Получаем список доступных моделей
+        if provider:
+            try:
+                settings['available_models'] = provider.get_available_models()
+            except:
+                settings['available_models'] = []
+        else:
+            settings['available_models'] = []
+        
+        return jsonify({
+            'success': True,
+            'settings': settings
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/settings/llm', methods=['POST'])
+def update_llm_settings():
+    """Обновление настроек LLM"""
+    try:
+        data = request.get_json()
+        provider_type = data.get('provider_type')
+        model = data.get('model')
+        ollama_base_url = data.get('ollama_base_url')
+        
+        # Валидация
+        if provider_type not in ['openai', 'ollama']:
+            return jsonify({
+                'success': False,
+                'error': 'Неверный тип провайдера. Используйте "openai" или "ollama"'
+            }), 400
+        
+        # Обновляем переменные окружения (в памяти, не в файле)
+        import os
+        if provider_type == 'openai':
+            if not Config.OPENAI_API_KEY:
+                return jsonify({
+                    'success': False,
+                    'error': 'OpenAI API ключ не установлен. Добавьте OPENAI_API_KEY в .env файл'
+                }), 400
+            Config.LLM_PROVIDER_TYPE = 'openai'
+        elif provider_type == 'ollama':
+            Config.LLM_PROVIDER_TYPE = 'ollama'
+            if ollama_base_url:
+                Config.OLLAMA_BASE_URL = ollama_base_url
+                os.environ['OLLAMA_BASE_URL'] = ollama_base_url
+        
+        if model:
+            Config.LLM_MODEL = model
+            os.environ['LLM_MODEL'] = model
+        
+        os.environ['LLM_PROVIDER_TYPE'] = provider_type
+        
+        # Пересоздаем провайдер
+        from llm_providers.factory import LLMProviderFactory
+        global generator, law_generator
+        
+        try:
+            provider = LLMProviderFactory.create_provider(
+                provider_type=provider_type,
+                model=model,
+                base_url=ollama_base_url if provider_type == 'ollama' else None
+            )
+            
+            if provider and provider.is_available():
+                generator = ResponseGenerator(provider=provider)
+                law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Настройки обновлены. Провайдер: {provider_type}, модель: {model or Config.LLM_MODEL}',
+                    'settings': {
+                        'provider_type': provider_type,
+                        'model': model or Config.LLM_MODEL,
+                        'available': True
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Провайдер недоступен. Проверьте настройки.'
+                }), 400
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Ошибка создания провайдера: {str(e)}'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/settings/llm/test', methods=['POST'])
+def test_llm_provider():
+    """Тестирование LLM провайдера"""
+    try:
+        data = request.get_json()
+        provider_type = data.get('provider_type', Config.LLM_PROVIDER_TYPE)
+        model = data.get('model', Config.LLM_MODEL)
+        ollama_base_url = data.get('ollama_base_url', Config.OLLAMA_BASE_URL)
+        
+        from llm_providers.factory import LLMProviderFactory
+        
+        provider = LLMProviderFactory.create_provider(
+            provider_type=provider_type,
+            model=model,
+            base_url=ollama_base_url if provider_type == 'ollama' else None
+        )
+        
+        if not provider:
+            return jsonify({
+                'success': False,
+                'error': 'Не удалось создать провайдер'
+            }), 400
+        
+        # Проверяем доступность
+        if not provider.is_available():
+            return jsonify({
+                'success': False,
+                'error': 'Провайдер недоступен'
+            }), 400
+        
+        # Тестовый запрос
+        test_response = provider.chat_completion(
+            messages=[{"role": "user", "content": "Привет! Ответь одним словом: работает?"}],
+            model=model,
+            temperature=0.1,
+            max_tokens=10
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Провайдер работает корректно',
+            'test_response': test_response.get('content', '')[:50],
+            'model_used': test_response.get('model', model)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
@@ -1057,9 +1238,21 @@ def initialize_app():
             print(f"\n✅ База данных готова (embeddings: {stats['embedding_progress']:.1f}%)")
             print("   RAG система будет инициализирована при первом обращении")
     
-    if not Config.OPENAI_API_KEY:
-        print("\n⚠️  ВНИМАНИЕ: OpenAI API ключ не установлен!")
-        print("   Добавьте OPENAI_API_KEY в переменные окружения")
+    # Проверяем статус LLM провайдера
+    try:
+        from llm_providers.factory import LLMProviderFactory
+        provider = LLMProviderFactory.get_current_provider()
+        if provider and provider.is_available():
+            print(f"\n✅ LLM провайдер настроен: {Config.LLM_PROVIDER_TYPE} ({Config.LLM_MODEL})")
+        else:
+            print("\n⚠️  ВНИМАНИЕ: LLM провайдер не доступен!")
+            print(f"   Тип: {Config.LLM_PROVIDER_TYPE}")
+            if Config.LLM_PROVIDER_TYPE == 'openai':
+                print("   Добавьте OPENAI_API_KEY в переменные окружения")
+            elif Config.LLM_PROVIDER_TYPE == 'ollama':
+                print(f"   Убедитесь, что Ollama запущена на {Config.OLLAMA_BASE_URL}")
+    except Exception as e:
+        print(f"\n⚠️  Ошибка проверки LLM провайдера: {e}")
     
     print("=" * 60)
     print("🌐 Приложение готово к работе!")
