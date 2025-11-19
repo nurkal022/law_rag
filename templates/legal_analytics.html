@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Правовая аналитика - Анализ комментариев к законопроектам</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- WordCloud2.js -->
+    <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"></script>
+    <!-- D3.js for advanced visualizations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Vis.js for network graphs -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- ApexCharts for advanced charts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    
+    <style>
+        .dashboard-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric-card.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .metric-card.info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .metric-card.warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .metric-card.primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .trend-indicator {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .trend-up { color: #28a745; }
+        .trend-down { color: #dc3545; }
+        .trend-neutral { color: #6c757d; }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .word-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 20px;
+        }
+        
+        .word-item {
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            border: 1px solid #dee2e6;
+        }
+        
+        .word-item.frequent {
+            background: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .recommendation-card {
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        
+        .recommendation-card.high {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .recommendation-card.medium {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .project-table {
+            font-size: 0.9rem;
+        }
+        
+        .project-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .sentiment-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .sentiment-positive { background: #d4edda; color: #155724; }
+        .sentiment-negative { background: #f8d7da; color: #721c24; }
+        .sentiment-neutral { background: #e2e3e5; color: #383d41; }
+        
+        /* Advanced visualizations */
+        .wordcloud-container {
+            height: 400px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .network-container {
+            height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        
+        .filter-tabs {
+            margin-bottom: 20px;
+        }
+        
+        .filter-tabs .nav-link {
+            border-radius: 20px;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-tabs .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .advanced-metric {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .advanced-metric:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .progress-ring {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+        }
+        
+        .progress-ring circle {
+            transition: stroke-dasharray 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        
+        .heatmap-cell {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .heatmap-cell:hover {
+            stroke-width: 2;
+            stroke: #333;
+        }
+        
+        .controversy-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .controversy-high { background: #dc3545; }
+        .controversy-medium { background: #ffc107; }
+        .controversy-low { background: #28a745; }
+        
+        .quality-badge {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .quality-high { background: #d4edda; color: #155724; }
+        .quality-medium { background: #fff3cd; color: #856404; }
+        .quality-low { background: #f8d7da; color: #721c24; }
+        
+        .timeline-container {
+            position: relative;
+            padding: 20px 0;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-left: 3px solid #007bff;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .interactive-filter {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="text-center text-white">
+            <div class="spinner mb-3"></div>
+            <h5>Анализируем данные...</h5>
+            <p>Пожалуйста, подождите</p>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row bg-white shadow-sm py-3 mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-0">
+                            <i class="fas fa-chart-line text-primary"></i>
+                            Правовая аналитика
+                        </h1>
+                        <p class="text-muted mb-0">Анализ комментариев к законопроектам</p>
+                    </div>
+                    <div>
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="fas fa-home"></i> Главная
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-upload"></i> Загрузка данных
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <form id="uploadForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="fileInput" class="form-label">Выберите Excel файл с данными</label>
+                                        <input type="file" class="form-control" id="fileInput" name="file" accept=".xlsx,.xls">
+                                        <div class="form-text">Файл должен содержать колонки: id, title, url, category, status, comments</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-upload"></i> Загрузить и проанализировать
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-info-circle"></i> Демо-режим</h6>
+                                    <p class="mb-2">Для тестирования используйте демо-данные:</p>
+                                    <button id="loadDemoBtn" class="btn btn-outline-info btn-sm">
+                                        <i class="fas fa-play"></i> Загрузить демо-данные
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboardContent" style="display: none;">
+            <!-- Interactive Filters -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="interactive-filter">
+                        <h6 class="mb-3"><i class="fas fa-filter"></i> Интерактивные фильтры</h6>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">Категория проекта</label>
+                                <select id="categoryFilter" class="form-select form-select-sm">
+                                    <option value="all">Все категории</option>
+                                    <option value="digital">Цифровые технологии</option>
+                                    <option value="legal">Правовое регулирование</option>
+                                    <option value="administrative">Административные процедуры</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Тональность</label>
+                                <select id="sentimentFilter" class="form-select form-select-sm">
+                                    <option value="all">Все</option>
+                                    <option value="positive">Позитивные</option>
+                                    <option value="neutral">Нейтральные</option>
+                                    <option value="negative">Негативные</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Уровень спорности</label>
+                                <select id="controversyFilter" class="form-select form-select-sm">
+                                    <option value="all">Все уровни</option>
+                                    <option value="high">Высокий</option>
+                                    <option value="medium">Средний</option>
+                                    <option value="low">Низкий</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Период</label>
+                                <select id="timeFilter" class="form-select form-select-sm">
+                                    <option value="all">Все время</option>
+                                    <option value="week">Последняя неделя</option>
+                                    <option value="month">Последний месяц</option>
+                                    <option value="quarter">Последний квартал</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overview Cards -->
+            <div class="row mb-4" id="overviewCards">
+                <!-- Cards will be populated here -->
+            </div>
+
+            <!-- Advanced Analytics Tabs -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <ul class="nav nav-tabs filter-tabs" id="analyticsTabs" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" id="sentiment-tab" data-bs-toggle="tab" href="#sentimentPane" role="tab">
+                                        <i class="fas fa-smile"></i> Тональность
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="emotions-tab" data-bs-toggle="tab" href="#emotionsPane" role="tab">
+                                        <i class="fas fa-heart"></i> Эмоции
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="topics-tab" data-bs-toggle="tab" href="#topicsPane" role="tab">
+                                        <i class="fas fa-tags"></i> Темы
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="temporal-tab" data-bs-toggle="tab" href="#temporalPane" role="tab">
+                                        <i class="fas fa-clock"></i> Временные паттерны
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="network-tab" data-bs-toggle="tab" href="#networkPane" role="tab">
+                                        <i class="fas fa-project-diagram"></i> Сети взаимодействия
+                                    </a>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content mt-3" id="analyticsTabsContent">
+                                <!-- Sentiment Analysis Tab -->
+                                <div class="tab-pane fade show active" id="sentimentPane" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-chart-pie"></i> Общая тональность</h6>
+                                            <div class="chart-container">
+                                                <canvas id="sentimentChart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-chart-bar"></i> Тональность по категориям</h6>
+                                            <div class="chart-container">
+                                                <canvas id="sentimentByCategoryChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Emotions Analysis Tab -->
+                                <div class="tab-pane fade" id="emotionsPane" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <h6><i class="fas fa-brain"></i> Эмоциональная карта</h6>
+                                            <div class="chart-container">
+                                                <canvas id="emotionsRadarChart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6><i class="fas fa-fire"></i> Эмоциональные триггеры</h6>
+                                            <div id="emotionalTriggers">
+                                                <!-- Triggers will be populated here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Topics Analysis Tab -->
+                                <div class="tab-pane fade" id="topicsPane" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-sitemap"></i> Основные темы</h6>
+                                            <div class="chart-container">
+                                                <canvas id="topicsChart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-trending-up"></i> Трендовые темы</h6>
+                                            <div id="trendingTopics">
+                                                <!-- Trending topics will be populated here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Temporal Patterns Tab -->
+                                <div class="tab-pane fade" id="temporalPane" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-clock"></i> Активность по часам</h6>
+                                            <div class="chart-container">
+                                                <canvas id="hourlyActivityChart"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6><i class="fas fa-calendar"></i> Активность по дням недели</h6>
+                                            <div class="chart-container">
+                                                <canvas id="dailyActivityChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Network Analysis Tab -->
+                                <div class="tab-pane fade" id="networkPane" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <h6><i class="fas fa-project-diagram"></i> Сеть взаимодействий</h6>
+                                            <div id="networkVisualization" class="network-container">
+                                                <!-- Network will be populated here -->
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6><i class="fas fa-crown"></i> Топ влиятельных участников</h6>
+                                            <div id="influenceRanking">
+                                                <!-- Influence ranking will be populated here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overview Cards -->
+            <div class="row mb-4" id="overviewCards">
+                <!-- Cards will be populated here -->
+            </div>
+
+            <!-- Engagement Metrics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-users"></i> Метрики вовлеченности
+                            </h5>
+                            <div class="row" id="engagementMetrics">
+                                <!-- Metrics will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Word Cloud and Analytics -->
+            <div class="row mb-4">
+                <!-- Interactive Word Cloud -->
+                <div class="col-md-8">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-cloud"></i> Интерактивное облако слов
+                                </h5>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <input type="radio" class="btn-check" name="wordCloudFilter" id="allWords" autocomplete="off" checked>
+                                    <label class="btn btn-outline-primary" for="allWords">Все</label>
+                                    
+                                    <input type="radio" class="btn-check" name="wordCloudFilter" id="legalWords" autocomplete="off">
+                                    <label class="btn btn-outline-danger" for="legalWords">Правовые</label>
+                                    
+                                    <input type="radio" class="btn-check" name="wordCloudFilter" id="techWords" autocomplete="off">
+                                    <label class="btn btn-outline-info" for="techWords">Технические</label>
+                                    
+                                    <input type="radio" class="btn-check" name="wordCloudFilter" id="emotionalWords" autocomplete="off">
+                                    <label class="btn btn-outline-warning" for="emotionalWords">Эмоциональные</label>
+                                </div>
+                            </div>
+                            <div id="wordCloudContainer" class="wordcloud-container">
+                                <!-- Advanced word cloud will be populated here -->
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> Размер слова соответствует частоте упоминания. Цвет - категории.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Phrases and N-grams -->
+                <div class="col-md-4">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-key"></i> Ключевые фразы
+                            </h5>
+                            <div id="keyPhrases">
+                                <!-- Key phrases will be populated here -->
+                            </div>
+                            
+                            <hr>
+                            
+                            <h6 class="mt-3"><i class="fas fa-link"></i> Биграммы</h6>
+                            <div id="bigramsContainer">
+                                <!-- Bigrams will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quality and Controversy Analysis -->
+            <div class="row mb-4">
+                <!-- Comment Quality Analysis -->
+                <div class="col-md-6">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-star"></i> Качество комментариев
+                            </h5>
+                            <div class="chart-container">
+                                <canvas id="qualityChart"></canvas>
+                            </div>
+                            <div class="mt-3" id="qualityMetrics">
+                                <!-- Quality metrics will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controversy Analysis -->
+                <div class="col-md-6">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-exclamation-triangle"></i> Анализ спорности
+                            </h5>
+                            <div class="chart-container">
+                                <canvas id="controversyChart"></canvas>
+                            </div>
+                            <div class="mt-3" id="controversyInsights">
+                                <!-- Controversy insights will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic and Demographic Analysis -->
+            <div class="row mb-4">
+                <!-- Geographic Distribution -->
+                <div class="col-md-6">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-map-marked-alt"></i> Географическое распределение
+                            </h5>
+                            <div class="chart-container">
+                                <canvas id="geographicChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project Rankings with Advanced Metrics -->
+                <div class="col-md-6">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-trophy"></i> Расширенный рейтинг проектов
+                            </h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm project-table" id="advancedRankingsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Проект</th>
+                                            <th>Рейтинг</th>
+                                            <th>Качество</th>
+                                            <th>Спорность</th>
+                                            <th>Экспертность</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Advanced rankings will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predictive Analytics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-crystal-ball"></i> Предиктивная аналитика
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h6><i class="fas fa-chart-line"></i> Прогнозы трендов</h6>
+                                    <div class="chart-container">
+                                        <canvas id="forecastChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6><i class="fas fa-exclamation-circle"></i> Оценка рисков</h6>
+                                    <div id="riskAssessment">
+                                        <!-- Risk assessment will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Recommendations -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-lightbulb"></i> Интеллектуальные рекомендации
+                            </h5>
+                            
+                            <!-- Priority Matrix -->
+                            <div class="mb-4">
+                                <h6><i class="fas fa-th"></i> Матрица приоритетов</h6>
+                                <div id="priorityMatrix">
+                                    <!-- Priority matrix will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Detailed Recommendations -->
+                            <div id="detailedRecommendations">
+                                <!-- Detailed recommendations will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Implementation Roadmap -->
+                <div class="col-md-4">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-road"></i> Дорожная карта внедрения
+                            </h5>
+                            <div class="timeline-container" id="implementationRoadmap">
+                                <!-- Roadmap will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="dashboard-card">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-download"></i> Экспорт расширенного отчета
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="btn-group w-100" role="group">
+                                        <a href="/api/legal-analytics/export/html" class="btn btn-outline-primary">
+                                            <i class="fas fa-file-code"></i> HTML отчет
+                                        </a>
+                                        <a href="/api/legal-analytics/export/json" class="btn btn-outline-secondary">
+                                            <i class="fas fa-file-code"></i> JSON данные
+                                        </a>
+                                        <a href="/api/legal-analytics/export/pdf" class="btn btn-outline-success">
+                                            <i class="fas fa-file-pdf"></i> PDF отчет
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="btn-group w-100" role="group">
+                                        <button class="btn btn-outline-info" id="exportChartsBtn">
+                                            <i class="fas fa-chart-bar"></i> Экспорт графиков
+                                        </button>
+                                        <button class="btn btn-outline-warning" id="exportWordCloudBtn">
+                                            <i class="fas fa-cloud"></i> Экспорт облака слов
+                                        </button>
+                                        <button class="btn btn-outline-danger" id="shareReportBtn">
+                                            <i class="fas fa-share"></i> Поделиться
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Отчеты включают все визуализации, метрики и рекомендации с интерактивными элементами.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let sentimentChart, topicsChart, emotionsChart, hourlyChart, dailyChart, 
+            qualityChart, controversyChart, geographicChart, forecastChart, 
+            sentimentByCategoryChart;
+        let currentDashboardData = null;
+        let networkGraph = null;
+        
+        // Show loading overlay
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        
+        // Hide loading overlay
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        
+        // Load demo data
+        document.getElementById('loadDemoBtn').addEventListener('click', function() {
+            showLoading();
+            
+            fetch('/api/legal-analytics/demo')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayDashboard(data.dashboard_data);
+                        showNotification('Демо-данные загружены успешно!', 'success');
+                    } else {
+                        showNotification('Ошибка загрузки демо-данных: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Ошибка загрузки данных', 'error');
+                })
+                .finally(() => {
+                    hideLoading();
+                });
+        });
+        
+        // Handle file upload
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileInput = document.getElementById('fileInput');
+            
+            if (!fileInput.files[0]) {
+                showNotification('Пожалуйста, выберите файл', 'error');
+                return;
+            }
+            
+            formData.append('file', fileInput.files[0]);
+            
+            showLoading();
+            
+            fetch('/api/legal-analytics/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayDashboard(data.dashboard_data);
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification('Ошибка: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Ошибка загрузки файла', 'error');
+            })
+            .finally(() => {
+                hideLoading();
+            });
+        });
+        
+        // Display advanced dashboard
+        function displayDashboard(dashboardData) {
+            currentDashboardData = dashboardData;
+            document.getElementById('dashboardContent').style.display = 'block';
+            
+            // Display overview cards
+            displayOverviewCards(dashboardData.overview_cards);
+            
+            // Display engagement metrics
+            displayAdvancedEngagementMetrics(dashboardData.engagement_metrics);
+            
+            // Display advanced word cloud
+            displayAdvancedWordCloud(dashboardData.advanced_word_cloud);
+            
+            // Display key phrases
+            displayKeyPhrases(dashboardData.key_phrases);
+            
+            // Display quality metrics
+            displayQualityMetrics(dashboardData.quality_metrics);
+            
+            // Display controversy analysis
+            displayControversyAnalysis(dashboardData.controversy_analysis);
+            
+            // Display geographic analysis
+            displayGeographicAnalysis(dashboardData.geographic_analysis);
+            
+            // Display project rankings
+            displayAdvancedProjectRankings(dashboardData.project_rankings);
+            
+            // Display advanced recommendations
+            displayAdvancedRecommendations(dashboardData.recommendations);
+            
+            // Display predictive insights
+            displayPredictiveInsights(dashboardData.predictive_insights);
+            
+            // Display network analysis
+            displayNetworkAnalysis(dashboardData.network_analysis);
+            
+            // Create all charts
+            createAllCharts(dashboardData);
+            
+            // Setup filters
+            setupInteractiveFilters();
+        }
+        
+        // Display overview cards
+        function displayOverviewCards(cards) {
+            const container = document.getElementById('overviewCards');
+            container.innerHTML = '';
+            
+            cards.forEach(card => {
+                const cardHtml = `
+                    <div class="col-md-3">
+                        <div class="metric-card ${card.color}">
+                            <div class="trend-indicator">
+                                <i class="fas fa-arrow-${card.trend_direction}"></i> ${card.trend}
+                            </div>
+                            <div class="metric-value">${card.value}</div>
+                            <div class="metric-label">${card.title}</div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            });
+        }
+        
+        // Display engagement metrics
+        function displayEngagementMetrics(metrics) {
+            const container = document.getElementById('engagementMetrics');
+            container.innerHTML = '';
+            
+            Object.entries(metrics).forEach(([key, metric]) => {
+                const metricHtml = `
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-2">${metric.icon} ${metric.value}</div>
+                            <div class="text-muted">${metric.label}</div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += metricHtml;
+            });
+        }
+        
+        // Display word cloud
+        function displayWordCloud(wordCloud) {
+            const container = document.getElementById('wordCloud');
+            container.innerHTML = '';
+            
+            wordCloud.words.slice(0, 20).forEach(word => {
+                const fontSize = Math.max(12, Math.min(24, word.value * 2));
+                const wordHtml = `
+                    <span class="word-item" style="font-size: ${fontSize}px;">
+                        ${word.text} (${word.value})
+                    </span>
+                `;
+                container.innerHTML += wordHtml;
+            });
+        }
+        
+        // Display project rankings
+        function displayProjectRankings(rankings) {
+            const tbody = document.querySelector('#rankingsTable tbody');
+            tbody.innerHTML = '';
+            
+            rankings.top_projects.forEach(project => {
+                const sentimentClass = project.sentiment_score > 60 ? 'sentiment-positive' : 
+                                     project.sentiment_score < 40 ? 'sentiment-negative' : 'sentiment-neutral';
+                const sentimentText = project.sentiment_score > 60 ? 'Положительная' : 
+                                    project.sentiment_score < 40 ? 'Негативная' : 'Нейтральная';
+                
+                const rowHtml = `
+                    <tr>
+                        <td>${project.title}</td>
+                        <td><strong>${project.overall_score}</strong></td>
+                        <td>${project.comment_count}</td>
+                        <td><span class="sentiment-badge ${sentimentClass}">${sentimentText}</span></td>
+                    </tr>
+                `;
+                tbody.innerHTML += rowHtml;
+            });
+        }
+        
+        // Display recommendations
+        function displayRecommendations(recommendations) {
+            const container = document.getElementById('recommendations');
+            container.innerHTML = '';
+            
+            recommendations.high_priority.forEach(rec => {
+                const recHtml = `
+                    <div class="recommendation-card high">
+                        <h6 class="mb-2">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                            ${rec.title}
+                        </h6>
+                        <p class="mb-2">${rec.description}</p>
+                        <small class="text-muted">
+                            Приоритет: ${rec.priority} | Влияние: ${rec.impact} | Усилия: ${rec.effort}
+                        </small>
+                    </div>
+                `;
+                container.innerHTML += recHtml;
+            });
+            
+            recommendations.medium_priority.forEach(rec => {
+                const recHtml = `
+                    <div class="recommendation-card medium">
+                        <h6 class="mb-2">
+                            <i class="fas fa-info-circle text-warning"></i>
+                            ${rec.title}
+                        </h6>
+                        <p class="mb-2">${rec.description}</p>
+                        <small class="text-muted">
+                            Приоритет: ${rec.priority} | Влияние: ${rec.impact} | Усилия: ${rec.effort}
+                        </small>
+                    </div>
+                `;
+                container.innerHTML += recHtml;
+            });
+        }
+        
+        // Create sentiment chart
+        function createSentimentChart(chartData) {
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            
+            if (sentimentChart) {
+                sentimentChart.destroy();
+            }
+            
+            sentimentChart = new Chart(ctx, {
+                type: chartData.type,
+                data: chartData.data,
+                options: chartData.options
+            });
+        }
+        
+        // Create topics chart
+        function createTopicsChart(topicsData) {
+            const ctx = document.getElementById('topicsChart').getContext('2d');
+            
+            if (topicsChart) {
+                topicsChart.destroy();
+            }
+            
+            topicsChart = new Chart(ctx, {
+                type: 'bar',
+                data: topicsData.chart_data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Display advanced word cloud
+        function displayAdvancedWordCloud(wordCloudData) {
+            if (!wordCloudData || !wordCloudData.words) return;
+            
+            const container = document.getElementById('wordCloudContainer');
+            container.innerHTML = '';
+            
+            // Prepare data for WordCloud2
+            const cloudWords = wordCloudData.words.map(word => [
+                word.text, 
+                word.value,
+                word.color || '#007bff'
+            ]);
+            
+            try {
+                WordCloud(container, {
+                    list: cloudWords,
+                    gridSize: 8,
+                    weightFactor: 3,
+                    fontFamily: 'Arial, sans-serif',
+                    color: function() {
+                        return (Math.random() > 0.5) ? '#007bff' : '#28a745';
+                    },
+                    rotateRatio: 0.3,
+                    backgroundColor: '#f8f9fa',
+                    hover: function(item) {
+                        if (item) {
+                            container.style.cursor = 'pointer';
+                            container.title = `${item[0]}: ${item[1]} упоминаний`;
+                        } else {
+                            container.style.cursor = 'default';
+                        }
+                    },
+                    click: function(item) {
+                        if (item) {
+                            showNotification(`Слово "${item[0]}" упоминается ${item[1]} раз`, 'info');
+                        }
+                    }
+                });
+            } catch (error) {
+                // Fallback to simple word display
+                displaySimpleWordCloud(wordCloudData);
+            }
+        }
+        
+        // Fallback word cloud display
+        function displaySimpleWordCloud(wordCloudData) {
+            const container = document.getElementById('wordCloudContainer');
+            container.innerHTML = '';
+            container.className = 'word-cloud p-3';
+            
+            wordCloudData.words.slice(0, 30).forEach(word => {
+                const fontSize = Math.max(12, Math.min(28, word.value * 1.5));
+                const wordElement = document.createElement('span');
+                wordElement.className = 'word-item me-2 mb-2';
+                wordElement.style.fontSize = fontSize + 'px';
+                wordElement.style.color = word.color || '#007bff';
+                wordElement.textContent = `${word.text} (${word.value})`;
+                wordElement.title = `Категория: ${word.category}`;
+                container.appendChild(wordElement);
+            });
+        }
+        
+        // Display key phrases
+        function displayKeyPhrases(phrasesData) {
+            if (!phrasesData || !phrasesData.top_phrases) return;
+            
+            const container = document.getElementById('keyPhrases');
+            container.innerHTML = '';
+            
+            phrasesData.top_phrases.slice(0, 10).forEach(phrase => {
+                const phraseElement = document.createElement('div');
+                phraseElement.className = 'mb-2 p-2 border rounded';
+                phraseElement.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <strong>${phrase.phrase}</strong>
+                        <span class="badge bg-primary">${phrase.frequency}</span>
+                    </div>
+                    <small class="text-muted">Тональность: ${phrase.sentiment}</small>
+                `;
+                container.appendChild(phraseElement);
+            });
+            
+            // Display bigrams
+            const bigramsContainer = document.getElementById('bigramsContainer');
+            if (bigramsContainer && phrasesData.bigrams) {
+                bigramsContainer.innerHTML = '';
+                Object.entries(phrasesData.bigrams).slice(0, 5).forEach(([bigram, count]) => {
+                    const bigramElement = document.createElement('div');
+                    bigramElement.className = 'mb-1';
+                    bigramElement.innerHTML = `
+                        <small class="text-muted">${bigram}</small>
+                        <span class="badge bg-secondary ms-2">${count}</span>
+                    `;
+                    bigramsContainer.appendChild(bigramElement);
+                });
+            }
+        }
+        
+        // Display network analysis
+        function displayNetworkAnalysis(networkData) {
+            if (!networkData || !networkData.network_graph) return;
+            
+            try {
+                const container = document.getElementById('networkVisualization');
+                const data = {
+                    nodes: new vis.DataSet(networkData.network_graph.nodes),
+                    edges: new vis.DataSet(networkData.network_graph.edges)
+                };
+                
+                const options = {
+                    nodes: {
+                        shape: 'dot',
+                        scaling: {
+                            min: 10,
+                            max: 30
+                        },
+                        font: {
+                            size: 12,
+                            face: 'Arial'
+                        }
+                    },
+                    edges: {
+                        width: 1,
+                        color: {color: '#848484'},
+                        smooth: {
+                            enabled: true,
+                            type: 'continuous'
+                        }
+                    },
+                    physics: {
+                        stabilization: {iterations: 100}
+                    }
+                };
+                
+                networkGraph = new vis.Network(container, data, options);
+                
+                // Display influence ranking
+                const influenceContainer = document.getElementById('influenceRanking');
+                if (influenceContainer && networkData.influence_ranking) {
+                    influenceContainer.innerHTML = '';
+                    Object.entries(networkData.influence_ranking).slice(0, 5).forEach(([author, score], index) => {
+                        const rankElement = document.createElement('div');
+                        rankElement.className = 'advanced-metric p-3 mb-2';
+                        rankElement.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <span class="badge bg-warning">#${index + 1}</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">${author.length > 25 ? author.substring(0, 25) + '...' : author}</div>
+                                    <small class="text-muted">Влияние: ${score.toFixed(1)}</small>
+                                </div>
+                            </div>
+                        `;
+                        influenceContainer.appendChild(rankElement);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error creating network visualization:', error);
+                document.getElementById('networkVisualization').innerHTML = 
+                    '<div class="text-center text-muted p-5">Ошибка загрузки сетевой визуализации</div>';
+            }
+        }
+        
+        // Create all charts
+        function createAllCharts(dashboardData) {
+            // Sentiment charts
+            createSentimentChart(dashboardData.sentiment_chart);
+            createSentimentByCategoryChart(dashboardData.sentiment_analysis);
+            
+            // Emotions chart
+            createEmotionsChart(dashboardData.emotion_analysis);
+            
+            // Topics chart
+            createTopicsChart(dashboardData.topics_analysis);
+            
+            // Temporal charts
+            createTemporalCharts(dashboardData.temporal_analysis);
+            
+            // Quality chart
+            createQualityChart(dashboardData.quality_metrics);
+            
+            // Controversy chart
+            createControversyChart(dashboardData.controversy_analysis);
+            
+            // Geographic chart
+            createGeographicChart(dashboardData.geographic_analysis);
+            
+            // Forecast chart
+            createForecastChart(dashboardData.predictive_insights);
+        }
+        
+        // Create emotions radar chart
+        function createEmotionsChart(emotionData) {
+            if (!emotionData || !emotionData.data) return;
+            
+            const ctx = document.getElementById('emotionsRadarChart').getContext('2d');
+            
+            if (emotionsChart) {
+                emotionsChart.destroy();
+            }
+            
+            emotionsChart = new Chart(ctx, {
+                type: 'radar',
+                data: emotionData.data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create sentiment by category chart
+        function createSentimentByCategoryChart(sentimentData) {
+            if (!sentimentData || !sentimentData.sentiment_by_category) return;
+            
+            const ctx = document.getElementById('sentimentByCategoryChart').getContext('2d');
+            
+            if (sentimentByCategoryChart) {
+                sentimentByCategoryChart.destroy();
+            }
+            
+            const categories = Object.keys(sentimentData.sentiment_by_category);
+            const positiveData = categories.map(cat => sentimentData.sentiment_by_category[cat].positive);
+            const negativeData = categories.map(cat => sentimentData.sentiment_by_category[cat].negative);
+            const neutralData = categories.map(cat => sentimentData.sentiment_by_category[cat].neutral);
+            
+            sentimentByCategoryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [
+                        {
+                            label: 'Позитивные',
+                            data: positiveData,
+                            backgroundColor: '#28a745'
+                        },
+                        {
+                            label: 'Негативные',
+                            data: negativeData,
+                            backgroundColor: '#dc3545'
+                        },
+                        {
+                            label: 'Нейтральные',
+                            data: neutralData,
+                            backgroundColor: '#6c757d'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, max: 100 }
+                    }
+                }
+            });
+        }
+        
+        // Create temporal charts
+        function createTemporalCharts(temporalData) {
+            if (!temporalData) return;
+            
+            // Hourly activity chart
+            if (temporalData.hourly_activity) {
+                const ctx = document.getElementById('hourlyActivityChart').getContext('2d');
+                if (hourlyChart) hourlyChart.destroy();
+                
+                hourlyChart = new Chart(ctx, temporalData.hourly_activity);
+            }
+            
+            // Daily activity chart
+            if (temporalData.daily_activity) {
+                const ctx = document.getElementById('dailyActivityChart').getContext('2d');
+                if (dailyChart) dailyChart.destroy();
+                
+                dailyChart = new Chart(ctx, temporalData.daily_activity);
+            }
+        }
+        
+        // Create quality chart
+        function createQualityChart(qualityData) {
+            if (!qualityData || !qualityData.quality_chart) return;
+            
+            const ctx = document.getElementById('qualityChart').getContext('2d');
+            if (qualityChart) qualityChart.destroy();
+            
+            qualityChart = new Chart(ctx, qualityData.quality_chart);
+        }
+        
+        // Create controversy chart
+        function createControversyChart(controversyData) {
+            if (!controversyData || !controversyData.controversy_chart) return;
+            
+            const ctx = document.getElementById('controversyChart').getContext('2d');
+            if (controversyChart) controversyChart.destroy();
+            
+            controversyChart = new Chart(ctx, controversyData.controversy_chart);
+        }
+        
+        // Create geographic chart
+        function createGeographicChart(geoData) {
+            if (!geoData || !geoData.regional_chart) return;
+            
+            const ctx = document.getElementById('geographicChart').getContext('2d');
+            if (geographicChart) geographicChart.destroy();
+            
+            geographicChart = new Chart(ctx, geoData.regional_chart);
+        }
+        
+        // Create forecast chart
+        function createForecastChart(predictiveData) {
+            if (!predictiveData || !predictiveData.forecast_chart) return;
+            
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            if (forecastChart) forecastChart.destroy();
+            
+            forecastChart = new Chart(ctx, predictiveData.forecast_chart);
+        }
+        
+        // Setup interactive filters
+        function setupInteractiveFilters() {
+            const filters = ['categoryFilter', 'sentimentFilter', 'controversyFilter', 'timeFilter'];
+            
+            filters.forEach(filterId => {
+                const filterElement = document.getElementById(filterId);
+                if (filterElement) {
+                    filterElement.addEventListener('change', applyFilters);
+                }
+            });
+            
+            // Word cloud category filters
+            document.querySelectorAll('input[name="wordCloudFilter"]').forEach(radio => {
+                radio.addEventListener('change', updateWordCloudFilter);
+            });
+        }
+        
+        // Apply filters to data
+        function applyFilters() {
+            if (!currentDashboardData) return;
+            
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const sentimentFilter = document.getElementById('sentimentFilter').value;
+            const controversyFilter = document.getElementById('controversyFilter').value;
+            const timeFilter = document.getElementById('timeFilter').value;
+            
+            // Here you would filter the data and update visualizations
+            console.log('Applying filters:', {categoryFilter, sentimentFilter, controversyFilter, timeFilter});
+            
+            // For now, just show notification
+            showNotification('Фильтры применены! (демо-режим)', 'info');
+        }
+        
+        // Update word cloud based on category filter
+        function updateWordCloudFilter() {
+            const selectedFilter = document.querySelector('input[name="wordCloudFilter"]:checked').id;
+            
+            if (!currentDashboardData || !currentDashboardData.advanced_word_cloud) return;
+            
+            let filteredWords = currentDashboardData.advanced_word_cloud.words;
+            
+            switch(selectedFilter) {
+                case 'legalWords':
+                    filteredWords = currentDashboardData.advanced_word_cloud.categories.legal || [];
+                    break;
+                case 'techWords':
+                    filteredWords = currentDashboardData.advanced_word_cloud.categories.technical || [];
+                    break;
+                case 'emotionalWords':
+                    filteredWords = currentDashboardData.advanced_word_cloud.categories.emotional || [];
+                    break;
+            }
+            
+            displayAdvancedWordCloud({words: filteredWords});
+        }
+        
+        // Display advanced recommendations
+        function displayAdvancedRecommendations(recommendations) {
+            if (!recommendations) return;
+            
+            // Display priority matrix
+            displayPriorityMatrix(recommendations.priority_matrix);
+            
+            // Display detailed recommendations
+            const container = document.getElementById('detailedRecommendations');
+            container.innerHTML = '';
+            
+            // Critical recommendations
+            if (recommendations.critical && recommendations.critical.length > 0) {
+                const criticalSection = document.createElement('div');
+                criticalSection.innerHTML = `
+                    <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Критические (${recommendations.critical.length})</h6>
+                `;
+                recommendations.critical.forEach(rec => {
+                    criticalSection.innerHTML += createRecommendationCard(rec, 'danger');
+                });
+                container.appendChild(criticalSection);
+            }
+            
+            // High priority recommendations
+            if (recommendations.high_priority && recommendations.high_priority.length > 0) {
+                const highSection = document.createElement('div');
+                highSection.innerHTML = `
+                    <h6 class="text-warning"><i class="fas fa-star"></i> Высокий приоритет (${recommendations.high_priority.length})</h6>
+                `;
+                recommendations.high_priority.forEach(rec => {
+                    highSection.innerHTML += createRecommendationCard(rec, 'warning');
+                });
+                container.appendChild(highSection);
+            }
+            
+            // Display implementation roadmap
+            displayImplementationRoadmap(recommendations.implementation_roadmap);
+        }
+        
+        // Create recommendation card
+        function createRecommendationCard(rec, priority) {
+            const priorityClass = priority === 'danger' ? 'border-danger' : 
+                                priority === 'warning' ? 'border-warning' : 'border-info';
+            
+            return `
+                <div class="card ${priorityClass} mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">${rec.title}</h6>
+                            <span class="badge bg-${priority}">${rec.priority}</span>
+                        </div>
+                        <p class="card-text">${rec.description}</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-impact"></i> Влияние: ${rec.impact}<br>
+                                    <i class="fas fa-clock"></i> Сроки: ${rec.timeline || 'Не указано'}<br>
+                                    <i class="fas fa-percentage"></i> Вероятность успеха: ${rec.success_probability || 50}%
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-target"></i> KPI: ${rec.kpi || 'Не указано'}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Display priority matrix
+        function displayPriorityMatrix(priorityMatrix) {
+            if (!priorityMatrix) return;
+            
+            const container = document.getElementById('priorityMatrix');
+            container.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Рекомендация</th>
+                                <th>Влияние</th>
+                                <th>Усилия</th>
+                                <th>Приоритет</th>
+                                <th>Успех</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${priorityMatrix.slice(0, 5).map(item => `
+                                <tr>
+                                    <td>${item.title.substring(0, 40)}...</td>
+                                    <td><span class="badge bg-success">${item.impact_score}</span></td>
+                                    <td><span class="badge bg-info">${item.effort_score}</span></td>
+                                    <td><span class="badge bg-warning">${item.priority_score}</span></td>
+                                    <td><span class="badge bg-primary">${item.success_probability}%</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // Display implementation roadmap
+        function displayImplementationRoadmap(roadmap) {
+            if (!roadmap) return;
+            
+            const container = document.getElementById('implementationRoadmap');
+            container.innerHTML = '';
+            
+            roadmap.forEach((phase, index) => {
+                const phaseElement = document.createElement('div');
+                phaseElement.className = 'timeline-item';
+                phaseElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0">${phase.phase}</h6>
+                        <span class="badge bg-primary">${phase.duration_weeks} нед.</span>
+                    </div>
+                    <p class="mb-2">${phase.title}</p>
+                    <small class="text-muted">
+                        <i class="fas fa-calendar"></i> Недели ${phase.start_week}-${phase.end_week}<br>
+                        <i class="fas fa-percentage"></i> Успех: ${phase.success_probability}%
+                    </small>
+                `;
+                container.appendChild(phaseElement);
+            });
+        }
+        
+        // Display advanced engagement metrics
+        function displayAdvancedEngagementMetrics(engagementData) {
+            if (!engagementData) return;
+            
+            // This would populate more detailed engagement metrics
+            // For now, use existing engagement display function
+            displayEngagementMetrics(engagementData);
+        }
+        
+        // Display quality metrics
+        function displayQualityMetrics(qualityData) {
+            if (!qualityData) return;
+            
+            const container = document.getElementById('qualityMetrics');
+            if (!container) return;
+            
+            const overallQuality = qualityData.overall_quality || 0;
+            container.innerHTML = `
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="advanced-metric">
+                            <h6 class="text-success">Высокое качество</h6>
+                            <h4>${Math.round(overallQuality * 0.3)}%</h4>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="advanced-metric">
+                            <h6 class="text-warning">Среднее качество</h6>
+                            <h4>${Math.round(overallQuality * 0.5)}%</h4>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="advanced-metric">
+                            <h6 class="text-danger">Низкое качество</h6>
+                            <h4>${Math.round(overallQuality * 0.2)}%</h4>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Display controversy analysis
+        function displayControversyAnalysis(controversyData) {
+            if (!controversyData) return;
+            
+            const container = document.getElementById('controversyInsights');
+            if (!container) return;
+            
+            const highControversy = controversyData.high_controversy_projects || [];
+            container.innerHTML = `
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Высокоспорные проекты</h6>
+                    <p>Обнаружено ${highControversy.length} проектов с высоким уровнем спорности</p>
+                    ${highControversy.slice(0, 3).map(pid => `
+                        <span class="controversy-indicator controversy-high"></span>
+                        <small>Проект ${pid.substring(0, 8)}...</small><br>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Display geographic analysis
+        function displayGeographicAnalysis(geoData) {
+            if (!geoData) return;
+            
+            // Geographic chart is handled by createGeographicChart
+            // Additional geographic insights could be displayed here
+        }
+        
+        // Display advanced project rankings
+        function displayAdvancedProjectRankings(rankings) {
+            if (!rankings || !Array.isArray(rankings)) return;
+            
+            const tbody = document.querySelector('#advancedRankingsTable tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            rankings.slice(0, 10).forEach((project, index) => {
+                const row = document.createElement('tr');
+                
+                const qualityClass = project.quality_score > 70 ? 'quality-high' : 
+                                   project.quality_score > 50 ? 'quality-medium' : 'quality-low';
+                const controversyClass = project.controversy_score > 70 ? 'controversy-high' : 
+                                       project.controversy_score > 40 ? 'controversy-medium' : 'controversy-low';
+                
+                row.innerHTML = `
+                    <td>
+                        <div class="fw-bold">${project.title}</div>
+                        <small class="text-muted">${project.category}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-primary">${project.overall_score}</span>
+                    </td>
+                    <td>
+                        <span class="quality-badge ${qualityClass}">${project.quality_score}</span>
+                    </td>
+                    <td>
+                        <span class="controversy-indicator ${controversyClass}"></span>
+                        ${project.controversy_score}
+                    </td>
+                    <td>
+                        <span class="badge bg-info">${project.expertise_ratio}%</span>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Display predictive insights
+        function displayPredictiveInsights(predictiveData) {
+            if (!predictiveData) return;
+            
+            const container = document.getElementById('riskAssessment');
+            if (!container) return;
+            
+            const riskAssessment = predictiveData.risk_assessment || {};
+            const opportunities = predictiveData.opportunities || {};
+            
+            container.innerHTML = `
+                <div class="advanced-metric">
+                    <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Риски</h6>
+                    <ul class="list-unstyled">
+                        ${(riskAssessment.risk_factors || []).map(risk => `
+                            <li><i class="fas fa-minus text-danger"></i> ${risk}</li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                <div class="advanced-metric">
+                    <h6 class="text-success"><i class="fas fa-chart-line"></i> Возможности</h6>
+                    <ul class="list-unstyled">
+                        ${(opportunities.growth_areas || []).map(area => `
+                            <li><i class="fas fa-plus text-success"></i> ${area}</li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+        
+        // Add export functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Charts export
+            document.getElementById('exportChartsBtn')?.addEventListener('click', function() {
+                exportCharts();
+            });
+            
+            // Word cloud export
+            document.getElementById('exportWordCloudBtn')?.addEventListener('click', function() {
+                exportWordCloud();
+            });
+            
+            // Share report
+            document.getElementById('shareReportBtn')?.addEventListener('click', function() {
+                showNotification('Функция "Поделиться" будет реализована в следующей версии', 'info');
+            });
+        });
+        
+        // Export charts as images
+        function exportCharts() {
+            const charts = [sentimentChart, emotionsChart, topicsChart, hourlyChart, dailyChart];
+            let exportedCount = 0;
+            
+            charts.forEach((chart, index) => {
+                if (chart) {
+                    const url = chart.toBase64Image();
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `chart_${index + 1}.png`;
+                    link.click();
+                    exportedCount++;
+                }
+            });
+            
+            showNotification(`Экспортировано ${exportedCount} графиков`, 'success');
+        }
+        
+        // Export word cloud
+        function exportWordCloud() {
+            const container = document.getElementById('wordCloudContainer');
+            if (!container) return;
+            
+            // Use html2canvas if available, otherwise show message
+            if (typeof html2canvas !== 'undefined') {
+                html2canvas(container).then(canvas => {
+                    const link = document.createElement('a');
+                    link.href = canvas.toDataURL();
+                    link.download = 'word_cloud.png';
+                    link.click();
+                    showNotification('Облако слов экспортировано', 'success');
+                });
+            } else {
+                showNotification('Экспорт облака слов будет реализован в следующей версии', 'info');
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 
+                             type === 'info' ? 'alert-info' :
+                             type === 'warning' ? 'alert-warning' : 'alert-danger';
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            const container = document.querySelector('.container-fluid');
+            container.insertAdjacentHTML('afterbegin', alertHtml);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = document.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 

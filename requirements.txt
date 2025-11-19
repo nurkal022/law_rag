@@ -14,4 +14,17 @@ faiss-cpu==1.7.4
 langchain==0.0.335
 langchain-community==0.0.6
 markdown==3.5.1
-reportlab==4.0.4 
+reportlab==4.0.4
+openpyxl==3.1.2
+# Advanced NLP and Analytics
+nltk==3.8.1
+textblob==0.17.1
+wordcloud==1.9.2
+matplotlib==3.7.2
+seaborn==0.12.2
+plotly==5.17.0
+# PDF generation
+weasyprint==60.1
+jinja2==3.1.2
+# Network analysis
+networkx==3.2.1 

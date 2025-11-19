@@ -93,10 +93,52 @@
             <!-- Chat Messages -->
             <div class="card-body p-0">
                 <div id="chatContainer" class="chat-container p-3">
-                    <div class="text-center text-muted py-5">
+                    <div id="welcomeMessage" class="text-center text-muted py-5">
                         <i class="fas fa-comments fa-3x mb-3"></i>
                         <h6>Добро пожаловать в юридический чат-бот!</h6>
                         <p>Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
+                        
+                        <!-- RAG Initialization Section -->
+                        <div id="ragInitSection" class="mt-4">
+                            <div class="alert alert-info">
+                                <div class="d-flex align-items-center justify-content-center mb-3">
+                                    <i class="fas fa-cog fa-spin me-2"></i>
+                                    <strong>RAG система не инициализирована</strong>
+                                </div>
+                                <p class="mb-3">Для начала работы необходимо загрузить и инициализировать систему поиска по документам.</p>
+                                <button id="initRagBtn" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-play me-2"></i>Загрузить RAG систему
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Loading Section -->
+                        <div id="ragLoadingSection" class="mt-4" style="display: none;">
+                            <div class="alert alert-warning">
+                                <div class="d-flex align-items-center justify-content-center mb-3">
+                                    <div class="spinner-border text-warning me-3" role="status">
+                                        <span class="visually-hidden">Загрузка...</span>
+                                    </div>
+                                    <strong>Инициализация RAG системы...</strong>
+                                </div>
+                                <div class="progress mb-3" style="height: 8px;">
+                                    <div id="ragProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <p id="ragLoadingText" class="mb-0">Подготовка компонентов...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Ready Section -->
+                        <div id="ragReadySection" class="mt-4" style="display: none;">
+                            <div class="alert alert-success">
+                                <div class="d-flex align-items-center justify-content-center mb-3">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <strong>RAG система готова к работе!</strong>
+                                </div>
+                                <p class="mb-0">Теперь вы можете задавать вопросы о законодательстве Казахстана.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -158,6 +200,7 @@
 $(document).ready(function() {
     let isLoading = false;
     let messageCounter = 0;
+    let ragInitialized = false;
 
     // Auto-scroll to bottom of chat
     function scrollToBottom() {
@@ -212,9 +255,9 @@ $(document).ready(function() {
         messageCounter++;
         
         // Remove welcome message if it exists
-        const welcomeMsg = chatContainer.querySelector('.text-center.text-muted');
+        const welcomeMsg = document.getElementById('welcomeMessage');
         if (welcomeMsg) {
-            welcomeMsg.remove();
+            welcomeMsg.style.display = 'none';
         }
 
         const messageDiv = document.createElement('div');
@@ -404,6 +447,12 @@ $(document).ready(function() {
         
         if (!query) return;
 
+        // Check if RAG is initialized
+        if (!ragInitialized) {
+            alert('Пожалуйста, сначала инициализируйте RAG систему, нажав кнопку "Загрузить RAG систему"');
+            return;
+        }
+
         // Add user message
         addMessage(query, true);
         userInput.value = '';
@@ -458,14 +507,15 @@ $(document).ready(function() {
 
     // Clear chat
     document.getElementById('clearChatBtn').addEventListener('click', function() {
-        const chatContainer = document.getElementById('chatContainer');
-        chatContainer.innerHTML = `
-            <div class="text-center text-muted py-5">
-                <i class="fas fa-comments fa-3x mb-3"></i>
-                <h6>Чат очищен</h6>
-                <p>Задайте новый вопрос для продолжения.</p>
-            </div>
-        `;
+        const welcomeMsg = document.getElementById('welcomeMessage');
+        if (welcomeMsg) {
+            welcomeMsg.style.display = 'block';
+        }
+        
+        // Remove all messages except welcome
+        const messages = document.querySelectorAll('.message');
+        messages.forEach(msg => msg.remove());
+        
         messageCounter = 0;
     });
 
@@ -509,6 +559,139 @@ $(document).ready(function() {
             document.getElementById('historyContent').innerHTML = '<div class="alert alert-danger">Ошибка загрузки истории</div>';
         }
     });
+
+    // Check RAG status on page load
+    async function checkRagStatus() {
+        try {
+            const response = await fetch('/api/rag/status');
+            const data = await response.json();
+            
+            if (data.initialized) {
+                showRagReady();
+                ragInitialized = true;
+            } else if (data.initializing) {
+                showRagLoading();
+                // Poll for status updates
+                pollRagStatus();
+            } else {
+                showRagInit();
+            }
+        } catch (error) {
+            console.log('Ошибка проверки статуса RAG:', error);
+            showRagInit();
+        }
+    }
+
+    // Poll RAG status during initialization
+    async function pollRagStatus() {
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch('/api/rag/status');
+                const data = await response.json();
+                
+                if (data.initialized) {
+                    clearInterval(pollInterval);
+                    showRagReady();
+                    ragInitialized = true;
+                } else if (!data.initializing) {
+                    clearInterval(pollInterval);
+                    showRagInit();
+                }
+            } catch (error) {
+                console.log('Ошибка опроса статуса RAG:', error);
+                clearInterval(pollInterval);
+                showRagInit();
+            }
+        }, 1000);
+    }
+
+    // Show RAG initialization section
+    function showRagInit() {
+        document.getElementById('ragInitSection').style.display = 'block';
+        document.getElementById('ragLoadingSection').style.display = 'none';
+        document.getElementById('ragReadySection').style.display = 'none';
+    }
+
+    // Show RAG loading section
+    function showRagLoading() {
+        document.getElementById('ragInitSection').style.display = 'none';
+        document.getElementById('ragLoadingSection').style.display = 'block';
+        document.getElementById('ragReadySection').style.display = 'none';
+    }
+
+    // Show RAG ready section
+    function showRagReady() {
+        document.getElementById('ragInitSection').style.display = 'none';
+        document.getElementById('ragLoadingSection').style.display = 'none';
+        document.getElementById('ragReadySection').style.display = 'block';
+    }
+
+    // Initialize RAG system
+    async function initializeRag() {
+        const initBtn = document.getElementById('initRagBtn');
+        const originalText = initBtn.innerHTML;
+        
+        // Show loading state
+        initBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Инициализация...';
+        initBtn.disabled = true;
+        
+        showRagLoading();
+        
+        // Simulate progress
+        const progressBar = document.getElementById('ragProgressBar');
+        const loadingText = document.getElementById('ragLoadingText');
+        
+        const progressSteps = [
+            { progress: 20, text: 'Загрузка модели embeddings...' },
+            { progress: 40, text: 'Инициализация DocumentProcessor...' },
+            { progress: 60, text: 'Инициализация DocumentRetriever...' },
+            { progress: 80, text: 'Загрузка кэша документов...' },
+            { progress: 100, text: 'Завершение инициализации...' }
+        ];
+        
+        let currentStep = 0;
+        const stepInterval = setInterval(() => {
+            if (currentStep < progressSteps.length) {
+                const step = progressSteps[currentStep];
+                progressBar.style.width = step.progress + '%';
+                loadingText.textContent = step.text;
+                currentStep++;
+            } else {
+                clearInterval(stepInterval);
+            }
+        }, 800);
+        
+        try {
+            const response = await fetch('/api/rag/initialize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showRagReady();
+                ragInitialized = true;
+            } else {
+                throw new Error(data.message || 'Ошибка инициализации');
+            }
+        } catch (error) {
+            console.error('Ошибка инициализации RAG:', error);
+            showRagInit();
+            alert('Ошибка инициализации RAG системы: ' + error.message);
+        } finally {
+            initBtn.innerHTML = originalText;
+            initBtn.disabled = false;
+        }
+    }
+
+    // RAG initialization button
+    document.getElementById('initRagBtn').addEventListener('click', initializeRag);
+
+    // Check RAG status on page load
+    checkRagStatus();
 
     // Focus on input
     document.getElementById('userInput').focus();

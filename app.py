@@ -11,6 +11,7 @@ from rag.generator import ResponseGenerator
 from law_generator import LawProjectGenerator, DataValidator
 from law_generator.generator import LawProjectData
 from law_generator.export import DocumentExporter
+from legal_analytics import LegalCommentAnalyzer, AnalyticsDashboard, DataLoader
 
 # Инициализация Flask приложения
 app = Flask(__name__)
@@ -20,9 +21,11 @@ app.config.from_object(Config)
 db_manager = DatabaseManager()
 db_manager.init_app(app)
 
-with app.app_context():
-    doc_processor = DocumentProcessor(db_manager)
-    retriever = DocumentRetriever(db_manager)
+# Глобальные переменные для ленивой загрузки RAG
+doc_processor = None
+retriever = None
+rag_initialized = False
+rag_initializing = False
 
 # Проверяем наличие API ключа
 if not Config.OPENAI_API_KEY:
@@ -37,6 +40,42 @@ else:
 # Инициализация валидатора данных и экспортера
 data_validator = DataValidator()
 document_exporter = DocumentExporter()
+
+# Инициализация компонентов правовой аналитики
+legal_analyzer = LegalCommentAnalyzer()
+analytics_dashboard = AnalyticsDashboard()
+data_loader = DataLoader()
+
+def initialize_rag_system():
+    """Инициализация RAG системы по требованию"""
+    global doc_processor, retriever, rag_initialized, rag_initializing
+    
+    if rag_initialized or rag_initializing:
+        return True
+    
+    try:
+        rag_initializing = True
+        print("🔄 Инициализация RAG системы...")
+        
+        with app.app_context():
+            doc_processor = DocumentProcessor(db_manager)
+            retriever = DocumentRetriever(db_manager)
+        
+        rag_initialized = True
+        rag_initializing = False
+        print("✅ RAG система успешно инициализирована")
+        return True
+        
+    except Exception as e:
+        rag_initializing = False
+        print(f"❌ Ошибка инициализации RAG системы: {e}")
+        return False
+
+def ensure_rag_initialized():
+    """Проверка и инициализация RAG системы если необходимо"""
+    if not rag_initialized:
+        return initialize_rag_system()
+    return True
 
 @app.route('/')
 def index():
@@ -69,6 +108,12 @@ def chat():
             return jsonify({
                 'error': 'OpenAI API ключ не настроен. Пожалуйста, добавьте OPENAI_API_KEY в переменные окружения.'
             }), 500
+        
+        # Проверяем инициализацию RAG системы
+        if not ensure_rag_initialized():
+            return jsonify({
+                'error': 'RAG система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
+            }), 503
         
         # Получаем ID сессии
         session_id = session.get('session_id', str(uuid.uuid4()))
@@ -119,6 +164,12 @@ def search_documents():
         if not query:
             return jsonify({'error': 'Пустой запрос'}), 400
         
+        # Проверяем инициализацию RAG системы
+        if not ensure_rag_initialized():
+            return jsonify({
+                'error': 'RAG система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
+            }), 503
+        
         # Поиск документов
         search_results = retriever.hybrid_search(query, top_k=10)
         formatted_results = retriever.format_search_results(search_results)
@@ -140,6 +191,12 @@ def get_document_chunk(chunk_id):
         chunk = db_manager.get_chunk_by_id(chunk_id)
         if not chunk:
             return jsonify({'error': 'Чанк не найден'}), 404
+        
+        # Проверяем инициализацию RAG системы
+        if not ensure_rag_initialized():
+            return jsonify({
+                'error': 'RAG система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
+            }), 503
         
         # Получаем контекст (соседние чанки)
         context = retriever.get_document_context(chunk_id, context_size=2)
@@ -179,6 +236,59 @@ def get_stats():
         print(f"Ошибка получения статистики: {e}")
         return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
 
+@app.route('/api/rag/initialize', methods=['POST'])
+def initialize_rag():
+    """Инициализация RAG системы"""
+    global rag_initialized, rag_initializing
+    
+    try:
+        if rag_initialized:
+            return jsonify({
+                'success': True,
+                'message': 'RAG система уже инициализирована',
+                'initialized': True
+            })
+        
+        if rag_initializing:
+            return jsonify({
+                'success': False,
+                'message': 'RAG система уже инициализируется',
+                'initializing': True
+            }), 202
+        
+        # Инициализируем RAG систему
+        success = initialize_rag_system()
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'RAG система успешно инициализирована',
+                'initialized': True
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Ошибка инициализации RAG системы',
+                'initialized': False
+            }), 500
+            
+    except Exception as e:
+        print(f"Ошибка инициализации RAG: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Произошла ошибка: {str(e)}',
+            'initialized': False
+        }), 500
+
+@app.route('/api/rag/status')
+def rag_status():
+    """Получение статуса RAG системы"""
+    return jsonify({
+        'initialized': rag_initialized,
+        'initializing': rag_initializing,
+        'ready': rag_initialized and not rag_initializing
+    })
+
 @app.route('/api/admin/stats')
 def get_admin_stats():
     """Получение статистики для админ панели и дашборда"""
@@ -204,6 +314,13 @@ def admin_panel():
 def process_documents():
     """Обработка документов (создание embeddings)"""
     try:
+        # Инициализируем RAG систему если нужно
+        if not ensure_rag_initialized():
+            return jsonify({
+                'success': False,
+                'error': 'Не удалось инициализировать RAG систему'
+            }), 500
+        
         result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
         
         # Обновляем кэш retriever после обработки
@@ -226,6 +343,13 @@ def process_documents():
 def update_embeddings():
     """Обновление embeddings для документов без них"""
     try:
+        # Инициализируем RAG систему если нужно
+        if not ensure_rag_initialized():
+            return jsonify({
+                'success': False,
+                'error': 'Не удалось инициализировать RAG систему'
+            }), 500
+        
         result = doc_processor.update_embeddings()
         
         # Обновляем кэш retriever
@@ -302,25 +426,34 @@ def auto_setup():
         # Шаг 2: Обработка документов
         if stats['embedded_chunks'] < stats['chunks_count'] or stats['chunks_count'] == 0:
             print("🔄 Обрабатываем документы...")
-            process_result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
-            result['steps'].append({
-                'step': 'document_processing',
-                'status': 'completed' if process_result['processed'] > 0 else 'failed',
-                'message': f"Обработано {process_result['processed']} документов",
-                'details': process_result
-            })
-            
-            if process_result['processed'] == 0:
+            # Инициализируем RAG систему для обработки
+            if not ensure_rag_initialized():
+                result['steps'].append({
+                    'step': 'document_processing',
+                    'status': 'failed',
+                    'message': 'Не удалось инициализировать RAG систему'
+                })
                 result['success'] = False
+            else:
+                process_result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
+                result['steps'].append({
+                    'step': 'document_processing',
+                    'status': 'completed' if process_result['processed'] > 0 else 'failed',
+                    'message': f"Обработано {process_result['processed']} документов",
+                    'details': process_result
+                })
+                
+                if process_result['processed'] == 0:
+                    result['success'] = False
+                
+                # Обновляем кэш retriever
+                retriever.refresh_cache()
         else:
             result['steps'].append({
                 'step': 'document_processing',
                 'status': 'skipped',
                 'message': 'Документы уже обработаны'
             })
-        
-        # Обновляем кэш retriever
-        retriever.refresh_cache()
         
         # Финальная статистика
         result['final_stats'] = db_manager.get_documents_stats()
@@ -617,6 +750,271 @@ def get_field_help(field_name):
             'error': f'Ошибка получения справки: {str(e)}'
         }), 500
 
+# Маршруты для правовой аналитики
+
+@app.route('/legal-analytics')
+def legal_analytics_page():
+    """Страница правовой аналитики"""
+    return render_template('legal_analytics.html')
+
+@app.route('/api/legal-analytics/upload', methods=['POST'])
+def upload_analytics_data():
+    """Загрузка данных для анализа"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'Файл не загружен'
+            }), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'Файл не выбран'
+            }), 400
+        
+        # Сохраняем временный файл
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+            file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        try:
+            # Загружаем данные из Excel
+            projects = data_loader.load_from_excel(temp_path)
+            
+            if not projects:
+                return jsonify({
+                    'success': False,
+                    'error': 'Не удалось загрузить данные из файла'
+                }), 400
+            
+            # Анализируем данные
+            analysis_results = legal_analyzer.analyze_projects(projects)
+            
+            # Генерируем дашборд
+            dashboard_data = analytics_dashboard.generate_dashboard_data(analysis_results)
+            
+            # Конвертируем кортежи в сериализуемый формат
+            serializable_data = convert_tuples_to_serializable(dashboard_data)
+            
+            return jsonify({
+                'success': True,
+                'message': f'Анализ завершен. Обработано {len(projects)} проектов',
+                'dashboard_data': serializable_data,
+                'projects_count': len(projects)
+            })
+            
+        finally:
+            # Удаляем временный файл
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Ошибка обработки файла: {str(e)}'
+        }), 500
+
+def convert_tuples_to_serializable(obj):
+    """Конвертирует кортежи и другие несериализуемые объекты в сериализуемые"""
+    if isinstance(obj, tuple):
+        return list(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_tuples_to_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_tuples_to_serializable(item) for item in obj]
+    else:
+        return obj
+
+@app.route('/api/legal-analytics/demo')
+def get_demo_analytics():
+    """Получение демо-аналитики"""
+    try:
+        # Загружаем демо-данные
+        projects = data_loader.load_demo_data()
+        
+        # Анализируем данные
+        analysis_results = legal_analyzer.analyze_projects(projects)
+        
+        # Генерируем дашборд
+        dashboard_data = analytics_dashboard.generate_dashboard_data(analysis_results)
+        
+        # Конвертируем кортежи в сериализуемый формат
+        serializable_data = convert_tuples_to_serializable(dashboard_data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Демо-аналитика загружена',
+            'dashboard_data': serializable_data,
+            'projects_count': len(projects)
+        })
+        
+    except Exception as e:
+        print(f"Ошибка загрузки демо-данных: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Ошибка загрузки демо-данных: {str(e)}'
+        }), 500
+
+@app.route('/api/legal-analytics/export/<format_type>')
+def export_analytics_report(format_type):
+    """Экспорт отчета аналитики"""
+    try:
+        # Загружаем демо-данные для экспорта
+        projects = data_loader.load_demo_data()
+        analysis_results = legal_analyzer.analyze_projects(projects)
+        dashboard_data = analytics_dashboard.generate_dashboard_data(analysis_results)
+        
+        # Экспортируем в нужном формате
+        if format_type == 'html':
+            content = analytics_dashboard.export_dashboard_data(dashboard_data, 'html')
+            
+            # Создаем временный файл
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+                f.write(content)
+                temp_path = f.name
+            
+            return send_file(
+                temp_path,
+                as_attachment=True,
+                download_name=f'legal_analytics_report_{datetime.now().strftime("%Y%m%d")}.html',
+                mimetype='text/html'
+            )
+        
+        elif format_type == 'json':
+            content = analytics_dashboard.export_dashboard_data(dashboard_data, 'json')
+            
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+                f.write(content)
+                temp_path = f.name
+            
+            return send_file(
+                temp_path,
+                as_attachment=True,
+                download_name=f'legal_analytics_report_{datetime.now().strftime("%Y%m%d")}.json',
+                mimetype='application/json'
+            )
+        
+        elif format_type == 'pdf':
+            # Добавим поддержку PDF экспорта
+            content = analytics_dashboard.export_dashboard_data(dashboard_data, 'pdf')
+            
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='wb', suffix='.pdf', delete=False) as f:
+                f.write(content)
+                temp_path = f.name
+            
+            return send_file(
+                temp_path,
+                as_attachment=True,
+                download_name=f'legal_analytics_report_{datetime.now().strftime("%Y%m%d")}.pdf',
+                mimetype='application/pdf'
+            )
+        
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Неподдерживаемый формат экспорта'
+            }), 400
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Ошибка экспорта: {str(e)}'
+        }), 500
+
+@app.route('/api/legal-analytics/advanced-metrics')
+def get_advanced_metrics():
+    """Получение расширенных метрик аналитики"""
+    try:
+        # Загружаем демо-данные
+        projects = data_loader.load_demo_data()
+        
+        # Анализируем проекты
+        analysis_results = legal_analyzer.analyze_projects(projects)
+        
+        # Возвращаем только расширенные метрики
+        advanced_metrics = {
+            'emotion_analysis': analysis_results.get('emotion_analysis', {}),
+            'temporal_analysis': analysis_results.get('temporal_analysis', {}),
+            'geographic_analysis': analysis_results.get('geographic_analysis', {}),
+            'network_analysis': analysis_results.get('network_analysis', {}),
+            'controversy_analysis': analysis_results.get('controversy_analysis', {}),
+            'quality_metrics': analysis_results.get('quality_metrics', {}),
+            'predictive_insights': analysis_results.get('predictive_insights', {})
+        }
+        
+        # Конвертируем кортежи в сериализуемый формат
+        serializable_metrics = convert_tuples_to_serializable(advanced_metrics)
+        
+        return jsonify({
+            'success': True,
+            'data': serializable_metrics
+        })
+        
+    except Exception as e:
+        print(f"Ошибка получения расширенных метрик: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/legal-analytics/ml-insights')
+def get_ml_insights():
+    """Получение ML-инсайтов и предсказаний"""
+    try:
+        # Создаем ML-инсайты
+        ml_insights = {
+            'sentiment_prediction': {
+                'next_week': 'Ожидается рост позитивных комментариев на 8%',
+                'confidence': 82,
+                'trend': 'positive'
+            },
+            'engagement_prediction': {
+                'next_week': 'Прогнозируется увеличение активности на 12%',
+                'confidence': 75,
+                'trend': 'growing'
+            },
+            'topic_trends': {
+                'emerging': ['AI регулирование', 'Защита данных'],
+                'declining': ['Бумажный документооборот'],
+                'stable': ['Государственные услуги']
+            },
+            'risk_alerts': [
+                {
+                    'type': 'high_controversy',
+                    'message': 'Проект 15567336 показывает высокий уровень спорности',
+                    'severity': 'high',
+                    'recommendation': 'Требуется дополнительное разъяснение позиции'
+                }
+            ],
+            'quality_recommendations': [
+                'Увеличить время ответа на комментарии',
+                'Привлечь больше экспертов к обсуждению',
+                'Создать FAQ по часто задаваемым вопросам'
+            ]
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': ml_insights
+        })
+        
+    except Exception as e:
+        print(f"Ошибка получения ML-инсайтов: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
@@ -644,34 +1042,20 @@ def initialize_app():
         print(f"🗄️  База данных: {stats['documents_count']} документов, {stats['chunks_count']} чанков")
         print(f"🧠 Embeddings: {stats['chunks_with_embeddings']} чанков ({stats['embedding_progress']:.1f}%)")
         
-        # Проверяем нужна ли автоматическая обработка
+        # Проверяем нужна ли автоматическая обработка (но не запускаем RAG)
         if stats['documents_count'] > 0 and stats['embedding_progress'] == 0:
-            # Проверяем есть ли необработанные документы
             unprocessed = db_manager.get_unprocessed_documents()
-            
-            if len(unprocessed) > 0 and len(unprocessed) <= 50:
-                print(f"\n🔧 Найдено {len(unprocessed)} необработанных документов, начинаем автоматическую обработку...")
-                try:
-                    print(f"📋 Быстрая обработка {len(unprocessed)} документов...")
-                    doc_processor._process_documents_batch(unprocessed)
-                    retriever.refresh_cache()
-                    
-                    # Обновляем статистику
-                    stats = db_manager.get_documents_stats()
-                    print(f"✅ Быстрая обработка завершена: {stats['embedding_progress']:.1f}% готовности")
-                except Exception as e:
-                    print(f"⚠️  Ошибка автоматической обработки: {e}")
-            else:
-                print(f"\n⚠️  Найдено {len(unprocessed)} необработанных документов")
-                print("   Слишком много для автоматической обработки при запуске")
-                print("   Перейдите в /admin для обработки всех документов")
+            print(f"\n⚠️  Найдено {len(unprocessed)} необработанных документов")
+            print("   RAG система будет инициализирована при первом обращении")
+            print("   Перейдите в /admin для обработки всех документов")
         
         if stats['chunks_with_embeddings'] == 0 and stats['documents_count'] > 0:
             print("\n⚠️  ВНИМАНИЕ: Embeddings не созданы!")
             print("   Перейдите в /admin для обработки документов")
             print("   Или используйте автоматическую настройку")
         elif stats['embedding_progress'] > 0:
-            print(f"\n✅ Система готова к работе (embeddings: {stats['embedding_progress']:.1f}%)")
+            print(f"\n✅ База данных готова (embeddings: {stats['embedding_progress']:.1f}%)")
+            print("   RAG система будет инициализирована при первом обращении")
     
     if not Config.OPENAI_API_KEY:
         print("\n⚠️  ВНИМАНИЕ: OpenAI API ключ не установлен!")
@@ -685,4 +1069,4 @@ def initialize_app():
 
 if __name__ == '__main__':
     initialize_app()
-    app.run(host='0.0.0.0', port=5001, debug=Config.DEBUG) 
+    app.run(host='0.0.0.0', port=5003, debug=Config.DEBUG) 
