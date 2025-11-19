@@ -118,17 +118,57 @@ def chat():
         user_query = data.get('query', '').strip()
         
         if not user_query:
-            return jsonify({'error': 'Пустой запрос'}), 400
+            return jsonify({
+                'error': 'Пустой запрос',
+                'answer': 'Пожалуйста, введите ваш вопрос.'
+            }), 400
         
         if not generator:
+            error_msg = """⚠️ **LLM провайдер не настроен**
+
+**Решения:**
+1. Для OpenAI: добавьте `OPENAI_API_KEY` в переменные окружения или настройте в `/admin`
+2. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`) и настройте в `/admin`
+
+Перейдите в настройки: `/admin` → Настройки моделей LLM"""
             return jsonify({
-                'error': 'OpenAI API ключ не настроен. Пожалуйста, добавьте OPENAI_API_KEY в переменные окружения.'
+                'error': 'LLM провайдер не настроен',
+                'answer': error_msg,
+                'error_type': 'config_error'
             }), 500
         
         # Проверяем инициализацию RAG системы
         if not ensure_rag_initialized():
+            error_msg = """⚠️ **RAG система не инициализирована**
+
+Пожалуйста, сначала инициализируйте систему:
+1. Перейдите в `/admin`
+2. Нажмите "Инициализировать RAG систему" или "Автоматическая настройка"
+3. Дождитесь завершения обработки документов"""
             return jsonify({
-                'error': 'RAG система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
+                'error': 'RAG система не инициализирована',
+                'answer': error_msg,
+                'error_type': 'rag_not_initialized'
+            }), 503
+        
+        # Проверяем наличие документов с embeddings
+        stats = db_manager.get_documents_stats()
+        if stats.get('chunks_with_embeddings', 0) == 0:
+            error_msg = """⚠️ **Документы не обработаны**
+
+Документы загружены, но embeddings еще не созданы.
+
+**Решения:**
+1. Перейдите в `/admin`
+2. Нажмите "Обработать все документы" для создания embeddings
+3. Или используйте "Автоматическая настройка"
+
+После обработки документов чат будет работать."""
+            return jsonify({
+                'error': 'Документы не обработаны',
+                'answer': error_msg,
+                'error_type': 'no_embeddings',
+                'stats': stats
             }), 503
         
         # Получаем ID сессии
@@ -136,26 +176,50 @@ def chat():
         session['session_id'] = session_id
         
         # Поиск релевантных документов
-        search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
-        formatted_results = retriever.format_search_results(search_results)
+        try:
+            search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
+            formatted_results = retriever.format_search_results(search_results)
+        except Exception as e:
+            print(f"Ошибка при поиске документов: {e}")
+            error_msg = f"Ошибка при поиске документов: {str(e)}"
+            return jsonify({
+                'error': error_msg,
+                'answer': error_msg,
+                'error_type': 'search_error'
+            }), 500
         
         # Получаем историю разговора
         conversation_history = db_manager.get_chat_history(session_id, limit=5)
         
         # Генерируем ответ
-        response_data = generator.generate_response(
-            user_query, 
-            formatted_results, 
-            conversation_history
-        )
+        try:
+            response_data = generator.generate_response(
+                user_query, 
+                formatted_results, 
+                conversation_history
+            )
+        except Exception as e:
+            print(f"Ошибка при генерации ответа: {e}")
+            error_msg = f"Ошибка при генерации ответа: {str(e)}"
+            return jsonify({
+                'error': error_msg,
+                'answer': error_msg,
+                'error_type': 'generation_error',
+                'sources': formatted_results,
+                'search_results_count': len(formatted_results)
+            }), 500
         
-        # Сохраняем в историю
-        db_manager.save_chat_history(
-            session_id, 
-            user_query, 
-            response_data['answer'],
-            response_data['sources']
-        )
+        # Сохраняем в историю только если нет критической ошибки
+        if not response_data.get('error_type') == 'api_error':
+            try:
+                db_manager.save_chat_history(
+                    session_id, 
+                    user_query, 
+                    response_data['answer'],
+                    response_data['sources']
+                )
+            except Exception as e:
+                print(f"Ошибка сохранения истории: {e}")
         
         return jsonify({
             'answer': response_data['answer'],
@@ -163,12 +227,20 @@ def chat():
             'confidence': response_data['confidence'],
             'query_validation': generator.validate_legal_query(user_query) if generator else None,
             'search_results_count': len(formatted_results),
-            'session_id': session_id
+            'session_id': session_id,
+            'error': response_data.get('error'),
+            'error_type': response_data.get('error_type')
         })
         
     except Exception as e:
+        import traceback
         print(f"Ошибка в чате: {e}")
-        return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
+        traceback.print_exc()
+        return jsonify({
+            'error': f'Произошла ошибка: {str(e)}',
+            'answer': f'⚠️ Произошла неожиданная ошибка: {str(e)}\n\nПожалуйста, проверьте логи сервера или обратитесь к администратору.',
+            'error_type': 'unexpected_error'
+        }), 500
 
 @app.route('/api/search', methods=['POST'])
 def search_documents():
@@ -330,6 +402,25 @@ def admin_panel():
 def process_documents():
     """Обработка документов (создание embeddings)"""
     try:
+        # Проверяем существование директории
+        if not os.path.exists(Config.DOCUMENTS_DIR):
+            # Пытаемся создать директорию
+            os.makedirs(Config.DOCUMENTS_DIR, exist_ok=True)
+            print(f"📁 Создана директория {Config.DOCUMENTS_DIR}")
+            
+            # Проверяем наличие примеров документов
+            examples_dir = os.path.join(Config.DOCUMENTS_DIR, 'examples')
+            if os.path.exists(examples_dir):
+                print(f"📚 Найдена директория примеров: {examples_dir}")
+                # Можно скопировать примеры в основную директорию
+                import shutil
+                example_files = [f for f in os.listdir(examples_dir) if f.endswith('.txt')]
+                if example_files:
+                    print(f"📄 Найдено {len(example_files)} примеров документов")
+                    for file in example_files[:10]:  # Копируем первые 10 для начала
+                        shutil.copy2(os.path.join(examples_dir, file), Config.DOCUMENTS_DIR)
+                    print(f"✅ Скопировано {min(10, len(example_files))} документов из examples")
+        
         # Инициализируем RAG систему если нужно
         if not ensure_rag_initialized():
             return jsonify({
@@ -342,17 +433,24 @@ def process_documents():
         # Обновляем кэш retriever после обработки
         retriever.refresh_cache()
         
+        # Безопасная проверка наличия ключа 'total'
+        total = result.get('total', result.get('processed', 0) + result.get('failed', 0))
+        
         return jsonify({
             'success': True,
             'result': result,
-            'message': f"Обработано {result['processed']} документов из {result['total']}"
+            'message': f"Обработано {result.get('processed', 0)} документов из {total}"
         })
         
     except Exception as e:
-        print(f"Ошибка обработки документов: {e}")
+        import traceback
+        error_msg = str(e)
+        traceback.print_exc()
+        print(f"Ошибка обработки документов: {error_msg}")
         return jsonify({
             'success': False,
-            'error': f'Произошла ошибка: {str(e)}'
+            'error': f'Произошла ошибка: {error_msg}',
+            'traceback': traceback.format_exc() if Config.DEBUG else None
         }), 500
 
 @app.route('/api/admin/update_embeddings', methods=['POST'])

@@ -9,7 +9,7 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 class Config:
     # LLM Provider настройки
     LLM_PROVIDER_TYPE = os.getenv('LLM_PROVIDER_TYPE', 'openai')  # 'openai' или 'ollama'
-    LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-4o')  # Модель по умолчанию
+    LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-4o')  # Модель по умолчанию (можно использовать gpt-5-mini, gpt-4o-mini и др.)
     
     # OpenAI настройки
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')

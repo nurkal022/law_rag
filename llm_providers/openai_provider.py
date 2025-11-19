@@ -46,7 +46,22 @@ class OpenAIProvider(LLMProvider):
                     'total_tokens': response.usage.total_tokens if response.usage else 0
                 } if response.usage else None
             }
+        except openai.AuthenticationError as e:
+            raise Exception(f"Неверный API ключ OpenAI. Проверьте правильность ключа в настройках или переключитесь на Ollama для локальных моделей.")
+        except openai.RateLimitError as e:
+            raise Exception(f"Превышен лимит запросов к OpenAI API. Попробуйте позже или переключитесь на Ollama.")
+        except openai.APIError as e:
+            error_code = getattr(e, 'status_code', None)
+            if error_code == 401:
+                raise Exception(f"Неверный API ключ OpenAI. Проверьте настройки или используйте Ollama для локальных моделей.")
+            elif error_code == 429:
+                raise Exception(f"Превышен лимит запросов. Попробуйте позже или переключитесь на Ollama.")
+            else:
+                raise Exception(f"Ошибка OpenAI API (код {error_code}): {str(e)}")
         except Exception as e:
+            error_str = str(e)
+            if "401" in error_str or "invalid_api_key" in error_str.lower() or "incorrect api key" in error_str.lower():
+                raise Exception(f"Неверный API ключ OpenAI. Проверьте настройки в /admin или переключитесь на Ollama для локальных моделей.")
             raise Exception(f"Ошибка OpenAI API: {str(e)}")
     
     def is_available(self) -> bool:
@@ -67,8 +82,11 @@ class OpenAIProvider(LLMProvider):
                 model.id for model in models.data 
                 if 'gpt' in model.id.lower() and 'instruct' not in model.id.lower()
             ]
-            # Сортируем по популярности
-            preferred_order = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
+            # Сортируем по популярности (актуальные модели 2024-2025)
+            preferred_order = [
+                'gpt-5-mini', 'gpt-5', 'gpt-4o', 'gpt-4o-mini', 
+                'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'
+            ]
             sorted_models = []
             for preferred in preferred_order:
                 for model in chat_models:
@@ -78,8 +96,11 @@ class OpenAIProvider(LLMProvider):
             for model in chat_models:
                 if model not in sorted_models:
                     sorted_models.append(model)
-            return sorted_models[:10]  # Ограничиваем до 10 моделей
+            return sorted_models[:15]  # Ограничиваем до 15 моделей
         except:
-            # Возвращаем список по умолчанию если API недоступен
-            return ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
+            # Возвращаем список по умолчанию если API недоступен (актуальные модели)
+            return [
+                'gpt-5-mini', 'gpt-5', 'gpt-4o', 'gpt-4o-mini', 
+                'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'
+            ]
 

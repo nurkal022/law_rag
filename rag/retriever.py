@@ -43,8 +43,8 @@ class DocumentRetriever:
                     self._chunks_cache.append({
                         'id': chunk['id'],
                         'content': chunk['content'],
-                        'filename': chunk['filename'],
-                        'title': chunk['title'],
+                        'filename': chunk.get('document_filename') or chunk.get('filename', 'unknown.txt'),
+                        'title': chunk.get('document_title') or chunk.get('title', 'Неизвестный документ'),
                         'chunk_index': chunk['chunk_index'],
                         'start_position': chunk['start_position'],
                         'end_position': chunk['end_position']
@@ -78,8 +78,8 @@ class DocumentRetriever:
                 self._chunks_cache.append({
                     'id': chunk['id'],
                     'content': chunk['content'],
-                    'filename': chunk['filename'],
-                    'title': chunk['title'],
+                    'filename': chunk.get('document_filename') or chunk.get('filename', 'unknown.txt'),
+                    'title': chunk.get('document_title') or chunk.get('title', 'Неизвестный документ'),
                     'chunk_index': chunk['chunk_index'],
                     'start_position': chunk['start_position'],
                     'end_position': chunk['end_position']

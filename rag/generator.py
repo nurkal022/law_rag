@@ -129,12 +129,41 @@ class ResponseGenerator:
             }
             
         except Exception as e:
+            error_msg = str(e)
             print(f"Ошибка при генерации ответа: {e}")
+            
+            # Определяем тип ошибки и формируем понятное сообщение
+            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
+                user_message = """⚠️ **Проблема с API ключом OpenAI**
+
+Ваш API ключ неверный или истек. 
+
+**Решения:**
+1. Проверьте API ключ в настройках (`/admin` → Настройки моделей LLM)
+2. Или переключитесь на **Ollama** для локальных моделей (работает без интернета)
+
+Для переключения на Ollama:
+- Установите Ollama: https://ollama.ai
+- Запустите: `ollama serve`
+- Скачайте модель: `ollama pull llama3.2`
+- В настройках выберите "Ollama (Локальный)" и сохраните"""
+            elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
+                user_message = """⚠️ **Превышен лимит запросов к OpenAI**
+
+Вы достигли лимита запросов к OpenAI API.
+
+**Решения:**
+1. Подождите несколько минут и попробуйте снова
+2. Или переключитесь на **Ollama** для локальных моделей (без лимитов)"""
+            else:
+                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}"
+            
             return {
-                'answer': f"Извините, произошла ошибка при генерации ответа: {str(e)}",
+                'answer': user_message,
                 'sources': sources,
                 'confidence': 0.0,
-                'error': str(e)
+                'error': error_msg,
+                'error_type': 'api_error'
             }
     
     def generate_summary(self, search_results: List[Dict], topic: str = None) -> str:
@@ -245,7 +274,19 @@ class ResponseGenerator:
                 }
                 
         except Exception as e:
+            error_msg = str(e)
             print(f"Ошибка при валидации запроса: {e}")
+            
+            # Если ошибка API ключа, возвращаем базовую валидацию без вызова API
+            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
+                return {
+                    "is_legal": True,
+                    "category": "общий",
+                    "complexity": "средний",
+                    "needs_specialist": False,
+                    "recommendations": ["⚠️ API ключ OpenAI неверный. Проверьте настройки или переключитесь на Ollama."]
+                }
+            
             return {
                 "is_legal": True,
                 "category": "общий",

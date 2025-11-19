@@ -180,9 +180,29 @@ class DocumentProcessor:
     
     def process_all_documents(self, documents_dir: str) -> Dict:
         """Обработка всех документов в директории"""
+        # Проверяем существование директории
         if not os.path.exists(documents_dir):
             print(f"Директория {documents_dir} не существует")
-            return {'processed': 0, 'failed': 0, 'errors': []}
+            # Пытаемся найти альтернативные пути
+            alternatives = [
+                os.path.join('current', 'examples'),
+                'current/examples',
+                'examples',
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), 'current', 'examples')
+            ]
+            
+            for alt_path in alternatives:
+                if os.path.exists(alt_path):
+                    print(f"📁 Найдена альтернативная директория: {alt_path}")
+                    documents_dir = alt_path
+                    break
+            else:
+                return {
+                    'processed': 0,
+                    'failed': 0,
+                    'total': 0,
+                    'errors': [f'Директория {documents_dir} не существует и альтернативные пути не найдены']
+                }
         
         # Получаем необработанные документы из базы
         unprocessed_docs = self.db_manager.get_unprocessed_documents()
