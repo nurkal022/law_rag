@@ -74,19 +74,13 @@
     <div class="col-lg-9">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <h5 class="mb-0 me-3">
-                        <i class="fas fa-robot me-2"></i>Юридический помощник
-                    </h5>
-                    <!-- Переключатель режима RAG -->
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="ragModeToggle" checked>
-                        <label class="form-check-label" for="ragModeToggle" id="ragModeLabel">
-                            <i class="fas fa-book me-1"></i>RAG режим
-                        </label>
-                    </div>
-                </div>
+                <h5 class="mb-0">
+                    <i class="fas fa-robot me-2"></i>Юридический помощник (RAG режим)
+                </h5>
                 <div>
+                    <a href="/chat-simple" class="btn btn-sm btn-outline-info me-2">
+                        <i class="fas fa-comments me-1"></i>Простой чат
+                    </a>
                     <button class="btn btn-sm btn-outline-secondary" id="clearChatBtn">
                         <i class="fas fa-trash me-1"></i>Очистить
                     </button>
@@ -103,9 +97,14 @@
             <div class="card-body p-0">
                 <div id="chatContainer" class="chat-container p-3">
                     <div id="welcomeMessage" class="text-center text-muted py-5">
-                        <i class="fas fa-comments fa-3x mb-3"></i>
-                        <h6>Добро пожаловать в юридический чат-бот!</h6>
-                        <p id="welcomeText">Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
+                        <i class="fas fa-book fa-3x mb-3 text-primary"></i>
+                        <h6>Добро пожаловать в RAG чат-бот!</h6>
+                        <p>Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
+                        <p class="small mt-3">
+                            <a href="/chat-simple" class="text-decoration-none">
+                                <i class="fas fa-comments me-1"></i>Или используйте простой чат без поиска по документам
+                            </a>
+                        </p>
                         
                         <!-- RAG Initialization Section -->
                         <div id="ragInitSection" class="mt-4">
@@ -167,16 +166,10 @@
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-2">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Нажмите Enter для отправки сообщения
-                        </small>
-                        <small class="text-muted" id="ragModeIndicator">
-                            <i class="fas fa-book me-1"></i>
-                            <span id="ragModeText">RAG режим: поиск по документам</span>
-                        </small>
-                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Нажмите Enter для отправки сообщения. Ответы формируются на основе поиска по документам.
+                    </small>
                 </form>
             </div>
         </div>
@@ -217,62 +210,8 @@ $(document).ready(function() {
     let messageCounter = 0;
     let ragInitialized = false;
     
-    // Загружаем сохраненный режим RAG из localStorage
-    const savedRagMode = localStorage.getItem('ragMode');
-    const useRag = savedRagMode !== null ? savedRagMode === 'true' : true;
-    
-    // Устанавливаем переключатель
-    const ragModeToggle = document.getElementById('ragModeToggle');
-    if (ragModeToggle) {
-        ragModeToggle.checked = useRag;
-        updateRagModeIndicator(useRag);
-        
-        // Обработчик переключения режима
-        ragModeToggle.addEventListener('change', function() {
-            const newMode = this.checked;
-            localStorage.setItem('ragMode', newMode.toString());
-            updateRagModeIndicator(newMode);
-        });
-    }
-    
-    // Функция обновления индикатора режима
-    function updateRagModeIndicator(useRag) {
-        const ragModeText = document.getElementById('ragModeText');
-        const ragModeLabel = document.getElementById('ragModeLabel');
-        const ragModeIndicator = document.getElementById('ragModeIndicator');
-        
-        if (useRag) {
-            if (ragModeText) ragModeText.textContent = 'RAG режим: поиск по документам';
-            if (ragModeLabel) {
-                ragModeLabel.innerHTML = '<i class="fas fa-book me-1"></i>RAG режим';
-                ragModeLabel.classList.remove('text-muted');
-            }
-            if (ragModeIndicator) {
-                ragModeIndicator.classList.remove('text-warning');
-                ragModeIndicator.classList.add('text-muted');
-            }
-            // Обновляем приветственное сообщение
-            const welcomeText = document.getElementById('welcomeText');
-            if (welcomeText) {
-                welcomeText.textContent = 'Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.';
-            }
-        } else {
-            if (ragModeText) ragModeText.textContent = 'Чистый чат: без поиска по документам';
-            if (ragModeLabel) {
-                ragModeLabel.innerHTML = '<i class="fas fa-comments me-1"></i>Чистый чат';
-                ragModeLabel.classList.add('text-muted');
-            }
-            if (ragModeIndicator) {
-                ragModeIndicator.classList.remove('text-muted');
-                ragModeIndicator.classList.add('text-warning');
-            }
-            // Обновляем приветственное сообщение
-            const welcomeText = document.getElementById('welcomeText');
-            if (welcomeText) {
-                welcomeText.textContent = 'Задайте вопрос о законодательстве Казахстана. Я отвечу на основе своих знаний без поиска по документам.';
-            }
-        }
-    }
+    // Всегда используем RAG режим на этой странице
+    const useRag = true;
 
     // Auto-scroll to bottom of chat
     function scrollToBottom() {
@@ -706,10 +645,7 @@ $(document).ready(function() {
         console.log('Кнопка отправки заблокирована');
 
         try {
-            // Получаем текущий режим RAG
-            const currentRagMode = document.getElementById('ragModeToggle').checked;
-            
-            console.log('Отправка запроса на /api/chat...', { query, use_rag: currentRagMode });
+            console.log('Отправка запроса на /api/chat...', { query, use_rag: true });
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -717,7 +653,7 @@ $(document).ready(function() {
                 },
                 body: JSON.stringify({ 
                     query: query,
-                    use_rag: currentRagMode
+                    use_rag: true  // Всегда RAG режим на этой странице
                 })
             });
 
@@ -1359,29 +1295,5 @@ $(document).ready(function() {
     }
 }
 
-/* Стили для переключателя режима RAG */
-.form-check-input:checked {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-.form-check-label {
-    cursor: pointer;
-    user-select: none;
-    font-size: 0.9rem;
-    transition: color 0.2s ease;
-}
-
-.form-check-label:hover {
-    color: var(--primary-color);
-}
-
-#ragModeIndicator {
-    transition: all 0.3s ease;
-}
-
-#ragModeIndicator.text-warning {
-    font-weight: 500;
-}
 </style>
 {% endblock %} 

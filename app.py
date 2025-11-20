@@ -108,7 +108,16 @@ def chat_page():
     # Получаем статистику базы данных
     stats = db_manager.get_documents_stats()
     
-    return render_template('chat.html', stats=stats)
+    return render_template('chat.html', stats=stats, use_rag=True)
+
+@app.route('/chat-simple')
+def chat_simple_page():
+    """Страница чистого чата без RAG"""
+    # Создаем новую сессию если её нет
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    
+    return render_template('chat_simple.html', use_rag=False)
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
