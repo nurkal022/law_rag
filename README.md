@@ -35,7 +35,8 @@
 ### Требования
 - Python 3.8 или выше
 - 2GB свободной оперативной памяти
-- OpenAI API ключ (опционально для полной функциональности)
+- OpenAI API ключ или Ollama (опционально для полной функциональности)
+- Fine-tuned модель (опционально, для простого чата)
 
 ### Установка
 
@@ -47,7 +48,7 @@ cd lawrag
 
 2. **Создайте виртуальное окружение**
 ```bash
-python -m venv .venv
+python -m venv venv
 source .venv/bin/activate  # Linux/Mac
 # или
 .venv\Scripts\activate     # Windows
@@ -73,14 +74,31 @@ mkdir current
 ```
 
 6. **Запустите приложение**
+
+**Вариант 1: Автоматический запуск (рекомендуется)**
+```bash
+chmod +x start_system.sh stop_system.sh
+./start_system.sh
+```
+
+Скрипт автоматически:
+- ✅ Проверит виртуальное окружение
+- ✅ Установит зависимости при необходимости
+- ✅ Запустит Fine-tuned API сервер (если доступен)
+- ✅ Запустит Flask приложение
+
+**Вариант 2: Ручной запуск**
 ```bash
 python app.py
 ```
 
 7. **Откройте в браузере**
-- Дашборд: http://localhost:5001
-- Чат: http://localhost:5001/chat
-- Админ панель: http://localhost:5001/admin
+- Дашборд: http://localhost:5003
+- RAG чат (с поиском по документам): http://localhost:5003/chat
+- Простой чат (с fine-tuned моделью): http://localhost:5003/chat-simple
+- Админ панель: http://localhost:5003/admin
+
+📖 **Подробная инструкция**: См. [START_SYSTEM.md](START_SYSTEM.md)
 
 ## 📖 Документация
 
