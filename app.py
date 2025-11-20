@@ -218,11 +218,42 @@ def chat():
                     conversation_history
                 )
             else:
-                # Режим без RAG - генерируем ответ без контекста документов
-                response_data = generator.generate_response_without_rag(
-                    user_query,
-                    conversation_history
-                )
+                # Режим без RAG - используем fine-tuned модель если доступна
+                try:
+                    from llm_providers.factory import LLMProviderFactory
+                    finetuned_provider = LLMProviderFactory.create_provider(
+                        provider_type='finetuned',
+                        base_url=Config.FINETUNED_API_URL
+                    )
+                    
+                    if finetuned_provider and finetuned_provider.is_available():
+                        # Используем fine-tuned модель
+                        finetuned_generator = ResponseGenerator(provider=finetuned_provider)
+                        response_data = finetuned_generator.generate_response_without_rag(
+                            user_query,
+                            conversation_history
+                        )
+                        response_data['model_type'] = 'finetuned'
+                    else:
+                        # Fallback на обычный провайдер
+                        if not generator:
+                            raise Exception("Fine-tuned модель недоступна и основной провайдер не настроен")
+                        response_data = generator.generate_response_without_rag(
+                            user_query,
+                            conversation_history
+                        )
+                        response_data['model_type'] = 'default'
+                except Exception as e:
+                    print(f"Ошибка при использовании fine-tuned модели: {e}")
+                    # Fallback на обычный провайдер
+                    if generator:
+                        response_data = generator.generate_response_without_rag(
+                            user_query,
+                            conversation_history
+                        )
+                        response_data['model_type'] = 'default'
+                    else:
+                        raise
         except Exception as e:
             print(f"Ошибка при генерации ответа: {e}")
             error_msg = f"Ошибка при генерации ответа: {str(e)}"

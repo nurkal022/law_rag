@@ -185,8 +185,17 @@ class ResponseGenerator:
                                       conversation_history: List[Dict] = None) -> Dict:
         """Генерация ответа без использования RAG (чистый чат с моделью)"""
         
-        # Системный промпт для режима без RAG
-        system_prompt = """Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять полезные и информативные ответы на вопросы пользователей.
+        # Проверяем, является ли провайдер fine-tuned моделью
+        # Fine-tuned модель работает напрямую с вопросом без системного промпта
+        is_finetuned = hasattr(self.provider, '__class__') and 'FineTuned' in self.provider.__class__.__name__
+        
+        if is_finetuned:
+            # Для fine-tuned модели используем только вопрос пользователя
+            # История разговора не поддерживается API
+            messages = [{"role": "user", "content": user_query}]
+        else:
+            # Системный промпт для режима без RAG (для обычных моделей)
+            system_prompt = """Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять полезные и информативные ответы на вопросы пользователей.
 
 ИНСТРУКЦИИ:
 1. Отвечайте на основе ваших знаний о законодательстве Республики Казахстан
@@ -198,30 +207,34 @@ class ResponseGenerator:
 7. Можете отвечать на общие вопросы о законодательстве, правах граждан, процедурах и т.д.
 
 ВАЖНО: Вы работаете в режиме общего чата без доступа к базе документов. Отвечайте на основе своих знаний о законодательстве Казахстана."""
-        
-        # Подготавливаем историю разговора
-        messages = [{"role": "system", "content": system_prompt}]
-        
-        if conversation_history:
-            for msg in conversation_history[-5:]:  # Последние 5 сообщений
-                messages.extend([
-                    {"role": "user", "content": msg['user_query']},
-                    {"role": "assistant", "content": msg['ai_response']}
-                ])
-        
-        # Добавляем текущий запрос
-        messages.append({"role": "user", "content": user_query})
+            
+            # Подготавливаем историю разговора
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            if conversation_history:
+                for msg in conversation_history[-5:]:  # Последние 5 сообщений
+                    messages.extend([
+                        {"role": "user", "content": msg['user_query']},
+                        {"role": "assistant", "content": msg['ai_response']}
+                    ])
+            
+            # Добавляем текущий запрос
+            messages.append({"role": "user", "content": user_query})
         
         try:
             # Вызываем LLM через провайдер
+            # Для fine-tuned модели используем меньший max_tokens (API ограничивает до 1024)
+            max_tokens = 512 if is_finetuned else Config.MAX_TOKENS
+            temperature = 0.75 if is_finetuned else Config.TEMPERATURE
+            
             response = self.provider.chat_completion(
                 messages=messages,
                 model=Config.LLM_MODEL,
-                temperature=Config.TEMPERATURE,
-                max_tokens=Config.MAX_TOKENS,
-                top_p=0.9,
-                frequency_penalty=0.1,
-                presence_penalty=0.1
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=0.92 if is_finetuned else 0.9,
+                frequency_penalty=0.1 if not is_finetuned else None,
+                presence_penalty=0.1 if not is_finetuned else None
             )
             
             answer = response['content']

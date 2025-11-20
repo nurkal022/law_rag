@@ -17,6 +17,9 @@ class Config:
     # Ollama настройки
     OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
     
+    # Fine-tuned модель настройки
+    FINETUNED_API_URL = os.getenv('FINETUNED_API_URL', 'http://localhost:8000')
+    
     # База данных
     DATABASE_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database', 'law_database.db')
     SQLALCHEMY_DATABASE_URI = f'sqlite:///{DATABASE_PATH}'

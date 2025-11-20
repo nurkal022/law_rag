@@ -2,6 +2,7 @@ from typing import Optional
 from .base import LLMProvider
 from .openai_provider import OpenAIProvider
 from .ollama_provider import OllamaProvider
+from .finetuned_provider import FineTunedModelProvider
 from config import Config
 
 class LLMProviderFactory:
@@ -32,6 +33,10 @@ class LLMProviderFactory:
             base_url = kwargs.get('base_url') or Config.OLLAMA_BASE_URL
             model = kwargs.get('model') or Config.LLM_MODEL
             return OllamaProvider(base_url=base_url, default_model=model)
+        
+        elif provider_type == 'finetuned':
+            base_url = kwargs.get('base_url') or Config.FINETUNED_API_URL
+            return FineTunedModelProvider(base_url=base_url)
         
         else:
             raise ValueError(f"Неизвестный тип провайдера: {provider_type}")

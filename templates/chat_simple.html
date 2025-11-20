@@ -34,6 +34,10 @@
                         <i class="fas fa-comments fa-3x mb-3 text-info"></i>
                         <h6>Добро пожаловать в простой чат!</h6>
                         <p>Задайте вопрос о законодательстве Казахстана. Я отвечу на основе своих знаний без поиска по документам.</p>
+                        <div class="alert alert-info mt-3" id="modelInfo" style="display: none;">
+                            <i class="fas fa-brain me-2"></i>
+                            <strong>Используется:</strong> <span id="modelName">Fine-tuned модель Gemma 3N 4B</span>
+                        </div>
                         <p class="small mt-3 text-muted">
                             <i class="fas fa-info-circle me-1"></i>
                             Для поиска по документам используйте <a href="/chat" class="text-decoration-none">RAG чат</a>
@@ -309,6 +313,18 @@ $(document).ready(function() {
                     addMessage(errorMessage, false);
                 } else {
                     addMessage(data.answer, false, data.sources, data.confidence);
+                    
+                    // Показываем информацию о модели
+                    if (data.model_type === 'finetuned') {
+                        const modelInfo = document.getElementById('modelInfo');
+                        const modelName = document.getElementById('modelName');
+                        if (modelInfo) {
+                            modelInfo.style.display = 'block';
+                            if (modelName) {
+                                modelName.textContent = 'Fine-tuned модель Gemma 3N 4B (обучена на юридических документах РК)';
+                            }
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Ошибка при отправке запроса:', error);
