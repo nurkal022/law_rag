@@ -31,6 +31,22 @@ cd /home/kaznu2025/law_rag
 
 Или нажмите `Ctrl+C` в терминале где запущено приложение.
 
+## Мониторинг системы
+
+### Быстрая проверка статуса
+
+```bash
+./monitor_system_once.sh
+```
+
+### Непрерывный мониторинг
+
+```bash
+watch -n 5 ./monitor_system_once.sh
+```
+
+📖 **Подробная инструкция**: См. [MONITORING.md](MONITORING.md)
+
 ## Подробная инструкция
 
 См. [START_SYSTEM.md](START_SYSTEM.md)
