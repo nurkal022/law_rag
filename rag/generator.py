@@ -181,6 +181,100 @@ class ResponseGenerator:
                 'error_type': 'api_error'
             }
     
+    def generate_response_without_rag(self, user_query: str, 
+                                      conversation_history: List[Dict] = None) -> Dict:
+        """Генерация ответа без использования RAG (чистый чат с моделью)"""
+        
+        # Системный промпт для режима без RAG
+        system_prompt = """Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять полезные и информативные ответы на вопросы пользователей.
+
+ИНСТРУКЦИИ:
+1. Отвечайте на основе ваших знаний о законодательстве Республики Казахстан
+2. Будьте точными, информативными и полезными
+3. Если вы не уверены в ответе, честно об этом скажите
+4. Отвечайте на русском языке
+5. Если вопрос требует конкретной информации из документов, укажите, что для точного ответа нужен доступ к актуальным документам
+6. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
+7. Можете отвечать на общие вопросы о законодательстве, правах граждан, процедурах и т.д.
+
+ВАЖНО: Вы работаете в режиме общего чата без доступа к базе документов. Отвечайте на основе своих знаний о законодательстве Казахстана."""
+        
+        # Подготавливаем историю разговора
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        if conversation_history:
+            for msg in conversation_history[-5:]:  # Последние 5 сообщений
+                messages.extend([
+                    {"role": "user", "content": msg['user_query']},
+                    {"role": "assistant", "content": msg['ai_response']}
+                ])
+        
+        # Добавляем текущий запрос
+        messages.append({"role": "user", "content": user_query})
+        
+        try:
+            # Вызываем LLM через провайдер
+            response = self.provider.chat_completion(
+                messages=messages,
+                model=Config.LLM_MODEL,
+                temperature=Config.TEMPERATURE,
+                max_tokens=Config.MAX_TOKENS,
+                top_p=0.9,
+                frequency_penalty=0.1,
+                presence_penalty=0.1
+            )
+            
+            answer = response['content']
+            
+            return {
+                'answer': answer,
+                'sources': [],  # Нет источников в режиме без RAG
+                'confidence': 0.7,  # Средняя уверенность для ответов из памяти модели
+                'model_used': response.get('model', Config.LLM_MODEL),
+                'tokens_used': response.get('usage', {}).get('total_tokens', 0) if response.get('usage') else 0,
+                'used_model_knowledge': True,  # Всегда используем знания модели
+                'rag_mode': False  # Флаг режима без RAG
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Ошибка при генерации ответа (без RAG): {e}")
+            
+            # Определяем тип ошибки и формируем понятное сообщение
+            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
+                user_message = """⚠️ **Проблема с API ключом OpenAI**
+
+Ваш API ключ неверный или истек. 
+
+**Решения:**
+1. Проверьте API ключ в настройках (`/admin` → Настройки моделей LLM)
+2. Или переключитесь на **Ollama** для локальных моделей (работает без интернета)
+
+Для переключения на Ollama:
+- Установите Ollama: https://ollama.ai
+- Запустите: `ollama serve`
+- Скачайте модель: `ollama pull llama3.2`
+- В настройках выберите "Ollama (Локальный)" и сохраните"""
+            elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
+                user_message = """⚠️ **Превышен лимит запросов к OpenAI**
+
+Вы достигли лимита запросов к OpenAI API.
+
+**Решения:**
+1. Подождите несколько минут и попробуйте снова
+2. Или переключитесь на **Ollama** для локальных моделей (без лимитов)"""
+            else:
+                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}"
+            
+            return {
+                'answer': user_message,
+                'sources': [],
+                'confidence': 0.0,
+                'error': error_msg,
+                'error_type': 'api_error',
+                'rag_mode': False
+            }
+    
     def generate_summary(self, search_results: List[Dict], topic: str = None) -> str:
         """Генерация краткого резюме по найденным документам"""
         if not search_results:

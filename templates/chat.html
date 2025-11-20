@@ -74,9 +74,18 @@
     <div class="col-lg-9">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-robot me-2"></i>Юридический помощник
-                </h5>
+                <div class="d-flex align-items-center">
+                    <h5 class="mb-0 me-3">
+                        <i class="fas fa-robot me-2"></i>Юридический помощник
+                    </h5>
+                    <!-- Переключатель режима RAG -->
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="ragModeToggle" checked>
+                        <label class="form-check-label" for="ragModeToggle" id="ragModeLabel">
+                            <i class="fas fa-book me-1"></i>RAG режим
+                        </label>
+                    </div>
+                </div>
                 <div>
                     <button class="btn btn-sm btn-outline-secondary" id="clearChatBtn">
                         <i class="fas fa-trash me-1"></i>Очистить
@@ -96,7 +105,7 @@
                     <div id="welcomeMessage" class="text-center text-muted py-5">
                         <i class="fas fa-comments fa-3x mb-3"></i>
                         <h6>Добро пожаловать в юридический чат-бот!</h6>
-                        <p>Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
+                        <p id="welcomeText">Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
                         
                         <!-- RAG Initialization Section -->
                         <div id="ragInitSection" class="mt-4">
@@ -158,10 +167,16 @@
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Нажмите Enter для отправки сообщения
-                    </small>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Нажмите Enter для отправки сообщения
+                        </small>
+                        <small class="text-muted" id="ragModeIndicator">
+                            <i class="fas fa-book me-1"></i>
+                            <span id="ragModeText">RAG режим: поиск по документам</span>
+                        </small>
+                    </div>
                 </form>
             </div>
         </div>
@@ -201,6 +216,63 @@ $(document).ready(function() {
     let isLoading = false;
     let messageCounter = 0;
     let ragInitialized = false;
+    
+    // Загружаем сохраненный режим RAG из localStorage
+    const savedRagMode = localStorage.getItem('ragMode');
+    const useRag = savedRagMode !== null ? savedRagMode === 'true' : true;
+    
+    // Устанавливаем переключатель
+    const ragModeToggle = document.getElementById('ragModeToggle');
+    if (ragModeToggle) {
+        ragModeToggle.checked = useRag;
+        updateRagModeIndicator(useRag);
+        
+        // Обработчик переключения режима
+        ragModeToggle.addEventListener('change', function() {
+            const newMode = this.checked;
+            localStorage.setItem('ragMode', newMode.toString());
+            updateRagModeIndicator(newMode);
+        });
+    }
+    
+    // Функция обновления индикатора режима
+    function updateRagModeIndicator(useRag) {
+        const ragModeText = document.getElementById('ragModeText');
+        const ragModeLabel = document.getElementById('ragModeLabel');
+        const ragModeIndicator = document.getElementById('ragModeIndicator');
+        
+        if (useRag) {
+            if (ragModeText) ragModeText.textContent = 'RAG режим: поиск по документам';
+            if (ragModeLabel) {
+                ragModeLabel.innerHTML = '<i class="fas fa-book me-1"></i>RAG режим';
+                ragModeLabel.classList.remove('text-muted');
+            }
+            if (ragModeIndicator) {
+                ragModeIndicator.classList.remove('text-warning');
+                ragModeIndicator.classList.add('text-muted');
+            }
+            // Обновляем приветственное сообщение
+            const welcomeText = document.getElementById('welcomeText');
+            if (welcomeText) {
+                welcomeText.textContent = 'Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.';
+            }
+        } else {
+            if (ragModeText) ragModeText.textContent = 'Чистый чат: без поиска по документам';
+            if (ragModeLabel) {
+                ragModeLabel.innerHTML = '<i class="fas fa-comments me-1"></i>Чистый чат';
+                ragModeLabel.classList.add('text-muted');
+            }
+            if (ragModeIndicator) {
+                ragModeIndicator.classList.remove('text-muted');
+                ragModeIndicator.classList.add('text-warning');
+            }
+            // Обновляем приветственное сообщение
+            const welcomeText = document.getElementById('welcomeText');
+            if (welcomeText) {
+                welcomeText.textContent = 'Задайте вопрос о законодательстве Казахстана. Я отвечу на основе своих знаний без поиска по документам.';
+            }
+        }
+    }
 
     // Auto-scroll to bottom of chat
     function scrollToBottom() {
@@ -634,13 +706,19 @@ $(document).ready(function() {
         console.log('Кнопка отправки заблокирована');
 
         try {
-            console.log('Отправка запроса на /api/chat...');
+            // Получаем текущий режим RAG
+            const currentRagMode = document.getElementById('ragModeToggle').checked;
+            
+            console.log('Отправка запроса на /api/chat...', { query, use_rag: currentRagMode });
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ query: query })
+                body: JSON.stringify({ 
+                    query: query,
+                    use_rag: currentRagMode
+                })
             });
 
             console.log('Получен ответ:', response.status, response.statusText);
@@ -1279,6 +1357,31 @@ $(document).ready(function() {
     .message-content.markdown-content table td {
         padding: 0.5em 0.75em;
     }
+}
+
+/* Стили для переключателя режима RAG */
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.form-check-label:hover {
+    color: var(--primary-color);
+}
+
+#ragModeIndicator {
+    transition: all 0.3s ease;
+}
+
+#ragModeIndicator.text-warning {
+    font-weight: 500;
 }
 </style>
 {% endblock %} 

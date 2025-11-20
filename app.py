@@ -116,6 +116,7 @@ def chat():
     try:
         data = request.get_json()
         user_query = data.get('query', '').strip()
+        use_rag = data.get('use_rag', True)  # По умолчанию используем RAG
         
         if not user_query:
             return jsonify({
@@ -137,24 +138,32 @@ def chat():
                 'error_type': 'config_error'
             }), 500
         
-        # Проверяем инициализацию RAG системы
-        if not ensure_rag_initialized():
-            error_msg = """⚠️ **RAG система не инициализирована**
+        # Получаем ID сессии
+        session_id = session.get('session_id', str(uuid.uuid4()))
+        session['session_id'] = session_id
+        
+        # Если режим RAG включен, проверяем инициализацию
+        if use_rag:
+            # Проверяем инициализацию RAG системы
+            if not ensure_rag_initialized():
+                error_msg = """⚠️ **RAG система не инициализирована**
 
 Пожалуйста, сначала инициализируйте систему:
 1. Перейдите в `/admin`
 2. Нажмите "Инициализировать RAG систему" или "Автоматическая настройка"
-3. Дождитесь завершения обработки документов"""
-            return jsonify({
-                'error': 'RAG система не инициализирована',
-                'answer': error_msg,
-                'error_type': 'rag_not_initialized'
-            }), 503
-        
-        # Проверяем наличие документов с embeddings
-        stats = db_manager.get_documents_stats()
-        if stats.get('chunks_with_embeddings', 0) == 0:
-            error_msg = """⚠️ **Документы не обработаны**
+3. Дождитесь завершения обработки документов
+
+Или переключитесь в режим "Чистый чат" для общения без поиска по документам."""
+                return jsonify({
+                    'error': 'RAG система не инициализирована',
+                    'answer': error_msg,
+                    'error_type': 'rag_not_initialized'
+                }), 503
+            
+            # Проверяем наличие документов с embeddings
+            stats = db_manager.get_documents_stats()
+            if stats.get('chunks_with_embeddings', 0) == 0:
+                error_msg = """⚠️ **Документы не обработаны**
 
 Документы загружены, но embeddings еще не созданы.
 
@@ -162,42 +171,49 @@ def chat():
 1. Перейдите в `/admin`
 2. Нажмите "Обработать все документы" для создания embeddings
 3. Или используйте "Автоматическая настройка"
+4. Или переключитесь в режим "Чистый чат" для общения без поиска по документам
 
 После обработки документов чат будет работать."""
-            return jsonify({
-                'error': 'Документы не обработаны',
-                'answer': error_msg,
-                'error_type': 'no_embeddings',
-                'stats': stats
-            }), 503
-        
-        # Получаем ID сессии
-        session_id = session.get('session_id', str(uuid.uuid4()))
-        session['session_id'] = session_id
-        
-        # Поиск релевантных документов
-        try:
-            search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
-            formatted_results = retriever.format_search_results(search_results)
-        except Exception as e:
-            print(f"Ошибка при поиске документов: {e}")
-            error_msg = f"Ошибка при поиске документов: {str(e)}"
-            return jsonify({
-                'error': error_msg,
-                'answer': error_msg,
-                'error_type': 'search_error'
-            }), 500
+                return jsonify({
+                    'error': 'Документы не обработаны',
+                    'answer': error_msg,
+                    'error_type': 'no_embeddings',
+                    'stats': stats
+                }), 503
+            
+            # Поиск релевантных документов
+            try:
+                search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
+                formatted_results = retriever.format_search_results(search_results)
+            except Exception as e:
+                print(f"Ошибка при поиске документов: {e}")
+                error_msg = f"Ошибка при поиске документов: {str(e)}"
+                return jsonify({
+                    'error': error_msg,
+                    'answer': error_msg,
+                    'error_type': 'search_error'
+                }), 500
+        else:
+            # Режим без RAG - не ищем документы
+            formatted_results = []
         
         # Получаем историю разговора
         conversation_history = db_manager.get_chat_history(session_id, limit=5)
         
         # Генерируем ответ
         try:
-            response_data = generator.generate_response(
-                user_query, 
-                formatted_results, 
-                conversation_history
-            )
+            if use_rag:
+                response_data = generator.generate_response(
+                    user_query, 
+                    formatted_results, 
+                    conversation_history
+                )
+            else:
+                # Режим без RAG - генерируем ответ без контекста документов
+                response_data = generator.generate_response_without_rag(
+                    user_query,
+                    conversation_history
+                )
         except Exception as e:
             print(f"Ошибка при генерации ответа: {e}")
             error_msg = f"Ошибка при генерации ответа: {str(e)}"
