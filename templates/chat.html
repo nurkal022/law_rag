@@ -300,32 +300,63 @@ $(document).ready(function() {
             }
         }
 
-        // Process message to highlight source references
-        // Если сообщение уже содержит HTML (например, ошибки), используем как есть
+        // Process message with Markdown rendering
         let processedMessage = message;
         let sourceButtons = '';
         
-        // Если это не HTML сообщение, экранируем HTML для безопасности
-        if (!message.includes('<') || message.includes('&lt;')) {
-            // Экранируем HTML если это обычный текст
-            processedMessage = message
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\n/g, '<br>');
-        }
+        // Проверяем, является ли сообщение уже HTML (например, ошибки с кнопками)
+        const isHtmlMessage = message.includes('<a ') || message.includes('<button ') || 
+                             (message.includes('<') && message.includes('</') && 
+                              !message.includes('&lt;') && !message.includes('&gt;'));
         
-        if (sources && sources.length > 0) {
-            // Replace [Источник X] with clickable badges
+        if (!isHtmlMessage) {
+            // Рендерим Markdown в HTML
+            try {
+                // Настраиваем marked для безопасного рендеринга
+                marked.setOptions({
+                    breaks: true,  // Переносы строк как <br>
+                    gfm: true,     // GitHub Flavored Markdown (таблицы, зачеркивание и т.д.)
+                    headerIds: false,
+                    mangle: false
+                });
+                
+                // Рендерим markdown
+                processedMessage = marked.parse(message);
+                
+                // Обрабатываем ссылки на источники после markdown рендеринга
+                // чтобы они не конфликтовали с markdown ссылками
+                processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
+                    const sourceIndex = parseInt(sourceNum) - 1;
+                    if (sources && sourceIndex < sources.length) {
+                        return `<span class="source-ref-badge badge bg-primary" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник" style="cursor: pointer;">
+                            <i class="fas fa-book me-1"></i>Источник ${sourceNum}
+                        </span>`;
+                    }
+                    return match;
+                });
+            } catch (e) {
+                console.error('Ошибка рендеринга markdown:', e);
+                // Если ошибка, используем простую обработку
+                processedMessage = message
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br>');
+            }
+        } else {
+            // Если это уже HTML, обрабатываем ссылки на источники
             processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
                 const sourceIndex = parseInt(sourceNum) - 1;
-                if (sourceIndex < sources.length) {
-                    return `<span class="source-ref-badge" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник">
+                if (sources && sourceIndex < sources.length) {
+                    return `<span class="source-ref-badge badge bg-primary" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник" style="cursor: pointer;">
                         <i class="fas fa-book me-1"></i>Источник ${sourceNum}
                     </span>`;
                 }
                 return match;
             });
+        }
+        
+        if (sources && sources.length > 0) {
 
             // Create collapsible sources section
             sourceButtons = `
@@ -395,7 +426,7 @@ $(document).ready(function() {
                             ` : ''}
                         </div>
                     `}
-                    <div class="message-content">${processedMessage}</div>
+                    <div class="message-content markdown-content">${processedMessage}</div>
                     ${sourceButtons}
                 </div>
             </div>
@@ -623,10 +654,19 @@ $(document).ready(function() {
             if (!response.ok || data.error || data.error_type) {
                 let errorMessage = data.answer || data.error || 'Произошла ошибка';
                 
-                // Конвертируем markdown в HTML для лучшего отображения
-                errorMessage = errorMessage
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n/g, '<br>');
+                // Рендерим markdown для ошибок тоже
+                try {
+                    marked.setOptions({
+                        breaks: true,
+                        gfm: true
+                    });
+                    errorMessage = marked.parse(errorMessage);
+                } catch (e) {
+                    // Если ошибка, используем простую замену
+                    errorMessage = errorMessage
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                }
                 
                 // Добавляем кнопки действий в зависимости от типа ошибки
                 if (data.error_type === 'api_error' || data.error_type === 'config_error') {
@@ -1178,6 +1218,67 @@ $(document).ready(function() {
 
 .message-content strong {
     color: var(--primary-color);
+}
+
+/* Markdown таблицы в сообщениях */
+.message-content.markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5em 0;
+    font-size: 0.95em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: white;
+}
+
+.message-content.markdown-content table thead {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+}
+
+.message-content.markdown-content table th {
+    padding: 1em;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.message-content.markdown-content table td {
+    padding: 0.875em 1em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.message-content.markdown-content table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.message-content.markdown-content table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.message-content.markdown-content table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.message-content.markdown-content table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.message-content.markdown-content table tbody tr:nth-child(even):hover {
+    background-color: #f1f5f9;
+}
+
+/* Адаптивность таблиц на мобильных */
+@media (max-width: 768px) {
+    .message-content.markdown-content table {
+        font-size: 0.85em;
+    }
+    
+    .message-content.markdown-content table th,
+    .message-content.markdown-content table td {
+        padding: 0.5em 0.75em;
+    }
 }
 </style>
 {% endblock %} 
