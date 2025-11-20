@@ -57,6 +57,10 @@ class FineTunedModelProvider(LLMProvider):
                     'total_tokens': data.get('tokens_used', 0)
                 } if 'tokens_used' in data else None
             }
+        except requests.exceptions.ConnectionError as e:
+            raise Exception(f"Fine-tuned Model API недоступен: ConnectionError - {str(e)}")
+        except requests.exceptions.Timeout as e:
+            raise Exception(f"Таймаут запроса к Fine-tuned Model API: {str(e)}")
         except requests.exceptions.RequestException as e:
             raise Exception(f"Ошибка Fine-tuned Model API: {str(e)}")
         except Exception as e:
