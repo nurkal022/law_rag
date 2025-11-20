@@ -1,11 +1,31 @@
-import openai
 from typing import List, Dict, Tuple
 import json
 from config import Config
+from llm_providers.factory import LLMProviderFactory
+from llm_providers.base import LLMProvider
 
 class ResponseGenerator:
-    def __init__(self, api_key: str):
-        self.client = openai.OpenAI(api_key=api_key)
+    def __init__(self, provider: LLMProvider = None, api_key: str = None):
+        """
+        Инициализация генератора ответов
+        
+        Args:
+            provider: Провайдер LLM (если None, создается из конфигурации)
+            api_key: API ключ (для обратной совместимости с OpenAI)
+        """
+        if provider:
+            self.provider = provider
+        else:
+            # Если передан api_key, используем OpenAI
+            if api_key:
+                from llm_providers.openai_provider import OpenAIProvider
+                self.provider = OpenAIProvider(api_key=api_key, default_model=Config.LLM_MODEL)
+            else:
+                # Иначе используем провайдер из конфигурации
+                self.provider = LLMProviderFactory.get_current_provider()
+        
+        if not self.provider:
+            raise ValueError("Не удалось инициализировать LLM провайдер. Проверьте настройки.")
         
     def _prepare_context(self, search_results: List[Dict]) -> str:
         """Подготовка контекста из найденных документов"""
@@ -40,33 +60,43 @@ class ResponseGenerator:
                          conversation_history: List[Dict] = None) -> Dict:
         """Генерация ответа на основе найденных документов"""
         
-        if not search_results:
-            return {
-                'answer': "Извините, я не смог найти релевантную информацию в документах для ответа на ваш вопрос. Попробуйте переформулировать запрос или задать более конкретный вопрос.",
-                'sources': [],
-                'confidence': 0.0
-            }
-        
         # Подготавливаем контекст
-        context = self._prepare_context(search_results)
-        sources = self._prepare_sources_list(search_results)
+        has_context = bool(search_results)
+        context = self._prepare_context(search_results) if has_context else "Релевантные документы не найдены в базе данных."
+        sources = self._prepare_sources_list(search_results) if has_context else []
         
         # Формируем системный промпт
-        system_prompt = f"""Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять точные и полезные ответы на основе предоставленных юридических документов.
+        if has_context:
+            system_prompt = f"""Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять точные и полезные ответы на основе предоставленных юридических документов.
 
 ИНСТРУКЦИИ:
-1. Отвечайте ТОЛЬКО на основе предоставленного контекста из документов
-2. Если информации недостаточно, четко об этом скажите
-3. Всегда указывайте источники, используя номера [Источник 1], [Источник 2] и т.д.
-4. Предоставляйте конкретные ссылки на статьи, пункты или разделы документов
-5. Отвечайте на русском языке
-6. Будьте точными и избегайте домыслов
-7. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
+1. В первую очередь используйте информацию из предоставленного контекста документов
+2. Если в контексте недостаточно информации для полного ответа, дополните ответ своими знаниями о законодательстве Казахстана
+3. Всегда указывайте источники из документов, используя номера [Источник 1], [Источник 2] и т.д., если используете информацию из контекста
+4. Если используете свои знания (не из контекста), укажите это явно: "На основе общих знаний о законодательстве РК..."
+5. Предоставляйте конкретные ссылки на статьи, пункты или разделы документов, когда это возможно
+6. Отвечайте на русском языке
+7. Будьте точными и избегайте домыслов
+8. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
 
 КОНТЕКСТ ИЗ ДОКУМЕНТОВ:
 {context}
 
-При ответе обязательно указывайте номера источников в квадратных скобках, например [Источник 1], [Источник 2]."""
+При ответе обязательно указывайте номера источников в квадратных скобках, если используете информацию из контекста, например [Источник 1], [Источник 2]."""
+        else:
+            # Если контекста нет, модель отвечает из своих знаний
+            system_prompt = """Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять точные и полезные ответы на юридические вопросы.
+
+ИНСТРУКЦИИ:
+1. Отвечайте на основе ваших знаний о законодательстве Республики Казахстан
+2. Укажите, что ответ основан на общих знаниях о законодательстве РК
+3. Будьте точными и информативными
+4. Если вы не уверены в ответе, честно об этом скажите
+5. Отвечайте на русском языке
+6. Если вопрос требует конкретной информации из документов, которые не были найдены, укажите это
+7. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
+
+ВАЖНО: В базе документов не найдено релевантной информации для данного запроса, поэтому отвечайте на основе своих знаний о законодательстве Казахстана."""
 
         # Подготавливаем историю разговора
         messages = [{"role": "system", "content": system_prompt}]
@@ -82,10 +112,10 @@ class ResponseGenerator:
         messages.append({"role": "user", "content": user_query})
         
         try:
-            # Вызываем OpenAI API
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            # Вызываем LLM через провайдер
+            response = self.provider.chat_completion(
                 messages=messages,
+                model=Config.LLM_MODEL,
                 temperature=Config.TEMPERATURE,
                 max_tokens=Config.MAX_TOKENS,
                 top_p=0.9,
@@ -93,28 +123,62 @@ class ResponseGenerator:
                 presence_penalty=0.1
             )
             
-            answer = response.choices[0].message.content.strip()
+            answer = response['content']
             
             # Вычисляем уверенность на основе количества и качества источников
-            confidence = min(0.9, len(search_results) * 0.15 + 
-                           sum(r.get('final_score', r.get('similarity_score', 0)) 
-                               for r in search_results) / len(search_results))
+            if has_context and search_results:
+                confidence = min(0.9, len(search_results) * 0.15 + 
+                               sum(r.get('final_score', r.get('similarity_score', 0)) 
+                                   for r in search_results) / len(search_results))
+            else:
+                # Если отвечаем из памяти модели, confidence ниже
+                confidence = 0.6  # Средняя уверенность для ответов из памяти модели
             
             return {
                 'answer': answer,
                 'sources': sources,
                 'confidence': confidence,
-                'model_used': 'gpt-4o',
-                'tokens_used': response.usage.total_tokens if response.usage else 0
+                'model_used': response.get('model', Config.LLM_MODEL),
+                'tokens_used': response.get('usage', {}).get('total_tokens', 0) if response.get('usage') else 0,
+                'used_model_knowledge': not has_context  # Флаг, что использовались знания модели
             }
             
         except Exception as e:
+            error_msg = str(e)
             print(f"Ошибка при генерации ответа: {e}")
+            
+            # Определяем тип ошибки и формируем понятное сообщение
+            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
+                user_message = """⚠️ **Проблема с API ключом OpenAI**
+
+Ваш API ключ неверный или истек. 
+
+**Решения:**
+1. Проверьте API ключ в настройках (`/admin` → Настройки моделей LLM)
+2. Или переключитесь на **Ollama** для локальных моделей (работает без интернета)
+
+Для переключения на Ollama:
+- Установите Ollama: https://ollama.ai
+- Запустите: `ollama serve`
+- Скачайте модель: `ollama pull llama3.2`
+- В настройках выберите "Ollama (Локальный)" и сохраните"""
+            elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
+                user_message = """⚠️ **Превышен лимит запросов к OpenAI**
+
+Вы достигли лимита запросов к OpenAI API.
+
+**Решения:**
+1. Подождите несколько минут и попробуйте снова
+2. Или переключитесь на **Ollama** для локальных моделей (без лимитов)"""
+            else:
+                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}"
+            
             return {
-                'answer': f"Извините, произошла ошибка при генерации ответа: {str(e)}",
+                'answer': user_message,
                 'sources': sources,
                 'confidence': 0.0,
-                'error': str(e)
+                'error': error_msg,
+                'error_type': 'api_error'
             }
     
     def generate_summary(self, search_results: List[Dict], topic: str = None) -> str:
@@ -139,14 +203,14 @@ class ResponseGenerator:
 Включите ссылки на источники [Источник 1], [Источник 2] и т.д."""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=800
             )
             
-            return response.choices[0].message.content.strip()
+            return response['content']
             
         except Exception as e:
             return f"Ошибка при создании резюме: {str(e)}"
@@ -165,14 +229,14 @@ class ResponseGenerator:
 Формат: просто список без нумерации."""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.2,
                 max_tokens=600
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             # Разбиваем на строки и очищаем
             points = [line.strip() for line in content.split('\n') if line.strip()]
             return points[:10]  # Максимум 10 пунктов
@@ -202,14 +266,14 @@ class ResponseGenerator:
 }}"""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.1,
                 max_tokens=400
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             # Пытаемся распарсить JSON
             try:
@@ -225,7 +289,19 @@ class ResponseGenerator:
                 }
                 
         except Exception as e:
+            error_msg = str(e)
             print(f"Ошибка при валидации запроса: {e}")
+            
+            # Если ошибка API ключа, возвращаем базовую валидацию без вызова API
+            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
+                return {
+                    "is_legal": True,
+                    "category": "общий",
+                    "complexity": "средний",
+                    "needs_specialist": False,
+                    "recommendations": ["⚠️ API ключ OpenAI неверный. Проверьте настройки или переключитесь на Ollama."]
+                }
+            
             return {
                 "is_legal": True,
                 "category": "общий",

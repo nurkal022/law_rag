@@ -1,4 +1,3 @@
-import openai
 from typing import Dict, List, Optional, Any
 from datetime import datetime, date
 import json
@@ -6,6 +5,9 @@ import uuid
 from dataclasses import dataclass
 from .templates import DocumentTemplates
 from .validator import DataValidator
+from llm_providers.base import LLMProvider
+from llm_providers.factory import LLMProviderFactory
+from config import Config
 
 
 @dataclass
@@ -74,8 +76,29 @@ class LawProjectData:
 class LawProjectGenerator:
     """Генератор законопроектов для Республики Казахстан"""
     
-    def __init__(self, api_key: str, database_manager=None):
-        self.client = openai.OpenAI(api_key=api_key)
+    def __init__(self, provider: LLMProvider = None, api_key: str = None, database_manager=None):
+        """
+        Инициализация генератора законопроектов
+        
+        Args:
+            provider: Провайдер LLM (если None, создается из конфигурации)
+            api_key: API ключ (для обратной совместимости с OpenAI)
+            database_manager: Менеджер базы данных
+        """
+        if provider:
+            self.provider = provider
+        else:
+            # Если передан api_key, используем OpenAI
+            if api_key:
+                from llm_providers.openai_provider import OpenAIProvider
+                self.provider = OpenAIProvider(api_key=api_key, default_model=Config.LLM_MODEL)
+            else:
+                # Иначе используем провайдер из конфигурации
+                self.provider = LLMProviderFactory.get_current_provider()
+        
+        if not self.provider:
+            raise ValueError("Не удалось инициализировать LLM провайдер. Проверьте настройки.")
+        
         self.db = database_manager
         self.templates = DocumentTemplates()
         self.validator = DataValidator()
@@ -190,14 +213,14 @@ class LawProjectGenerator:
 Создайте структурированный титульный лист с правильным форматированием."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=1000
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -232,14 +255,14 @@ class LawProjectGenerator:
 - Не более 300 слов"""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.4,
                 max_tokens=800
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -272,14 +295,14 @@ class LawProjectGenerator:
 Используйте официальный стиль, ссылки на действующее законодательство РК."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=2000
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -317,14 +340,14 @@ class LawProjectGenerator:
 Создайте полный текст закона с правильной нумерацией статей."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.2,
                 max_tokens=3000
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -359,14 +382,14 @@ class LawProjectGenerator:
 - Краткое обоснование необходимости изменения"""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=2000
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -406,14 +429,14 @@ class LawProjectGenerator:
 Создайте подробное экономическое обоснование с конкретными цифрами."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=2000
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -449,14 +472,14 @@ class LawProjectGenerator:
 Используйте методологию МНЭ РК для ОРВ."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=2000
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -493,14 +516,14 @@ class LawProjectGenerator:
 - Ссылки на конкретные нормы"""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.2,
                 max_tokens=1500
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -537,14 +560,14 @@ class LawProjectGenerator:
 - Рекомендации по доработке"""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.2,
                 max_tokens=1500
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -586,14 +609,14 @@ class LawProjectGenerator:
 Используйте конкретные метрики и измеримые показатели."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.3,
                 max_tokens=1800
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -632,14 +655,14 @@ class LawProjectGenerator:
 5. Источник или обоснование (если есть)"""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.2,
                 max_tokens=1200
             )
             
-            content = response.choices[0].message.content.strip()
+            content = response['content']
             
             return {
                 "content": content,
@@ -786,14 +809,14 @@ class LawProjectGenerator:
 - Используйте принятые в РК стандарты перевода НПА"""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
+            response = self.provider.chat_completion(
                 messages=[{"role": "user", "content": prompt}],
+                model=Config.LLM_MODEL,
                 temperature=0.2,
                 max_tokens=len(text.split()) * 2  # Приблизительная оценка
             )
             
-            return response.choices[0].message.content.strip()
+            return response['content']
             
         except Exception as e:
             return f"[Ошибка перевода: {str(e)}]"

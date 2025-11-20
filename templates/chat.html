@@ -211,6 +211,16 @@ $(document).ready(function() {
     // Add typing animation
     function addTypingIndicator() {
         const chatContainer = document.getElementById('chatContainer');
+        if (!chatContainer) {
+            console.error('chatContainer не найден!');
+            return;
+        }
+        
+        // Удаляем предыдущий индикатор если есть
+        const existingIndicator = document.getElementById('typing-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
         
         const typingDiv = document.createElement('div');
         typingDiv.id = 'typing-indicator';
@@ -262,8 +272,14 @@ $(document).ready(function() {
 
         const messageDiv = document.createElement('div');
         const messageId = `message-${messageCounter}`;
-        messageDiv.id = messageId;
-        messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'} fade-in`;
+        
+        // Определяем класс сообщения (ошибка или обычное)
+        let messageClass = isUser ? 'user-message' : 'ai-message';
+        if (!isUser && (message.includes('⚠️') || message.includes('Ошибка') || message.includes('API ключ'))) {
+            messageClass += ' error-message';
+        }
+        
+        messageDiv.className = `message ${messageClass} fade-in`;
         
         let confidenceIcon = '';
         let confidenceClass = '';
@@ -285,12 +301,23 @@ $(document).ready(function() {
         }
 
         // Process message to highlight source references
+        // Если сообщение уже содержит HTML (например, ошибки), используем как есть
         let processedMessage = message;
         let sourceButtons = '';
         
+        // Если это не HTML сообщение, экранируем HTML для безопасности
+        if (!message.includes('<') || message.includes('&lt;')) {
+            // Экранируем HTML если это обычный текст
+            processedMessage = message
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\n/g, '<br>');
+        }
+        
         if (sources && sources.length > 0) {
             // Replace [Источник X] with clickable badges
-            processedMessage = message.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
+            processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
                 const sourceIndex = parseInt(sourceNum) - 1;
                 if (sourceIndex < sources.length) {
                     return `<span class="source-ref-badge" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник">
@@ -303,10 +330,10 @@ $(document).ready(function() {
             // Create collapsible sources section
             sourceButtons = `
                 <div class="sources-section mt-3">
-                    <button class="btn btn-outline-secondary btn-sm sources-toggle" data-message="${messageId}">
+                    <button type="button" class="btn btn-outline-secondary btn-sm sources-toggle" data-message="${messageId}" id="toggle-${messageId}">
                         <i class="fas fa-book me-1"></i>
-                        Показать источники (${sources.length})
-                        <i class="fas fa-chevron-down ms-1"></i>
+                        <span class="toggle-text">Показать источники</span> (${sources.length})
+                        <i class="fas fa-chevron-down ms-1 toggle-icon"></i>
                     </button>
                     <div class="sources-content" id="sources-${messageId}" style="display: none;">
                         <div class="sources-list mt-3">
@@ -376,8 +403,16 @@ $(document).ready(function() {
 
         chatContainer.appendChild(messageDiv);
         
-        // Add event listeners for source interactions
-        addSourceEventListeners(messageId);
+        // Add event listeners for source interactions (только если есть источники)
+        if (sources && sources.length > 0) {
+            // Используем requestAnimationFrame и setTimeout чтобы убедиться, что DOM полностью обновлен
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    console.log(`Добавление обработчиков для сообщения ${messageId}`);
+                    addSourceEventListeners(messageId);
+                }, 50);
+            });
+        }
         
         scrollToBottom();
     }
@@ -386,37 +421,119 @@ $(document).ready(function() {
     function addSourceEventListeners(messageId) {
         const messageDiv = document.getElementById(messageId);
         
-        // Toggle sources visibility
-        const sourcesToggle = messageDiv.querySelector('.sources-toggle');
+        if (!messageDiv) {
+            console.warn(`Сообщение ${messageId} не найдено для добавления обработчиков событий`);
+            return;
+        }
+        
+        // Toggle sources visibility - ищем по ID и классу
+        const sourcesToggle = document.getElementById(`toggle-${messageId}`) || messageDiv.querySelector('.sources-toggle');
+        console.log(`Поиск кнопки источников для ${messageId}:`, sourcesToggle);
+        console.log(`Все кнопки в сообщении:`, messageDiv.querySelectorAll('button'));
+        
         if (sourcesToggle) {
-            sourcesToggle.addEventListener('click', function() {
-                const sourcesContent = document.getElementById(`sources-${messageId}`);
-                const chevron = this.querySelector('.fas.fa-chevron-down, .fas.fa-chevron-up');
+            console.log(`✅ Кнопка источников найдена, привязываем обработчик для ${messageId}`);
+            
+            // Удаляем старый обработчик если есть
+            const newToggle = sourcesToggle.cloneNode(true);
+            sourcesToggle.parentNode.replaceChild(newToggle, sourcesToggle);
+            
+            newToggle.addEventListener('click', function(e) {
+                console.log(`🖱️ Клик по кнопке источников для ${messageId}`);
+                e.preventDefault();
+                e.stopPropagation();
                 
-                if (sourcesContent.style.display === 'none') {
+                const sourcesContent = document.getElementById(`sources-${messageId}`);
+                if (!sourcesContent) {
+                    console.warn(`Источники для сообщения ${messageId} не найдены`);
+                    return;
+                }
+                
+                const toggleText = this.querySelector('.toggle-text');
+                const toggleIcon = this.querySelector('.toggle-icon');
+                
+                // Проверяем текущее состояние через несколько способов
+                const computedStyle = window.getComputedStyle(sourcesContent);
+                const isHidden = sourcesContent.style.display === 'none' || 
+                                computedStyle.display === 'none' ||
+                                sourcesContent.offsetHeight === 0 ||
+                                sourcesContent.classList.contains('hidden');
+                
+                console.log(`Переключение источников для ${messageId}, скрыто: ${isHidden}, display: ${sourcesContent.style.display}, computed: ${computedStyle.display}`);
+                
+                if (isHidden) {
+                    // Показываем источники
                     sourcesContent.style.display = 'block';
+                    sourcesContent.style.visibility = 'visible';
+                    sourcesContent.style.opacity = '1';
                     sourcesContent.classList.add('sources-slide-in');
-                    chevron.className = 'fas fa-chevron-up ms-1';
-                    this.innerHTML = this.innerHTML.replace('Показать источники', 'Скрыть источники');
+                    sourcesContent.classList.remove('hidden');
+                    
+                    if (toggleIcon) {
+                        toggleIcon.className = 'fas fa-chevron-up ms-1 toggle-icon';
+                    }
+                    
+                    if (toggleText) {
+                        toggleText.textContent = 'Скрыть источники';
+                    } else {
+                        // Fallback если toggle-text не найден
+                        const currentHtml = this.innerHTML;
+                        this.innerHTML = currentHtml.replace(/Показать источники/g, 'Скрыть источники');
+                    }
+                    
+                    console.log('✅ Источники показаны, элементов:', sourcesContent.querySelectorAll('.source-item').length);
                 } else {
+                    // Скрываем источники
                     sourcesContent.style.display = 'none';
+                    sourcesContent.style.visibility = 'hidden';
+                    sourcesContent.style.opacity = '0';
                     sourcesContent.classList.remove('sources-slide-in');
-                    chevron.className = 'fas fa-chevron-down ms-1';
-                    this.innerHTML = this.innerHTML.replace('Скрыть источники', 'Показать источники');
+                    sourcesContent.classList.add('hidden');
+                    
+                    if (toggleIcon) {
+                        toggleIcon.className = 'fas fa-chevron-down ms-1 toggle-icon';
+                    }
+                    
+                    if (toggleText) {
+                        toggleText.textContent = 'Показать источники';
+                    } else {
+                        // Fallback если toggle-text не найден
+                        const currentHtml = this.innerHTML;
+                        this.innerHTML = currentHtml.replace(/Скрыть источники/g, 'Показать источники');
+                    }
+                    
+                    console.log('❌ Источники скрыты');
                 }
             });
+            
+            console.log(`✅ Обработчик привязан к кнопке для ${messageId}`);
+        } else {
+            console.error(`❌ Кнопка источников НЕ найдена для ${messageId}!`);
+            console.log('Структура сообщения:', messageDiv.innerHTML.substring(0, 500));
         }
 
         // Click on source reference badges
         const sourceRefs = messageDiv.querySelectorAll('.source-ref-badge');
         sourceRefs.forEach(ref => {
-            ref.addEventListener('click', function() {
+            ref.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const sourceIndex = this.dataset.source;
                 const sourcesContent = document.getElementById(`sources-${messageId}`);
                 const sourcesToggle = messageDiv.querySelector('.sources-toggle');
                 
+                if (!sourcesContent || !sourcesToggle) {
+                    console.warn(`Источники или кнопка для сообщения ${messageId} не найдены`);
+                    return;
+                }
+                
                 // Show sources if hidden
-                if (sourcesContent.style.display === 'none') {
+                const isHidden = sourcesContent.style.display === 'none' || 
+                                window.getComputedStyle(sourcesContent).display === 'none' ||
+                                sourcesContent.offsetHeight === 0;
+                
+                if (isHidden) {
                     sourcesToggle.click();
                 }
                 
@@ -430,6 +547,8 @@ $(document).ready(function() {
                         setTimeout(() => {
                             sourceItem.classList.remove('source-highlight');
                         }, 2000);
+                    } else {
+                        console.warn(`Источник с индексом ${sourceIndex} не найден`);
                     }
                 }, 300);
             });
@@ -437,21 +556,35 @@ $(document).ready(function() {
     }
 
     // Handle form submission
-    document.getElementById('chatForm').addEventListener('submit', async function(e) {
+    const chatForm = document.getElementById('chatForm');
+    if (!chatForm) {
+        console.error('❌ Форма chatForm не найдена!');
+        alert('Ошибка: форма чата не найдена. Перезагрузите страницу.');
+    } else {
+        console.log('✅ Форма chatForm найдена, привязываем обработчик...');
+        chatForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        if (isLoading) return;
+        if (isLoading) {
+            console.log('Запрос уже обрабатывается, пропускаем...');
+            return;
+        }
 
         const userInput = document.getElementById('userInput');
         const query = userInput.value.trim();
         
-        if (!query) return;
-
-        // Check if RAG is initialized
-        if (!ragInitialized) {
-            alert('Пожалуйста, сначала инициализируйте RAG систему, нажав кнопку "Загрузить RAG систему"');
+        if (!query) {
+            console.log('Пустой запрос, пропускаем...');
             return;
         }
+
+        // Убираем проверку ragInitialized - сервер сам проверит и вернет понятное сообщение
+        // if (!ragInitialized) {
+        //     alert('Пожалуйста, сначала инициализируйте RAG систему, нажав кнопку "Загрузить RAG систему"');
+        //     return;
+        // }
+
+        console.log('Отправка запроса:', query);
 
         // Add user message
         addMessage(query, true);
@@ -459,6 +592,7 @@ $(document).ready(function() {
 
         // Show typing animation
         addTypingIndicator();
+        console.log('Индикатор загрузки показан');
 
         // Show loading state
         isLoading = true;
@@ -466,8 +600,10 @@ $(document).ready(function() {
         const originalBtnContent = sendBtn.innerHTML;
         sendBtn.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div>';
         sendBtn.disabled = true;
+        console.log('Кнопка отправки заблокирована');
 
         try {
+            console.log('Отправка запроса на /api/chat...');
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -476,17 +612,35 @@ $(document).ready(function() {
                 body: JSON.stringify({ query: query })
             });
 
+            console.log('Получен ответ:', response.status, response.statusText);
             const data = await response.json();
+            console.log('Данные ответа:', data);
 
             // Remove typing indicator
             removeTypingIndicator();
 
-            if (data.error) {
-                addMessage(`❌ Ошибка: ${data.error}`, false);
+            // Обработка ошибок
+            if (!response.ok || data.error || data.error_type) {
+                let errorMessage = data.answer || data.error || 'Произошла ошибка';
+                
+                // Конвертируем markdown в HTML для лучшего отображения
+                errorMessage = errorMessage
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+                
+                // Добавляем кнопки действий в зависимости от типа ошибки
+                if (data.error_type === 'api_error' || data.error_type === 'config_error') {
+                    errorMessage += '<br><br><a href="/admin" class="btn btn-sm btn-primary mt-2"><i class="fas fa-cog me-1"></i>Перейти в настройки моделей</a>';
+                } else if (data.error_type === 'rag_not_initialized' || data.error_type === 'no_embeddings') {
+                    errorMessage += '<br><br><a href="/admin" class="btn btn-sm btn-primary mt-2"><i class="fas fa-cog me-1"></i>Перейти в админ панель</a>';
+                }
+                
+                addMessage(errorMessage, false);
             } else {
                 addMessage(data.answer, false, data.sources, data.confidence);
             }
         } catch (error) {
+            console.error('Ошибка при отправке запроса:', error);
             removeTypingIndicator();
             addMessage(`❌ Ошибка подключения: ${error.message}`, false);
         } finally {
@@ -494,8 +648,21 @@ $(document).ready(function() {
             sendBtn.innerHTML = originalBtnContent;
             sendBtn.disabled = false;
             userInput.focus();
+            console.log('Запрос завершен, форма разблокирована');
         }
-    });
+        });
+        
+        // Также обрабатываем Enter в поле ввода
+        const userInput = document.getElementById('userInput');
+        if (userInput) {
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    chatForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        }
+    }
 
     // Example questions
     document.querySelectorAll('.example-btn').forEach(btn => {
@@ -560,6 +727,74 @@ $(document).ready(function() {
         }
     });
 
+    // Делегирование событий для кнопок источников (работает для динамически добавленных элементов)
+    $(document).on('click', '.sources-toggle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const button = this;
+        const messageId = button.getAttribute('data-message') || button.id.replace('toggle-', 'message-');
+        console.log(`🖱️ Делегированный клик по кнопке источников для ${messageId}`);
+        
+        const sourcesContent = document.getElementById(`sources-${messageId}`);
+        if (!sourcesContent) {
+            console.error(`❌ Источники для ${messageId} не найдены`);
+            return;
+        }
+        
+        const toggleText = button.querySelector('.toggle-text');
+        const toggleIcon = button.querySelector('.toggle-icon');
+        
+        const computedStyle = window.getComputedStyle(sourcesContent);
+        const isHidden = sourcesContent.style.display === 'none' || 
+                        computedStyle.display === 'none' ||
+                        sourcesContent.offsetHeight === 0;
+        
+        console.log(`Переключение источников для ${messageId}, скрыто: ${isHidden}, display: ${sourcesContent.style.display}, computed: ${computedStyle.display}`);
+        
+        if (isHidden) {
+            sourcesContent.style.setProperty('display', 'block', 'important');
+            sourcesContent.style.setProperty('visibility', 'visible', 'important');
+            sourcesContent.style.setProperty('opacity', '1', 'important');
+            sourcesContent.style.setProperty('max-height', 'none', 'important');
+            sourcesContent.style.setProperty('overflow', 'visible', 'important');
+            sourcesContent.classList.add('sources-slide-in');
+            sourcesContent.classList.remove('hidden');
+            
+            if (toggleIcon) {
+                toggleIcon.className = 'fas fa-chevron-up ms-1 toggle-icon';
+            }
+            
+            if (toggleText) {
+                toggleText.textContent = 'Скрыть источники';
+            } else {
+                const currentHtml = button.innerHTML;
+                button.innerHTML = currentHtml.replace(/Показать источники/g, 'Скрыть источники');
+            }
+            
+            console.log('✅ Источники показаны, элементов:', sourcesContent.querySelectorAll('.source-item').length);
+        } else {
+            sourcesContent.style.display = 'none';
+            sourcesContent.style.visibility = 'hidden';
+            sourcesContent.style.opacity = '0';
+            sourcesContent.classList.remove('sources-slide-in');
+            sourcesContent.classList.add('hidden');
+            
+            if (toggleIcon) {
+                toggleIcon.className = 'fas fa-chevron-down ms-1 toggle-icon';
+            }
+            
+            if (toggleText) {
+                toggleText.textContent = 'Показать источники';
+            } else {
+                const currentHtml = button.innerHTML;
+                button.innerHTML = currentHtml.replace(/Скрыть источники/g, 'Показать источники');
+            }
+            
+            console.log('❌ Источники скрыты');
+        }
+    });
+    
     // Check RAG status on page load
     async function checkRagStatus() {
         try {
@@ -743,6 +978,34 @@ $(document).ready(function() {
     font-style: italic;
 }
 
+/* Error message styles */
+.error-message .card {
+    background-color: #fef2f2 !important;
+    border-left: 4px solid #dc2626;
+}
+
+.error-message .card-body {
+    color: #991b1b;
+}
+
+.error-message .card-body a {
+    color: #2563eb;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.error-message .card-body a:hover {
+    color: #1d4ed8;
+}
+
+.error-message .card-body code,
+.error-message .card-body pre {
+    background-color: #fee2e2;
+    color: #991b1b;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
 /* Source reference badges */
 .source-ref-badge {
     display: inline-block;
@@ -782,6 +1045,20 @@ $(document).ready(function() {
 
 .sources-content {
     transition: all 0.3s ease;
+    display: none !important;
+    visibility: visible;
+    opacity: 1;
+    max-height: none;
+    overflow: visible;
+}
+
+.sources-content[style*="display: block"],
+.sources-content.sources-slide-in {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    max-height: none !important;
+    overflow: visible !important;
 }
 
 .sources-slide-in {

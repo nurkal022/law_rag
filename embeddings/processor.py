@@ -180,24 +180,44 @@ class DocumentProcessor:
     
     def process_all_documents(self, documents_dir: str) -> Dict:
         """Обработка всех документов в директории"""
+        # Проверяем существование директории
         if not os.path.exists(documents_dir):
             print(f"Директория {documents_dir} не существует")
-            return {'processed': 0, 'failed': 0, 'errors': []}
+            # Пытаемся найти альтернативные пути
+            alternatives = [
+                os.path.join('current', 'examples'),
+                'current/examples',
+                'examples',
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), 'current', 'examples')
+            ]
+            
+            for alt_path in alternatives:
+                if os.path.exists(alt_path):
+                    print(f"📁 Найдена альтернативная директория: {alt_path}")
+                    documents_dir = alt_path
+                    break
+            else:
+                return {
+                    'processed': 0,
+                    'failed': 0,
+                    'total': 0,
+                    'errors': [f'Директория {documents_dir} не существует и альтернативные пути не найдены']
+                }
+        
+        # Сначала загружаем недостающие документы из директории
+        print("📚 Проверяем и загружаем недостающие документы...")
+        load_result = self.db_manager.bulk_load_documents_from_directory(documents_dir)
+        if load_result['loaded'] > 0:
+            print(f"✅ Загружено {load_result['loaded']} новых документов")
+        if load_result.get('skipped', 0) > 0:
+            print(f"⏭️  Пропущено {load_result['skipped']} документов (уже в базе)")
         
         # Получаем необработанные документы из базы
         unprocessed_docs = self.db_manager.get_unprocessed_documents()
         
         if not unprocessed_docs:
-            print("Все документы уже обработаны или база данных пустая")
-            # Если база пустая, загружаем документы
-            stats = self.db_manager.get_documents_stats()
-            if stats['documents_count'] == 0:
-                print("Загружаем документы в базу данных...")
-                load_result = self.db_manager.bulk_load_documents_from_directory(documents_dir)
-                unprocessed_docs = self.db_manager.get_unprocessed_documents()
-                
-                if not unprocessed_docs:
-                    return {'processed': 0, 'failed': 0, 'errors': ['Не удалось загрузить документы']}
+            print("Все документы уже обработаны")
+            return {'processed': 0, 'failed': 0, 'total': 0, 'errors': []}
         
         print(f"📋 Найдено {len(unprocessed_docs)} документов для обработки")
         

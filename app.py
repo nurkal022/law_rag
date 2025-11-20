@@ -27,15 +27,31 @@ retriever = None
 rag_initialized = False
 rag_initializing = False
 
-# Проверяем наличие API ключа
-if not Config.OPENAI_API_KEY:
-    print("ВНИМАНИЕ: OpenAI API ключ не установлен!")
-    print("Добавьте OPENAI_API_KEY в переменные окружения или файл .env")
-    generator = None
-    law_generator = None
-else:
-    generator = ResponseGenerator(Config.OPENAI_API_KEY)
-    law_generator = LawProjectGenerator(Config.OPENAI_API_KEY, db_manager)
+# Инициализация генераторов с поддержкой провайдеров
+generator = None
+law_generator = None
+
+try:
+    from llm_providers.factory import LLMProviderFactory
+    provider = LLMProviderFactory.get_current_provider()
+    if provider:
+        generator = ResponseGenerator(provider=provider)
+        law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
+        print(f"✅ LLM провайдер инициализирован: {Config.LLM_PROVIDER_TYPE}")
+    else:
+        print("⚠️  ВНИМАНИЕ: LLM провайдер не настроен!")
+        print("   Для OpenAI: добавьте OPENAI_API_KEY в переменные окружения")
+        print("   Для Ollama: убедитесь, что Ollama запущена на http://localhost:11434")
+except Exception as e:
+    print(f"⚠️  Ошибка инициализации LLM провайдера: {e}")
+    # Пытаемся использовать старый способ для обратной совместимости
+    if Config.OPENAI_API_KEY:
+        try:
+            generator = ResponseGenerator(api_key=Config.OPENAI_API_KEY)
+            law_generator = LawProjectGenerator(api_key=Config.OPENAI_API_KEY, database_manager=db_manager)
+            print("✅ Использован OpenAI провайдер (старый способ)")
+        except Exception as e2:
+            print(f"❌ Не удалось инициализировать генераторы: {e2}")
 
 # Инициализация валидатора данных и экспортера
 data_validator = DataValidator()
@@ -102,17 +118,57 @@ def chat():
         user_query = data.get('query', '').strip()
         
         if not user_query:
-            return jsonify({'error': 'Пустой запрос'}), 400
+            return jsonify({
+                'error': 'Пустой запрос',
+                'answer': 'Пожалуйста, введите ваш вопрос.'
+            }), 400
         
         if not generator:
+            error_msg = """⚠️ **LLM провайдер не настроен**
+
+**Решения:**
+1. Для OpenAI: добавьте `OPENAI_API_KEY` в переменные окружения или настройте в `/admin`
+2. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`) и настройте в `/admin`
+
+Перейдите в настройки: `/admin` → Настройки моделей LLM"""
             return jsonify({
-                'error': 'OpenAI API ключ не настроен. Пожалуйста, добавьте OPENAI_API_KEY в переменные окружения.'
+                'error': 'LLM провайдер не настроен',
+                'answer': error_msg,
+                'error_type': 'config_error'
             }), 500
         
         # Проверяем инициализацию RAG системы
         if not ensure_rag_initialized():
+            error_msg = """⚠️ **RAG система не инициализирована**
+
+Пожалуйста, сначала инициализируйте систему:
+1. Перейдите в `/admin`
+2. Нажмите "Инициализировать RAG систему" или "Автоматическая настройка"
+3. Дождитесь завершения обработки документов"""
             return jsonify({
-                'error': 'RAG система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
+                'error': 'RAG система не инициализирована',
+                'answer': error_msg,
+                'error_type': 'rag_not_initialized'
+            }), 503
+        
+        # Проверяем наличие документов с embeddings
+        stats = db_manager.get_documents_stats()
+        if stats.get('chunks_with_embeddings', 0) == 0:
+            error_msg = """⚠️ **Документы не обработаны**
+
+Документы загружены, но embeddings еще не созданы.
+
+**Решения:**
+1. Перейдите в `/admin`
+2. Нажмите "Обработать все документы" для создания embeddings
+3. Или используйте "Автоматическая настройка"
+
+После обработки документов чат будет работать."""
+            return jsonify({
+                'error': 'Документы не обработаны',
+                'answer': error_msg,
+                'error_type': 'no_embeddings',
+                'stats': stats
             }), 503
         
         # Получаем ID сессии
@@ -120,26 +176,50 @@ def chat():
         session['session_id'] = session_id
         
         # Поиск релевантных документов
-        search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
-        formatted_results = retriever.format_search_results(search_results)
+        try:
+            search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
+            formatted_results = retriever.format_search_results(search_results)
+        except Exception as e:
+            print(f"Ошибка при поиске документов: {e}")
+            error_msg = f"Ошибка при поиске документов: {str(e)}"
+            return jsonify({
+                'error': error_msg,
+                'answer': error_msg,
+                'error_type': 'search_error'
+            }), 500
         
         # Получаем историю разговора
         conversation_history = db_manager.get_chat_history(session_id, limit=5)
         
         # Генерируем ответ
-        response_data = generator.generate_response(
-            user_query, 
-            formatted_results, 
-            conversation_history
-        )
+        try:
+            response_data = generator.generate_response(
+                user_query, 
+                formatted_results, 
+                conversation_history
+            )
+        except Exception as e:
+            print(f"Ошибка при генерации ответа: {e}")
+            error_msg = f"Ошибка при генерации ответа: {str(e)}"
+            return jsonify({
+                'error': error_msg,
+                'answer': error_msg,
+                'error_type': 'generation_error',
+                'sources': formatted_results,
+                'search_results_count': len(formatted_results)
+            }), 500
         
-        # Сохраняем в историю
-        db_manager.save_chat_history(
-            session_id, 
-            user_query, 
-            response_data['answer'],
-            response_data['sources']
-        )
+        # Сохраняем в историю только если нет критической ошибки
+        if not response_data.get('error_type') == 'api_error':
+            try:
+                db_manager.save_chat_history(
+                    session_id, 
+                    user_query, 
+                    response_data['answer'],
+                    response_data['sources']
+                )
+            except Exception as e:
+                print(f"Ошибка сохранения истории: {e}")
         
         return jsonify({
             'answer': response_data['answer'],
@@ -147,12 +227,20 @@ def chat():
             'confidence': response_data['confidence'],
             'query_validation': generator.validate_legal_query(user_query) if generator else None,
             'search_results_count': len(formatted_results),
-            'session_id': session_id
+            'session_id': session_id,
+            'error': response_data.get('error'),
+            'error_type': response_data.get('error_type')
         })
         
     except Exception as e:
+        import traceback
         print(f"Ошибка в чате: {e}")
-        return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
+        traceback.print_exc()
+        return jsonify({
+            'error': f'Произошла ошибка: {str(e)}',
+            'answer': f'⚠️ Произошла неожиданная ошибка: {str(e)}\n\nПожалуйста, проверьте логи сервера или обратитесь к администратору.',
+            'error_type': 'unexpected_error'
+        }), 500
 
 @app.route('/api/search', methods=['POST'])
 def search_documents():
@@ -310,10 +398,52 @@ def admin_panel():
     stats = db_manager.get_documents_stats()
     return render_template('admin.html', stats=stats)
 
+@app.route('/api/admin/load_documents', methods=['POST'])
+def load_documents():
+    """Загрузка недостающих документов из директории"""
+    try:
+        result = db_manager.bulk_load_documents_from_directory(Config.DOCUMENTS_DIR)
+        
+        return jsonify({
+            'success': True,
+            'result': result,
+            'message': f"Загружено {result['loaded']} новых документов, пропущено {result.get('skipped', 0)} (уже в базе)"
+        })
+        
+    except Exception as e:
+        import traceback
+        error_msg = str(e)
+        traceback.print_exc()
+        print(f"Ошибка загрузки документов: {error_msg}")
+        return jsonify({
+            'success': False,
+            'error': f'Произошла ошибка: {error_msg}',
+            'traceback': traceback.format_exc() if Config.DEBUG else None
+        }), 500
+
 @app.route('/api/admin/process_documents', methods=['POST'])
 def process_documents():
     """Обработка документов (создание embeddings)"""
     try:
+        # Проверяем существование директории
+        if not os.path.exists(Config.DOCUMENTS_DIR):
+            # Пытаемся создать директорию
+            os.makedirs(Config.DOCUMENTS_DIR, exist_ok=True)
+            print(f"📁 Создана директория {Config.DOCUMENTS_DIR}")
+            
+            # Проверяем наличие примеров документов
+            examples_dir = os.path.join(Config.DOCUMENTS_DIR, 'examples')
+            if os.path.exists(examples_dir):
+                print(f"📚 Найдена директория примеров: {examples_dir}")
+                # Можно скопировать примеры в основную директорию
+                import shutil
+                example_files = [f for f in os.listdir(examples_dir) if f.endswith('.txt')]
+                if example_files:
+                    print(f"📄 Найдено {len(example_files)} примеров документов")
+                    for file in example_files[:10]:  # Копируем первые 10 для начала
+                        shutil.copy2(os.path.join(examples_dir, file), Config.DOCUMENTS_DIR)
+                    print(f"✅ Скопировано {min(10, len(example_files))} документов из examples")
+        
         # Инициализируем RAG систему если нужно
         if not ensure_rag_initialized():
             return jsonify({
@@ -326,17 +456,24 @@ def process_documents():
         # Обновляем кэш retriever после обработки
         retriever.refresh_cache()
         
+        # Безопасная проверка наличия ключа 'total'
+        total = result.get('total', result.get('processed', 0) + result.get('failed', 0))
+        
         return jsonify({
             'success': True,
             'result': result,
-            'message': f"Обработано {result['processed']} документов из {result['total']}"
+            'message': f"Обработано {result.get('processed', 0)} документов из {total}"
         })
         
     except Exception as e:
-        print(f"Ошибка обработки документов: {e}")
+        import traceback
+        error_msg = str(e)
+        traceback.print_exc()
+        print(f"Ошибка обработки документов: {error_msg}")
         return jsonify({
             'success': False,
-            'error': f'Произошла ошибка: {str(e)}'
+            'error': f'Произошла ошибка: {error_msg}',
+            'traceback': traceback.format_exc() if Config.DEBUG else None
         }), 500
 
 @app.route('/api/admin/update_embeddings', methods=['POST'])
@@ -403,22 +540,15 @@ def auto_setup():
             'final_stats': stats
         }
         
-        # Шаг 1: Загрузка документов
-        if stats['documents_count'] == 0:
-            print("📚 Загружаем документы...")
-            load_result = db_manager.bulk_load_documents_from_directory(Config.DOCUMENTS_DIR)
-            result['steps'].append({
-                'step': 'document_loading',
-                'status': 'completed' if load_result['loaded'] > 0 else 'failed',
-                'message': f"Загружено {load_result['loaded']} документов",
-                'details': load_result
-            })
-        else:
-            result['steps'].append({
-                'step': 'document_loading',
-                'status': 'skipped',
-                'message': f"Документы уже загружены ({stats['documents_count']} шт.)"
-            })
+        # Шаг 1: Загрузка документов (всегда проверяем и загружаем недостающие)
+        print("📚 Проверяем и загружаем документы...")
+        load_result = db_manager.bulk_load_documents_from_directory(Config.DOCUMENTS_DIR)
+        result['steps'].append({
+            'step': 'document_loading',
+            'status': 'completed' if load_result['loaded'] > 0 or load_result.get('skipped', 0) > 0 else 'failed',
+            'message': f"Загружено {load_result['loaded']} новых документов, пропущено {load_result.get('skipped', 0)} (уже в базе)",
+            'details': load_result
+        })
         
         # Обновляем статистику
         stats = db_manager.get_documents_stats()
@@ -1015,6 +1145,171 @@ def get_ml_insights():
             'error': str(e)
         }), 500
 
+# API endpoints для управления моделями
+
+@app.route('/api/settings/llm', methods=['GET'])
+def get_llm_settings():
+    """Получение текущих настроек LLM"""
+    try:
+        from llm_providers.factory import LLMProviderFactory
+        provider = LLMProviderFactory.get_current_provider()
+        
+        settings = {
+            'provider_type': Config.LLM_PROVIDER_TYPE,
+            'model': Config.LLM_MODEL,
+            'available': provider.is_available() if provider else False,
+            'ollama_base_url': Config.OLLAMA_BASE_URL if Config.LLM_PROVIDER_TYPE == 'ollama' else None,
+            'has_openai_key': bool(Config.OPENAI_API_KEY) if Config.LLM_PROVIDER_TYPE == 'openai' else None
+        }
+        
+        # Получаем список доступных моделей
+        if provider:
+            try:
+                settings['available_models'] = provider.get_available_models()
+            except:
+                settings['available_models'] = []
+        else:
+            settings['available_models'] = []
+        
+        return jsonify({
+            'success': True,
+            'settings': settings
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/settings/llm', methods=['POST'])
+def update_llm_settings():
+    """Обновление настроек LLM"""
+    try:
+        data = request.get_json()
+        provider_type = data.get('provider_type')
+        model = data.get('model')
+        ollama_base_url = data.get('ollama_base_url')
+        
+        # Валидация
+        if provider_type not in ['openai', 'ollama']:
+            return jsonify({
+                'success': False,
+                'error': 'Неверный тип провайдера. Используйте "openai" или "ollama"'
+            }), 400
+        
+        # Обновляем переменные окружения (в памяти, не в файле)
+        import os
+        if provider_type == 'openai':
+            if not Config.OPENAI_API_KEY:
+                return jsonify({
+                    'success': False,
+                    'error': 'OpenAI API ключ не установлен. Добавьте OPENAI_API_KEY в .env файл'
+                }), 400
+            Config.LLM_PROVIDER_TYPE = 'openai'
+        elif provider_type == 'ollama':
+            Config.LLM_PROVIDER_TYPE = 'ollama'
+            if ollama_base_url:
+                Config.OLLAMA_BASE_URL = ollama_base_url
+                os.environ['OLLAMA_BASE_URL'] = ollama_base_url
+        
+        if model:
+            Config.LLM_MODEL = model
+            os.environ['LLM_MODEL'] = model
+        
+        os.environ['LLM_PROVIDER_TYPE'] = provider_type
+        
+        # Пересоздаем провайдер
+        from llm_providers.factory import LLMProviderFactory
+        global generator, law_generator
+        
+        try:
+            provider = LLMProviderFactory.create_provider(
+                provider_type=provider_type,
+                model=model,
+                base_url=ollama_base_url if provider_type == 'ollama' else None
+            )
+            
+            if provider and provider.is_available():
+                generator = ResponseGenerator(provider=provider)
+                law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Настройки обновлены. Провайдер: {provider_type}, модель: {model or Config.LLM_MODEL}',
+                    'settings': {
+                        'provider_type': provider_type,
+                        'model': model or Config.LLM_MODEL,
+                        'available': True
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Провайдер недоступен. Проверьте настройки.'
+                }), 400
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Ошибка создания провайдера: {str(e)}'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/settings/llm/test', methods=['POST'])
+def test_llm_provider():
+    """Тестирование LLM провайдера"""
+    try:
+        data = request.get_json()
+        provider_type = data.get('provider_type', Config.LLM_PROVIDER_TYPE)
+        model = data.get('model', Config.LLM_MODEL)
+        ollama_base_url = data.get('ollama_base_url', Config.OLLAMA_BASE_URL)
+        
+        from llm_providers.factory import LLMProviderFactory
+        
+        provider = LLMProviderFactory.create_provider(
+            provider_type=provider_type,
+            model=model,
+            base_url=ollama_base_url if provider_type == 'ollama' else None
+        )
+        
+        if not provider:
+            return jsonify({
+                'success': False,
+                'error': 'Не удалось создать провайдер'
+            }), 400
+        
+        # Проверяем доступность
+        if not provider.is_available():
+            return jsonify({
+                'success': False,
+                'error': 'Провайдер недоступен'
+            }), 400
+        
+        # Тестовый запрос
+        test_response = provider.chat_completion(
+            messages=[{"role": "user", "content": "Привет! Ответь одним словом: работает?"}],
+            model=model,
+            temperature=0.1,
+            max_tokens=10
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Провайдер работает корректно',
+            'test_response': test_response.get('content', '')[:50],
+            'model_used': test_response.get('model', model)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
@@ -1057,9 +1352,21 @@ def initialize_app():
             print(f"\n✅ База данных готова (embeddings: {stats['embedding_progress']:.1f}%)")
             print("   RAG система будет инициализирована при первом обращении")
     
-    if not Config.OPENAI_API_KEY:
-        print("\n⚠️  ВНИМАНИЕ: OpenAI API ключ не установлен!")
-        print("   Добавьте OPENAI_API_KEY в переменные окружения")
+    # Проверяем статус LLM провайдера
+    try:
+        from llm_providers.factory import LLMProviderFactory
+        provider = LLMProviderFactory.get_current_provider()
+        if provider and provider.is_available():
+            print(f"\n✅ LLM провайдер настроен: {Config.LLM_PROVIDER_TYPE} ({Config.LLM_MODEL})")
+        else:
+            print("\n⚠️  ВНИМАНИЕ: LLM провайдер не доступен!")
+            print(f"   Тип: {Config.LLM_PROVIDER_TYPE}")
+            if Config.LLM_PROVIDER_TYPE == 'openai':
+                print("   Добавьте OPENAI_API_KEY в переменные окружения")
+            elif Config.LLM_PROVIDER_TYPE == 'ollama':
+                print(f"   Убедитесь, что Ollama запущена на {Config.OLLAMA_BASE_URL}")
+    except Exception as e:
+        print(f"\n⚠️  Ошибка проверки LLM провайдера: {e}")
     
     print("=" * 60)
     print("🌐 Приложение готово к работе!")
