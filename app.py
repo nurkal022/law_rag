@@ -245,6 +245,32 @@ def chat():
                         response_data['model_type'] = 'default'
                 except Exception as e:
                     print(f"Ошибка при использовании fine-tuned модели: {e}")
+                    error_msg = str(e)
+                    # Если это ошибка подключения к API, даем понятное сообщение
+                    if "ConnectionError" in error_msg or "недоступен" in error_msg.lower() or "Connection refused" in error_msg:
+                        error_message = f"""⚠️ **Fine-tuned модель недоступна**
+
+API сервер не запущен или недоступен на {Config.FINETUNED_API_URL}.
+
+**Для запуска API сервера:**
+```bash
+cd /home/kaznu2025/fine_tune_llm_2222
+./api_manager.sh start
+```
+
+Или проверьте статус:
+```bash
+./api_manager.sh status
+```
+
+После запуска API сервера простой чат будет использовать fine-tuned модель."""
+                        return jsonify({
+                            'error': 'Fine-tuned модель недоступна',
+                            'answer': error_message,
+                            'error_type': 'api_error',
+                            'model_type': 'finetuned_unavailable'
+                        }), 503
+                    
                     # Fallback на обычный провайдер
                     if generator:
                         response_data = generator.generate_response_without_rag(
@@ -285,7 +311,8 @@ def chat():
             'search_results_count': len(formatted_results),
             'session_id': session_id,
             'error': response_data.get('error'),
-            'error_type': response_data.get('error_type')
+            'error_type': response_data.get('error_type'),
+            'model_type': response_data.get('model_type', 'default')
         })
         
     except Exception as e:

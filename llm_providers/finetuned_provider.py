@@ -70,7 +70,12 @@ class FineTunedModelProvider(LLMProvider):
                 data = response.json()
                 return data.get('model_loaded', False)
             return False
-        except:
+        except requests.exceptions.ConnectionError:
+            print(f"⚠️  Fine-tuned API сервер недоступен на {self.base_url}")
+            print(f"   Запустите API сервер: cd /home/kaznu2025/fine_tune_llm_2222 && ./api_manager.sh start")
+            return False
+        except Exception as e:
+            print(f"⚠️  Ошибка проверки fine-tuned API: {e}")
             return False
     
     def get_available_models(self) -> List[str]:
