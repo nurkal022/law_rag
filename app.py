@@ -38,20 +38,24 @@ try:
         generator = ResponseGenerator(provider=provider)
         law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
         print(f"✅ LLM провайдер инициализирован: {Config.LLM_PROVIDER_TYPE}")
+        
+        # Проверяем доступность провайдера
+        if not provider.is_available():
+            print(f"⚠️  ВНИМАНИЕ: Провайдер {Config.LLM_PROVIDER_TYPE} недоступен!")
+            if Config.LLM_PROVIDER_TYPE == 'ollama':
+                print("   Убедитесь, что Ollama запущена: ollama serve")
+                print("   Или установите модель: ollama pull gpt-oss:20b")
+            elif Config.LLM_PROVIDER_TYPE == 'finetuned':
+                print(f"   Убедитесь, что Fine-tuned API запущен на {Config.FINETUNED_API_URL}")
+                print("   Запустите: cd /home/kaznu2025/fine_tune_llm_2222 && ./api_manager.sh start")
     else:
         print("⚠️  ВНИМАНИЕ: LLM провайдер не настроен!")
-        print("   Для OpenAI: добавьте OPENAI_API_KEY в переменные окружения")
         print("   Для Ollama: убедитесь, что Ollama запущена на http://localhost:11434")
+        print("   Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000")
+        print("   Установите LLM_PROVIDER_TYPE=ollama или LLM_PROVIDER_TYPE=finetuned в .env")
 except Exception as e:
     print(f"⚠️  Ошибка инициализации LLM провайдера: {e}")
-    # Пытаемся использовать старый способ для обратной совместимости
-    if Config.OPENAI_API_KEY:
-        try:
-            generator = ResponseGenerator(api_key=Config.OPENAI_API_KEY)
-            law_generator = LawProjectGenerator(api_key=Config.OPENAI_API_KEY, database_manager=db_manager)
-            print("✅ Использован OpenAI провайдер (старый способ)")
-        except Exception as e2:
-            print(f"❌ Не удалось инициализировать генераторы: {e2}")
+    print("   Проверьте настройки в config.py или переменные окружения")
 
 # Инициализация валидатора данных и экспортера
 data_validator = DataValidator()
@@ -63,7 +67,7 @@ analytics_dashboard = AnalyticsDashboard()
 data_loader = DataLoader()
 
 def initialize_rag_system():
-    """Инициализация RAG системы по требованию"""
+    """Инициализация системы поиска по документам по требованию"""
     global doc_processor, retriever, rag_initialized, rag_initializing
     
     if rag_initialized or rag_initializing:
@@ -71,7 +75,7 @@ def initialize_rag_system():
     
     try:
         rag_initializing = True
-        print("🔄 Инициализация RAG системы...")
+        print("🔄 Инициализация ИИ системы поиска по документам...")
         
         with app.app_context():
             doc_processor = DocumentProcessor(db_manager)
@@ -79,16 +83,16 @@ def initialize_rag_system():
         
         rag_initialized = True
         rag_initializing = False
-        print("✅ RAG система успешно инициализирована")
+        print("✅ ИИ система успешно инициализирована")
         return True
         
     except Exception as e:
         rag_initializing = False
-        print(f"❌ Ошибка инициализации RAG системы: {e}")
+        print(f"❌ Ошибка инициализации ИИ системы: {e}")
         return False
 
 def ensure_rag_initialized():
-    """Проверка и инициализация RAG системы если необходимо"""
+    """Проверка и инициализация системы поиска по документам если необходимо"""
     if not rag_initialized:
         return initialize_rag_system()
     return True
@@ -100,7 +104,7 @@ def index():
 
 @app.route('/chat')
 def chat_page():
-    """Страница чата с RAG системой"""
+    """Страница чата с поиском по документам"""
     # Создаем новую сессию если её нет
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
@@ -112,7 +116,7 @@ def chat_page():
 
 @app.route('/chat-simple')
 def chat_simple_page():
-    """Страница чистого чата без RAG"""
+    """Страница простого чата без поиска по документам"""
     # Создаем новую сессию если её нет
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
@@ -125,7 +129,7 @@ def chat():
     try:
         data = request.get_json()
         user_query = data.get('query', '').strip()
-        use_rag = data.get('use_rag', True)  # По умолчанию используем RAG
+        use_rag = data.get('use_rag', True)  # По умолчанию используем поиск по документам
         
         if not user_query:
             return jsonify({
@@ -136,11 +140,22 @@ def chat():
         if not generator:
             error_msg = """⚠️ **LLM провайдер не настроен**
 
-**Решения:**
-1. Для OpenAI: добавьте `OPENAI_API_KEY` в переменные окружения или настройте в `/admin`
-2. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`) и настройте в `/admin`
+**Решения для локальной работы:**
+1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`) и настройте в `/admin`
+2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000 и настройте в `/admin`
 
-Перейдите в настройки: `/admin` → Настройки моделей LLM"""
+Перейдите в настройки: `/admin` → Настройки моделей LLM
+
+**Быстрый старт:**
+```bash
+# Для Ollama
+ollama serve
+ollama pull gpt-oss:20b
+
+# Для Fine-tuned API
+cd /home/kaznu2025/fine_tune_llm_2222
+./api_manager.sh start
+```"""
             return jsonify({
                 'error': 'LLM провайдер не настроен',
                 'answer': error_msg,
@@ -151,20 +166,20 @@ def chat():
         session_id = session.get('session_id', str(uuid.uuid4()))
         session['session_id'] = session_id
         
-        # Если режим RAG включен, проверяем инициализацию
+        # Если режим поиска по документам включен, проверяем инициализацию
         if use_rag:
-            # Проверяем инициализацию RAG системы
+            # Проверяем инициализацию системы поиска по документам
             if not ensure_rag_initialized():
-                error_msg = """⚠️ **RAG система не инициализирована**
+                error_msg = """⚠️ **ИИ система не инициализирована**
 
 Пожалуйста, сначала инициализируйте систему:
 1. Перейдите в `/admin`
-2. Нажмите "Инициализировать RAG систему" или "Автоматическая настройка"
+2. Нажмите "Инициализировать систему поиска" или "Автоматическая настройка"
 3. Дождитесь завершения обработки документов
 
-Или переключитесь в режим "Чистый чат" для общения без поиска по документам."""
+Или переключитесь в режим "Простой чат" для общения без поиска по документам."""
                 return jsonify({
-                    'error': 'RAG система не инициализирована',
+                    'error': 'ИИ система не инициализирована',
                     'answer': error_msg,
                     'error_type': 'rag_not_initialized'
                 }), 503
@@ -203,7 +218,7 @@ def chat():
                     'error_type': 'search_error'
                 }), 500
         else:
-            # Режим без RAG - не ищем документы
+            # Режим без поиска по документам - не ищем документы
             formatted_results = []
         
         # Получаем историю разговора
@@ -218,7 +233,7 @@ def chat():
                     conversation_history
                 )
             else:
-                # Режим без RAG - используем fine-tuned модель если доступна
+                # Режим без поиска по документам - используем fine-tuned модель если доступна
                 try:
                     from llm_providers.factory import LLMProviderFactory
                     finetuned_provider = LLMProviderFactory.create_provider(
@@ -335,10 +350,10 @@ def search_documents():
         if not query:
             return jsonify({'error': 'Пустой запрос'}), 400
         
-        # Проверяем инициализацию RAG системы
+        # Проверяем инициализацию системы поиска по документам
         if not ensure_rag_initialized():
             return jsonify({
-                'error': 'RAG система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
+                'error': 'ИИ система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
             }), 503
         
         # Поиск документов
@@ -363,10 +378,10 @@ def get_document_chunk(chunk_id):
         if not chunk:
             return jsonify({'error': 'Чанк не найден'}), 404
         
-        # Проверяем инициализацию RAG системы
+        # Проверяем инициализацию системы поиска по документам
         if not ensure_rag_initialized():
             return jsonify({
-                'error': 'RAG система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
+                'error': 'ИИ система не инициализирована. Пожалуйста, сначала инициализируйте систему.'
             }), 503
         
         # Получаем контекст (соседние чанки)
@@ -409,42 +424,42 @@ def get_stats():
 
 @app.route('/api/rag/initialize', methods=['POST'])
 def initialize_rag():
-    """Инициализация RAG системы"""
+    """Инициализация системы поиска по документам"""
     global rag_initialized, rag_initializing
     
     try:
         if rag_initialized:
             return jsonify({
                 'success': True,
-                'message': 'RAG система уже инициализирована',
+                'message': 'ИИ система уже инициализирована',
                 'initialized': True
             })
         
         if rag_initializing:
             return jsonify({
                 'success': False,
-                'message': 'RAG система уже инициализируется',
+                'message': 'ИИ система уже инициализируется',
                 'initializing': True
             }), 202
         
-        # Инициализируем RAG систему
+        # Инициализируем систему поиска по документам
         success = initialize_rag_system()
         
         if success:
             return jsonify({
                 'success': True,
-                'message': 'RAG система успешно инициализирована',
+                'message': 'ИИ система успешно инициализирована',
                 'initialized': True
             })
         else:
             return jsonify({
                 'success': False,
-                'message': 'Ошибка инициализации RAG системы',
+                'message': 'Ошибка инициализации ИИ системы',
                 'initialized': False
             }), 500
             
     except Exception as e:
-        print(f"Ошибка инициализации RAG: {e}")
+        print(f"Ошибка инициализации системы поиска: {e}")
         return jsonify({
             'success': False,
             'message': f'Произошла ошибка: {str(e)}',
@@ -453,7 +468,7 @@ def initialize_rag():
 
 @app.route('/api/rag/status')
 def rag_status():
-    """Получение статуса RAG системы"""
+    """Получение статуса системы поиска по документам"""
     return jsonify({
         'initialized': rag_initialized,
         'initializing': rag_initializing,
@@ -527,11 +542,11 @@ def process_documents():
                         shutil.copy2(os.path.join(examples_dir, file), Config.DOCUMENTS_DIR)
                     print(f"✅ Скопировано {min(10, len(example_files))} документов из examples")
         
-        # Инициализируем RAG систему если нужно
+        # Инициализируем систему поиска если нужно
         if not ensure_rag_initialized():
             return jsonify({
                 'success': False,
-                'error': 'Не удалось инициализировать RAG систему'
+                'error': 'Не удалось инициализировать ИИ систему'
             }), 500
         
         result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
@@ -563,11 +578,11 @@ def process_documents():
 def update_embeddings():
     """Обновление embeddings для документов без них"""
     try:
-        # Инициализируем RAG систему если нужно
+        # Инициализируем систему поиска если нужно
         if not ensure_rag_initialized():
             return jsonify({
                 'success': False,
-                'error': 'Не удалось инициализировать RAG систему'
+                'error': 'Не удалось инициализировать ИИ систему'
             }), 500
         
         result = doc_processor.update_embeddings()
@@ -639,12 +654,12 @@ def auto_setup():
         # Шаг 2: Обработка документов
         if stats['embedded_chunks'] < stats['chunks_count'] or stats['chunks_count'] == 0:
             print("🔄 Обрабатываем документы...")
-            # Инициализируем RAG систему для обработки
+            # Инициализируем систему поиска для обработки
             if not ensure_rag_initialized():
                 result['steps'].append({
                     'step': 'document_processing',
                     'status': 'failed',
-                    'message': 'Не удалось инициализировать RAG систему'
+                    'message': 'Не удалось инициализировать ИИ систему'
                 })
                 result['success'] = False
             else:
@@ -690,7 +705,7 @@ def law_generator_page():
     """Страница генератора законопроектов"""
     if not law_generator:
         return render_template('error.html', 
-                             error="OpenAI API ключ не настроен"), 500
+                             error="LLM провайдер не настроен. Настройте Ollama или Fine-tuned модель в /admin"), 500
     
     # Получаем вопросы для сбора данных
     questions = law_generator.get_data_collection_questions()
@@ -1242,7 +1257,7 @@ def get_llm_settings():
             'model': Config.LLM_MODEL,
             'available': provider.is_available() if provider else False,
             'ollama_base_url': Config.OLLAMA_BASE_URL if Config.LLM_PROVIDER_TYPE == 'ollama' else None,
-            'has_openai_key': bool(Config.OPENAI_API_KEY) if Config.LLM_PROVIDER_TYPE == 'openai' else None
+            'finetuned_api_url': Config.FINETUNED_API_URL if Config.LLM_PROVIDER_TYPE == 'finetuned' else None
         }
         
         # Получаем список доступных моделей
@@ -1273,27 +1288,26 @@ def update_llm_settings():
         model = data.get('model')
         ollama_base_url = data.get('ollama_base_url')
         
-        # Валидация
-        if provider_type not in ['openai', 'ollama']:
+        # Валидация (только локальные провайдеры)
+        if provider_type not in ['ollama', 'finetuned']:
             return jsonify({
                 'success': False,
-                'error': 'Неверный тип провайдера. Используйте "openai" или "ollama"'
+                'error': 'Неверный тип провайдера. Используйте "ollama" или "finetuned" (локальные провайдеры)'
             }), 400
         
         # Обновляем переменные окружения (в памяти, не в файле)
         import os
-        if provider_type == 'openai':
-            if not Config.OPENAI_API_KEY:
-                return jsonify({
-                    'success': False,
-                    'error': 'OpenAI API ключ не установлен. Добавьте OPENAI_API_KEY в .env файл'
-                }), 400
-            Config.LLM_PROVIDER_TYPE = 'openai'
-        elif provider_type == 'ollama':
+        if provider_type == 'ollama':
             Config.LLM_PROVIDER_TYPE = 'ollama'
             if ollama_base_url:
                 Config.OLLAMA_BASE_URL = ollama_base_url
                 os.environ['OLLAMA_BASE_URL'] = ollama_base_url
+        elif provider_type == 'finetuned':
+            Config.LLM_PROVIDER_TYPE = 'finetuned'
+            finetuned_url = data.get('finetuned_api_url')
+            if finetuned_url:
+                Config.FINETUNED_API_URL = finetuned_url
+                os.environ['FINETUNED_API_URL'] = finetuned_url
         
         if model:
             Config.LLM_MODEL = model
@@ -1404,7 +1418,7 @@ def internal_error(error):
 # Инициализация при запуске
 def initialize_app():
     """Инициализация приложения"""
-    print("🚀 Запуск RAG системы для юридических документов Казахстана")
+    print("🚀 Запуск ИИ системы для юридических документов Казахстана")
     print("=" * 60)
     
     # Проверяем наличие документов
@@ -1420,11 +1434,11 @@ def initialize_app():
         print(f"🗄️  База данных: {stats['documents_count']} документов, {stats['chunks_count']} чанков")
         print(f"🧠 Embeddings: {stats['chunks_with_embeddings']} чанков ({stats['embedding_progress']:.1f}%)")
         
-        # Проверяем нужна ли автоматическая обработка (но не запускаем RAG)
+        # Проверяем нужна ли автоматическая обработка (но не запускаем систему поиска)
         if stats['documents_count'] > 0 and stats['embedding_progress'] == 0:
             unprocessed = db_manager.get_unprocessed_documents()
             print(f"\n⚠️  Найдено {len(unprocessed)} необработанных документов")
-            print("   RAG система будет инициализирована при первом обращении")
+            print("   ИИ система будет инициализирована при первом обращении")
             print("   Перейдите в /admin для обработки всех документов")
         
         if stats['chunks_with_embeddings'] == 0 and stats['documents_count'] > 0:
@@ -1433,7 +1447,7 @@ def initialize_app():
             print("   Или используйте автоматическую настройку")
         elif stats['embedding_progress'] > 0:
             print(f"\n✅ База данных готова (embeddings: {stats['embedding_progress']:.1f}%)")
-            print("   RAG система будет инициализирована при первом обращении")
+            print("   ИИ система будет инициализирована при первом обращении")
     
     # Проверяем статус LLM провайдера
     try:
@@ -1444,10 +1458,13 @@ def initialize_app():
         else:
             print("\n⚠️  ВНИМАНИЕ: LLM провайдер не доступен!")
             print(f"   Тип: {Config.LLM_PROVIDER_TYPE}")
-            if Config.LLM_PROVIDER_TYPE == 'openai':
-                print("   Добавьте OPENAI_API_KEY в переменные окружения")
-            elif Config.LLM_PROVIDER_TYPE == 'ollama':
+            if Config.LLM_PROVIDER_TYPE == 'ollama':
                 print(f"   Убедитесь, что Ollama запущена на {Config.OLLAMA_BASE_URL}")
+                print("   Запустите: ollama serve")
+                print("   Установите модель: ollama pull gpt-oss:20b")
+            elif Config.LLM_PROVIDER_TYPE == 'finetuned':
+                print(f"   Убедитесь, что Fine-tuned API запущен на {Config.FINETUNED_API_URL}")
+                print("   Запустите: cd /home/kaznu2025/fine_tune_llm_2222 && ./api_manager.sh start")
     except Exception as e:
         print(f"\n⚠️  Ошибка проверки LLM провайдера: {e}")
     

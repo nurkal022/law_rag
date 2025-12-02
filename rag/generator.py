@@ -11,18 +11,17 @@ class ResponseGenerator:
         
         Args:
             provider: Провайдер LLM (если None, создается из конфигурации)
-            api_key: API ключ (для обратной совместимости с OpenAI)
+            api_key: API ключ (deprecated, для обратной совместимости)
         """
         if provider:
             self.provider = provider
         else:
-            # Если передан api_key, используем OpenAI
+            # Используем провайдер из конфигурации (локальные провайдеры)
+            self.provider = LLMProviderFactory.get_current_provider()
+            
+            # Если передан api_key (старый способ), предупреждаем
             if api_key:
-                from llm_providers.openai_provider import OpenAIProvider
-                self.provider = OpenAIProvider(api_key=api_key, default_model=Config.LLM_MODEL)
-            else:
-                # Иначе используем провайдер из конфигурации
-                self.provider = LLMProviderFactory.get_current_provider()
+                print("⚠️  Использование api_key устарело. Используйте локальные провайдеры (Ollama/Fine-tuned)")
         
         if not self.provider:
             raise ValueError("Не удалось инициализировать LLM провайдер. Проверьте настройки.")
@@ -149,29 +148,41 @@ class ResponseGenerator:
             
             # Определяем тип ошибки и формируем понятное сообщение
             if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
-                user_message = """⚠️ **Проблема с API ключом OpenAI**
+                user_message = """⚠️ **Проблема с подключением к LLM провайдеру**
 
-Ваш API ключ неверный или истек. 
+**Решения для локальной работы:**
+1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`)
+2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000
+3. Проверьте настройки в `/admin` → Настройки моделей LLM
 
-**Решения:**
-1. Проверьте API ключ в настройках (`/admin` → Настройки моделей LLM)
-2. Или переключитесь на **Ollama** для локальных моделей (работает без интернета)
+**Быстрый старт:**
+```bash
+# Для Ollama
+ollama serve
+ollama pull gpt-oss:20b
 
-Для переключения на Ollama:
-- Установите Ollama: https://ollama.ai
-- Запустите: `ollama serve`
-- Скачайте модель: `ollama pull llama3.2`
-- В настройках выберите "Ollama (Локальный)" и сохраните"""
+# Для Fine-tuned API
+cd /home/kaznu2025/fine_tune_llm_2222
+./api_manager.sh start
+```"""
             elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
-                user_message = """⚠️ **Превышен лимит запросов к OpenAI**
-
-Вы достигли лимита запросов к OpenAI API.
+                user_message = """⚠️ **Превышен лимит запросов**
 
 **Решения:**
 1. Подождите несколько минут и попробуйте снова
-2. Или переключитесь на **Ollama** для локальных моделей (без лимитов)"""
+2. Для Ollama: лимитов нет, проверьте что сервер запущен
+3. Для Fine-tuned: проверьте статус API сервера"""
+            elif "connection" in error_msg.lower() or "недоступен" in error_msg.lower():
+                user_message = f"""⚠️ **Провайдер недоступен**
+
+**Ошибка:** {error_msg}
+
+**Решения:**
+1. Для Ollama: проверьте что `ollama serve` запущен
+2. Для Fine-tuned: проверьте что API запущен на {Config.FINETUNED_API_URL}
+3. Проверьте настройки в `/admin` → Настройки моделей LLM"""
             else:
-                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}"
+                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}\n\nПроверьте настройки LLM провайдера в `/admin`"
             
             return {
                 'answer': user_message,
@@ -255,29 +266,41 @@ class ResponseGenerator:
             
             # Определяем тип ошибки и формируем понятное сообщение
             if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
-                user_message = """⚠️ **Проблема с API ключом OpenAI**
+                user_message = """⚠️ **Проблема с подключением к LLM провайдеру**
 
-Ваш API ключ неверный или истек. 
+**Решения для локальной работы:**
+1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`)
+2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000
+3. Проверьте настройки в `/admin` → Настройки моделей LLM
 
-**Решения:**
-1. Проверьте API ключ в настройках (`/admin` → Настройки моделей LLM)
-2. Или переключитесь на **Ollama** для локальных моделей (работает без интернета)
+**Быстрый старт:**
+```bash
+# Для Ollama
+ollama serve
+ollama pull gpt-oss:20b
 
-Для переключения на Ollama:
-- Установите Ollama: https://ollama.ai
-- Запустите: `ollama serve`
-- Скачайте модель: `ollama pull llama3.2`
-- В настройках выберите "Ollama (Локальный)" и сохраните"""
+# Для Fine-tuned API
+cd /home/kaznu2025/fine_tune_llm_2222
+./api_manager.sh start
+```"""
             elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
-                user_message = """⚠️ **Превышен лимит запросов к OpenAI**
-
-Вы достигли лимита запросов к OpenAI API.
+                user_message = """⚠️ **Превышен лимит запросов**
 
 **Решения:**
 1. Подождите несколько минут и попробуйте снова
-2. Или переключитесь на **Ollama** для локальных моделей (без лимитов)"""
+2. Для Ollama: лимитов нет, проверьте что сервер запущен
+3. Для Fine-tuned: проверьте статус API сервера"""
+            elif "connection" in error_msg.lower() or "недоступен" in error_msg.lower():
+                user_message = f"""⚠️ **Провайдер недоступен**
+
+**Ошибка:** {error_msg}
+
+**Решения:**
+1. Для Ollama: проверьте что `ollama serve` запущен
+2. Для Fine-tuned: проверьте что API запущен на {Config.FINETUNED_API_URL}
+3. Проверьте настройки в `/admin` → Настройки моделей LLM"""
             else:
-                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}"
+                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}\n\nПроверьте настройки LLM провайдера в `/admin`"
             
             return {
                 'answer': user_message,
@@ -406,7 +429,7 @@ class ResponseGenerator:
                     "category": "общий",
                     "complexity": "средний",
                     "needs_specialist": False,
-                    "recommendations": ["⚠️ API ключ OpenAI неверный. Проверьте настройки или переключитесь на Ollama."]
+                    "recommendations": ["⚠️ LLM провайдер недоступен. Проверьте настройки Ollama или Fine-tuned модели в /admin"]
                 }
             
             return {

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Чат - RAG Система Юридических документов Казахстана{% endblock %}
+{% block title %}Чат с поиском - ИИ Система Юридических документов Казахстана{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -75,7 +75,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-robot me-2"></i>Юридический помощник (RAG режим)
+                    <i class="fas fa-robot me-2"></i>Юридический помощник (режим поиска по документам)
                 </h5>
                 <div>
                     <a href="/chat-simple" class="btn btn-sm btn-outline-info me-2">
@@ -98,7 +98,7 @@
                 <div id="chatContainer" class="chat-container p-3">
                     <div id="welcomeMessage" class="text-center text-muted py-5">
                         <i class="fas fa-book fa-3x mb-3 text-primary"></i>
-                        <h6>Добро пожаловать в RAG чат-бот!</h6>
+                        <h6>Добро пожаловать в ИИ чат-бот!</h6>
                         <p>Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
                         <p class="small mt-3">
                             <a href="/chat-simple" class="text-decoration-none">
@@ -111,11 +111,11 @@
                             <div class="alert alert-info">
                                 <div class="d-flex align-items-center justify-content-center mb-3">
                                     <i class="fas fa-cog fa-spin me-2"></i>
-                                    <strong>RAG система не инициализирована</strong>
+                                    <strong>ИИ система не инициализирована</strong>
                                 </div>
                                 <p class="mb-3">Для начала работы необходимо загрузить и инициализировать систему поиска по документам.</p>
                                 <button id="initRagBtn" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-play me-2"></i>Загрузить RAG систему
+                                    <i class="fas fa-play me-2"></i>Загрузить ИИ систему
                                 </button>
                             </div>
                         </div>
@@ -127,7 +127,7 @@
                                     <div class="spinner-border text-warning me-3" role="status">
                                         <span class="visually-hidden">Загрузка...</span>
                                     </div>
-                                    <strong>Инициализация RAG системы...</strong>
+                                    <strong>Инициализация ИИ системы...</strong>
                                 </div>
                                 <div class="progress mb-3" style="height: 8px;">
                                     <div id="ragProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
@@ -142,7 +142,7 @@
                             <div class="alert alert-success">
                                 <div class="d-flex align-items-center justify-content-center mb-3">
                                     <i class="fas fa-check-circle me-2"></i>
-                                    <strong>RAG система готова к работе!</strong>
+                                    <strong>ИИ система готова к работе!</strong>
                                 </div>
                                 <p class="mb-0">Теперь вы можете задавать вопросы о законодательстве Казахстана.</p>
                             </div>
@@ -210,7 +210,7 @@ $(document).ready(function() {
     let messageCounter = 0;
     let ragInitialized = false;
     
-    // Всегда используем RAG режим на этой странице
+    // Всегда используем режим поиска по документам на этой странице
     const useRag = true;
 
     // Auto-scroll to bottom of chat
@@ -653,7 +653,7 @@ $(document).ready(function() {
                 },
                 body: JSON.stringify({ 
                     query: query,
-                    use_rag: true  // Всегда RAG режим на этой странице
+                    use_rag: true  // Всегда режим поиска по документам на этой странице
                 })
             });
 
@@ -849,7 +849,7 @@ $(document).ready(function() {
         }
     });
     
-    // Check RAG status on page load
+    // Проверка статуса системы поиска при загрузке страницы
     async function checkRagStatus() {
         try {
             const response = await fetch('/api/rag/status');
