@@ -6,7 +6,7 @@ services:
     volumes:
       - .:/app
       - /home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222:/home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222
-    command: ["/bin/bash", "./start_system.sh"]
+    command: ["/bin/bash", "./start_system_in_docker.sh"]
 
     deploy:
       resources:

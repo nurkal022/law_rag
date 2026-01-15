@@ -25,25 +25,25 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Проверка виртуального окружения
-if [ ! -d "venv" ]; then
-    echo -e "${YELLOW}📦 Создание виртуального окружения...${NC}"
-    python3 -m venv venv
-fi
+#if [ ! -d "venv" ]; then
+#    echo -e "${YELLOW}📦 Создание виртуального окружения...${NC}"
+#    python3 -m venv venv
+#fi
 
 # Активация виртуального окружения
-echo -e "${YELLOW}📦 Активация виртуального окружения...${NC}"
-source venv/bin/activate
+#echo -e "${YELLOW}📦 Активация виртуального окружения...${NC}"
+#source venv/bin/activate
 
 # Проверка зависимостей
-if ! venv/bin/python3 -c "import flask" 2>/dev/null; then
-    echo -e "${YELLOW}⚠️  Установка зависимостей...${NC}"
-    venv/bin/pip install -r requirements.txt
-fi
+#if ! venv/bin/python3 -c "import flask" 2>/dev/null; then
+#    echo -e "${YELLOW}⚠️  Установка зависимостей...${NC}"
+#    venv/bin/pip install -r requirements.txt
+#fi
 
 # Проверка и предзагрузка модели эмбеддингов (офлайн режим)
 echo ""
 echo -e "${BLUE}🧠 Проверка модели эмбеддингов (офлайн режим)...${NC}"
-if venv/bin/python3 -c "
+if python3 -c "
 import os
 os.environ['HF_HUB_OFFLINE'] = '1'
 os.environ['TRANSFORMERS_OFFLINE'] = '1'
@@ -59,7 +59,6 @@ else
     echo -e "${YELLOW}   Система будет работать с поиском по ключевым словам${NC}"
 fi
 
-# Проверка Ollama (основной локальный провайдер)
 echo ""
 echo -e "${BLUE}🔍 Проверка Ollama...${NC}"
 if command -v ollama &> /dev/null; then
@@ -107,7 +106,7 @@ if [ -d "$FINETUNED_DIR" ]; then
         export HF_HUB_OFFLINE=1
         
         set +e  # Временно отключаем set -e для этой команды
-        ./api_manager_in_docker.sh start
+        ./api_manager.sh start
         API_START_RESULT=$?
         set -e  # Включаем обратно
         cd - > /dev/null
@@ -139,7 +138,6 @@ else
     echo "   Система будет работать без fine-tuned модели"
 fi
 
-# Запуск Flask приложения
 echo ""
 echo -e "${GREEN}🌐 Запуск Flask приложения...${NC}"
 echo "============================================================"
@@ -165,5 +163,5 @@ echo "============================================================"
 echo ""
 
 # Запуск Flask приложения
-venv/bin/python3 app.py
+python3 app.py
 
