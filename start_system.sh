@@ -1,6 +1,6 @@
 #!/bin/bash
 # Скрипт для запуска всей системы Law RAG (локальная конфигурация)
-# Использует только локальные провайдеры: Ollama и Fine-tuned модели
+# Использует только Ollama с моделью gpt-oss:20b
 
 set -e  # Останавливаем выполнение при ошибке
 
@@ -89,55 +89,7 @@ else
     echo "   Установите: https://ollama.ai"
 fi
 
-# Проверка и запуск Fine-tuned API сервера
-FINETUNED_DIR="/home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222"
-if [ -d "$FINETUNED_DIR" ]; then
-    echo ""
-    echo -e "${YELLOW}🔧 Проверка Fine-tuned API сервера...${NC}"
-    
-    # Проверяем статус API сервера
-    if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Fine-tuned API сервер уже запущен${NC}"
-    else
-        echo -e "${YELLOW}📡 Запуск Fine-tuned API сервера (локальный режим)...${NC}"
-        cd "$FINETUNED_DIR"
-        
-        # Режим без интернета - использовать только локальные файлы модели
-        export HF_LOCAL_FILES_ONLY=true
-        export HF_HUB_OFFLINE=1
-        
-        set +e  # Временно отключаем set -e для этой команды
-        ./api_manager_in_docker.sh start
-        API_START_RESULT=$?
-        set -e  # Включаем обратно
-        cd - > /dev/null
-        
-        # Если сервер уже запущен, это нормально - продолжаем
-        if [ $API_START_RESULT -ne 0 ]; then
-            echo -e "${YELLOW}   (API сервер уже был запущен или произошла ошибка, продолжаем...)${NC}"
-        fi
-        
-        # Ждем пока сервер запустится
-        echo "⏳ Ожидание загрузки модели (это может занять несколько минут)..."
-        for i in {1..60}; do
-            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-                echo -e "${GREEN}✅ Fine-tuned API сервер готов!${NC}"
-                break
-            fi
-            if [ $i -eq 60 ]; then
-                echo -e "${RED}⚠️  Fine-tuned API сервер не запустился за 5 минут${NC}"
-                echo "   Продолжаем без fine-tuned модели..."
-            else
-                sleep 5
-                echo -n "."
-            fi
-        done
-        echo ""
-    fi
-else
-    echo -e "${YELLOW}⚠️  Директория fine-tuned модели не найдена: $FINETUNED_DIR${NC}"
-    echo "   Система будет работать без fine-tuned модели"
-fi
+# Fine-tuned API больше не используется - только Ollama
 
 # Запуск Flask приложения
 echo ""
@@ -145,19 +97,19 @@ echo -e "${GREEN}🌐 Запуск Flask приложения...${NC}"
 echo "============================================================"
 echo ""
 echo -e "${BLUE}Локальная конфигурация:${NC}"
-echo "  ✅ Используются только локальные провайдеры (Ollama/Fine-tuned)"
+echo "  ✅ Используется только Ollama с моделью gpt-oss:20b"
 echo "  ✅ Работает без интернета (после загрузки моделей)"
 echo "  ✅ Нет зависимости от облачных API"
 echo ""
 echo "Приложение будет доступно по адресам:"
 echo "  - http://localhost:5003 (Главная страница)"
 echo "  - http://localhost:5003/chat (Чат с поиском по документам)"
-echo "  - http://localhost:5003/chat-simple (Простой чат с fine-tuned моделью)"
+echo "  - http://localhost:5003/chat-simple (Простой чат без поиска)"
 echo "  - http://localhost:5003/admin (Админ панель)"
 echo ""
-echo -e "${YELLOW}Настройка провайдера:${NC}"
-echo "  - По умолчанию используется Ollama"
-echo "  - Измените LLM_PROVIDER_TYPE в .env для переключения"
+echo -e "${YELLOW}Настройка модели:${NC}"
+echo "  - Используется Ollama с моделью gpt-oss:20b"
+echo "  - Измените LLM_MODEL в .env для другой модели Ollama"
 echo "  - Или настройте в /admin → Настройки моделей LLM"
 echo ""
 echo "Для остановки нажмите Ctrl+C"

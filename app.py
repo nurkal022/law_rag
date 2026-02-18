@@ -41,18 +41,14 @@ try:
         
         # Проверяем доступность провайдера
         if not provider.is_available():
-            print(f"⚠️  ВНИМАНИЕ: Провайдер {Config.LLM_PROVIDER_TYPE} недоступен!")
-            if Config.LLM_PROVIDER_TYPE == 'ollama':
-                print("   Убедитесь, что Ollama запущена: ollama serve")
-                print("   Или установите модель: ollama pull gpt-oss:20b")
-            elif Config.LLM_PROVIDER_TYPE == 'finetuned':
-                print(f"   Убедитесь, что Fine-tuned API запущен на {Config.FINETUNED_API_URL}")
-                print("   Запустите: cd /home/kaznu2025/fine_tune_llm_2222 && ./api_manager.sh start")
+            print(f"⚠️  ВНИМАНИЕ: Ollama недоступна!")
+            print("   Убедитесь, что Ollama запущена: ollama serve")
+            print("   Или установите модель: ollama pull gpt-oss:20b")
     else:
         print("⚠️  ВНИМАНИЕ: LLM провайдер не настроен!")
-        print("   Для Ollama: убедитесь, что Ollama запущена на http://localhost:11434")
-        print("   Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000")
-        print("   Установите LLM_PROVIDER_TYPE=ollama или LLM_PROVIDER_TYPE=finetuned в .env")
+        print("   Убедитесь, что Ollama запущена на http://localhost:11434")
+        print("   Установите модель: ollama pull gpt-oss:20b")
+        print("   Установите LLM_PROVIDER_TYPE=ollama в .env")
 except Exception as e:
     print(f"⚠️  Ошибка инициализации LLM провайдера: {e}")
     print("   Проверьте настройки в config.py или переменные окружения")
@@ -141,20 +137,14 @@ def chat():
             error_msg = """⚠️ **LLM провайдер не настроен**
 
 **Решения для локальной работы:**
-1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`) и настройте в `/admin`
-2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000 и настройте в `/admin`
-
-Перейдите в настройки: `/admin` → Настройки моделей LLM
+1. Убедитесь, что Ollama запущена (`ollama serve`)
+2. Установите модель: `ollama pull gpt-oss:20b`
+3. Настройте в `/admin` → Настройки моделей LLM
 
 **Быстрый старт:**
 ```bash
-# Для Ollama
 ollama serve
 ollama pull gpt-oss:20b
-
-# Для Fine-tuned API
-cd /home/kaznu2025/fine_tune_llm_2222
-./api_manager.sh start
 ```"""
             return jsonify({
                 'error': 'LLM провайдер не настроен',
@@ -233,68 +223,14 @@ cd /home/kaznu2025/fine_tune_llm_2222
                     conversation_history
                 )
             else:
-                # Режим без поиска по документам - используем fine-tuned модель если доступна
-                try:
-                    from llm_providers.factory import LLMProviderFactory
-                    finetuned_provider = LLMProviderFactory.create_provider(
-                        provider_type='finetuned',
-                        base_url=Config.FINETUNED_API_URL
-                    )
-                    
-                    if finetuned_provider and finetuned_provider.is_available():
-                        # Используем fine-tuned модель
-                        finetuned_generator = ResponseGenerator(provider=finetuned_provider)
-                        response_data = finetuned_generator.generate_response_without_rag(
-                            user_query,
-                            conversation_history
-                        )
-                        response_data['model_type'] = 'finetuned'
-                    else:
-                        # Fallback на обычный провайдер
-                        if not generator:
-                            raise Exception("Fine-tuned модель недоступна и основной провайдер не настроен")
-                        response_data = generator.generate_response_without_rag(
-                            user_query,
-                            conversation_history
-                        )
-                        response_data['model_type'] = 'default'
-                except Exception as e:
-                    print(f"Ошибка при использовании fine-tuned модели: {e}")
-                    error_msg = str(e)
-                    # Если это ошибка подключения к API, даем понятное сообщение
-                    if "ConnectionError" in error_msg or "недоступен" in error_msg.lower() or "Connection refused" in error_msg:
-                        error_message = f"""⚠️ **Fine-tuned модель недоступна**
-
-API сервер не запущен или недоступен на {Config.FINETUNED_API_URL}.
-
-**Для запуска API сервера:**
-```bash
-cd /home/kaznu2025/fine_tune_llm_2222
-./api_manager.sh start
-```
-
-Или проверьте статус:
-```bash
-./api_manager.sh status
-```
-
-После запуска API сервера простой чат будет использовать fine-tuned модель."""
-                        return jsonify({
-                            'error': 'Fine-tuned модель недоступна',
-                            'answer': error_message,
-                            'error_type': 'api_error',
-                            'model_type': 'finetuned_unavailable'
-                        }), 503
-                    
-                    # Fallback на обычный провайдер
-                    if generator:
-                        response_data = generator.generate_response_without_rag(
-                            user_query,
-                            conversation_history
-                        )
-                        response_data['model_type'] = 'default'
-                    else:
-                        raise
+                # Режим без поиска по документам - используем основной провайдер (Ollama)
+                if not generator:
+                    raise Exception("LLM провайдер не настроен")
+                response_data = generator.generate_response_without_rag(
+                    user_query,
+                    conversation_history
+                )
+                response_data['model_type'] = 'ollama'
         except Exception as e:
             print(f"Ошибка при генерации ответа: {e}")
             error_msg = f"Ошибка при генерации ответа: {str(e)}"
@@ -705,7 +641,7 @@ def law_generator_page():
     """Страница генератора законопроектов"""
     if not law_generator:
         return render_template('error.html', 
-                             error="LLM провайдер не настроен. Настройте Ollama или Fine-tuned модель в /admin"), 500
+                             error="LLM провайдер не настроен. Настройте Ollama в /admin"), 500
     
     # Получаем вопросы для сбора данных
     questions = law_generator.get_data_collection_questions()
@@ -1256,8 +1192,7 @@ def get_llm_settings():
             'provider_type': Config.LLM_PROVIDER_TYPE,
             'model': Config.LLM_MODEL,
             'available': provider.is_available() if provider else False,
-            'ollama_base_url': Config.OLLAMA_BASE_URL if Config.LLM_PROVIDER_TYPE == 'ollama' else None,
-            'finetuned_api_url': Config.FINETUNED_API_URL if Config.LLM_PROVIDER_TYPE == 'finetuned' else None
+            'ollama_base_url': Config.OLLAMA_BASE_URL
         }
         
         # Получаем список доступных моделей
@@ -1288,26 +1223,19 @@ def update_llm_settings():
         model = data.get('model')
         ollama_base_url = data.get('ollama_base_url')
         
-        # Валидация (только локальные провайдеры)
-        if provider_type not in ['ollama', 'finetuned']:
+        # Валидация (только Ollama)
+        if provider_type != 'ollama':
             return jsonify({
                 'success': False,
-                'error': 'Неверный тип провайдера. Используйте "ollama" или "finetuned" (локальные провайдеры)'
+                'error': 'Используется только Ollama. Установите provider_type=ollama'
             }), 400
         
         # Обновляем переменные окружения (в памяти, не в файле)
         import os
-        if provider_type == 'ollama':
-            Config.LLM_PROVIDER_TYPE = 'ollama'
-            if ollama_base_url:
-                Config.OLLAMA_BASE_URL = ollama_base_url
-                os.environ['OLLAMA_BASE_URL'] = ollama_base_url
-        elif provider_type == 'finetuned':
-            Config.LLM_PROVIDER_TYPE = 'finetuned'
-            finetuned_url = data.get('finetuned_api_url')
-            if finetuned_url:
-                Config.FINETUNED_API_URL = finetuned_url
-                os.environ['FINETUNED_API_URL'] = finetuned_url
+        Config.LLM_PROVIDER_TYPE = 'ollama'
+        if ollama_base_url:
+            Config.OLLAMA_BASE_URL = ollama_base_url
+            os.environ['OLLAMA_BASE_URL'] = ollama_base_url
         
         if model:
             Config.LLM_MODEL = model
@@ -1458,13 +1386,9 @@ def initialize_app():
         else:
             print("\n⚠️  ВНИМАНИЕ: LLM провайдер не доступен!")
             print(f"   Тип: {Config.LLM_PROVIDER_TYPE}")
-            if Config.LLM_PROVIDER_TYPE == 'ollama':
-                print(f"   Убедитесь, что Ollama запущена на {Config.OLLAMA_BASE_URL}")
-                print("   Запустите: ollama serve")
-                print("   Установите модель: ollama pull gpt-oss:20b")
-            elif Config.LLM_PROVIDER_TYPE == 'finetuned':
-                print(f"   Убедитесь, что Fine-tuned API запущен на {Config.FINETUNED_API_URL}")
-                print("   Запустите: cd /home/kaznu2025/fine_tune_llm_2222 && ./api_manager.sh start")
+            print(f"   Убедитесь, что Ollama запущена на {Config.OLLAMA_BASE_URL}")
+            print("   Запустите: ollama serve")
+            print("   Установите модель: ollama pull gpt-oss:20b")
     except Exception as e:
         print(f"\n⚠️  Ошибка проверки LLM провайдера: {e}")
     

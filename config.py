@@ -9,7 +9,7 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 class Config:
     # LLM Provider настройки
     # ЛОКАЛЬНАЯ КОНФИГУРАЦИЯ: Используем только локальные провайдеры (Ollama или Fine-tuned)
-    LLM_PROVIDER_TYPE = os.getenv('LLM_PROVIDER_TYPE', 'ollama')  # 'ollama' или 'finetuned' (локальные провайдеры)
+    LLM_PROVIDER_TYPE = os.getenv('LLM_PROVIDER_TYPE', 'ollama')  # Используем только Ollama
     LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-oss:20b')  # Локальная модель по умолчанию (Ollama)
     
     # OpenAI настройки (отключены для локальной работы)
