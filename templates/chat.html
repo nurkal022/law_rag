@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Чат - RAG Система Юридических документов Казахстана{% endblock %}
+{% block title %}Чат с поиском - ИИ Система Юридических документов Казахстана{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -75,9 +75,12 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-robot me-2"></i>Юридический помощник
+                    <i class="fas fa-robot me-2"></i>Юридический помощник (режим поиска по документам)
                 </h5>
                 <div>
+                    <a href="/chat-simple" class="btn btn-sm btn-outline-info me-2">
+                        <i class="fas fa-comments me-1"></i>Простой чат
+                    </a>
                     <button class="btn btn-sm btn-outline-secondary" id="clearChatBtn">
                         <i class="fas fa-trash me-1"></i>Очистить
                     </button>
@@ -94,20 +97,25 @@
             <div class="card-body p-0">
                 <div id="chatContainer" class="chat-container p-3">
                     <div id="welcomeMessage" class="text-center text-muted py-5">
-                        <i class="fas fa-comments fa-3x mb-3"></i>
-                        <h6>Добро пожаловать в юридический чат-бот!</h6>
+                        <i class="fas fa-book fa-3x mb-3 text-primary"></i>
+                        <h6>Добро пожаловать в ИИ чат-бот!</h6>
                         <p>Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
+                        <p class="small mt-3">
+                            <a href="/chat-simple" class="text-decoration-none">
+                                <i class="fas fa-comments me-1"></i>Или используйте простой чат без поиска по документам
+                            </a>
+                        </p>
                         
                         <!-- RAG Initialization Section -->
                         <div id="ragInitSection" class="mt-4">
                             <div class="alert alert-info">
                                 <div class="d-flex align-items-center justify-content-center mb-3">
                                     <i class="fas fa-cog fa-spin me-2"></i>
-                                    <strong>RAG система не инициализирована</strong>
+                                    <strong>ИИ система не инициализирована</strong>
                                 </div>
                                 <p class="mb-3">Для начала работы необходимо загрузить и инициализировать систему поиска по документам.</p>
                                 <button id="initRagBtn" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-play me-2"></i>Загрузить RAG систему
+                                    <i class="fas fa-play me-2"></i>Загрузить ИИ систему
                                 </button>
                             </div>
                         </div>
@@ -119,7 +127,7 @@
                                     <div class="spinner-border text-warning me-3" role="status">
                                         <span class="visually-hidden">Загрузка...</span>
                                     </div>
-                                    <strong>Инициализация RAG системы...</strong>
+                                    <strong>Инициализация ИИ системы...</strong>
                                 </div>
                                 <div class="progress mb-3" style="height: 8px;">
                                     <div id="ragProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
@@ -134,7 +142,7 @@
                             <div class="alert alert-success">
                                 <div class="d-flex align-items-center justify-content-center mb-3">
                                     <i class="fas fa-check-circle me-2"></i>
-                                    <strong>RAG система готова к работе!</strong>
+                                    <strong>ИИ система готова к работе!</strong>
                                 </div>
                                 <p class="mb-0">Теперь вы можете задавать вопросы о законодательстве Казахстана.</p>
                             </div>
@@ -160,7 +168,7 @@
                     </div>
                     <small class="text-muted">
                         <i class="fas fa-info-circle me-1"></i>
-                        Нажмите Enter для отправки сообщения
+                        Нажмите Enter для отправки сообщения. Ответы формируются на основе поиска по документам.
                     </small>
                 </form>
             </div>
@@ -201,6 +209,9 @@ $(document).ready(function() {
     let isLoading = false;
     let messageCounter = 0;
     let ragInitialized = false;
+    
+    // Всегда используем режим поиска по документам на этой странице
+    const useRag = true;
 
     // Auto-scroll to bottom of chat
     function scrollToBottom() {
@@ -300,32 +311,63 @@ $(document).ready(function() {
             }
         }
 
-        // Process message to highlight source references
-        // Если сообщение уже содержит HTML (например, ошибки), используем как есть
+        // Process message with Markdown rendering
         let processedMessage = message;
         let sourceButtons = '';
         
-        // Если это не HTML сообщение, экранируем HTML для безопасности
-        if (!message.includes('<') || message.includes('&lt;')) {
-            // Экранируем HTML если это обычный текст
-            processedMessage = message
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\n/g, '<br>');
-        }
+        // Проверяем, является ли сообщение уже HTML (например, ошибки с кнопками)
+        const isHtmlMessage = message.includes('<a ') || message.includes('<button ') || 
+                             (message.includes('<') && message.includes('</') && 
+                              !message.includes('&lt;') && !message.includes('&gt;'));
         
-        if (sources && sources.length > 0) {
-            // Replace [Источник X] with clickable badges
+        if (!isHtmlMessage) {
+            // Рендерим Markdown в HTML
+            try {
+                // Настраиваем marked для безопасного рендеринга
+                marked.setOptions({
+                    breaks: true,  // Переносы строк как <br>
+                    gfm: true,     // GitHub Flavored Markdown (таблицы, зачеркивание и т.д.)
+                    headerIds: false,
+                    mangle: false
+                });
+                
+                // Рендерим markdown
+                processedMessage = marked.parse(message);
+                
+                // Обрабатываем ссылки на источники после markdown рендеринга
+                // чтобы они не конфликтовали с markdown ссылками
+                processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
+                    const sourceIndex = parseInt(sourceNum) - 1;
+                    if (sources && sourceIndex < sources.length) {
+                        return `<span class="source-ref-badge badge bg-primary" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник" style="cursor: pointer;">
+                            <i class="fas fa-book me-1"></i>Источник ${sourceNum}
+                        </span>`;
+                    }
+                    return match;
+                });
+            } catch (e) {
+                console.error('Ошибка рендеринга markdown:', e);
+                // Если ошибка, используем простую обработку
+                processedMessage = message
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br>');
+            }
+        } else {
+            // Если это уже HTML, обрабатываем ссылки на источники
             processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
                 const sourceIndex = parseInt(sourceNum) - 1;
-                if (sourceIndex < sources.length) {
-                    return `<span class="source-ref-badge" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник">
+                if (sources && sourceIndex < sources.length) {
+                    return `<span class="source-ref-badge badge bg-primary" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник" style="cursor: pointer;">
                         <i class="fas fa-book me-1"></i>Источник ${sourceNum}
                     </span>`;
                 }
                 return match;
             });
+        }
+        
+        if (sources && sources.length > 0) {
 
             // Create collapsible sources section
             sourceButtons = `
@@ -395,7 +437,7 @@ $(document).ready(function() {
                             ` : ''}
                         </div>
                     `}
-                    <div class="message-content">${processedMessage}</div>
+                    <div class="message-content markdown-content">${processedMessage}</div>
                     ${sourceButtons}
                 </div>
             </div>
@@ -603,13 +645,16 @@ $(document).ready(function() {
         console.log('Кнопка отправки заблокирована');
 
         try {
-            console.log('Отправка запроса на /api/chat...');
+            console.log('Отправка запроса на /api/chat...', { query, use_rag: true });
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ query: query })
+                body: JSON.stringify({ 
+                    query: query,
+                    use_rag: true  // Всегда режим поиска по документам на этой странице
+                })
             });
 
             console.log('Получен ответ:', response.status, response.statusText);
@@ -623,10 +668,19 @@ $(document).ready(function() {
             if (!response.ok || data.error || data.error_type) {
                 let errorMessage = data.answer || data.error || 'Произошла ошибка';
                 
-                // Конвертируем markdown в HTML для лучшего отображения
-                errorMessage = errorMessage
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n/g, '<br>');
+                // Рендерим markdown для ошибок тоже
+                try {
+                    marked.setOptions({
+                        breaks: true,
+                        gfm: true
+                    });
+                    errorMessage = marked.parse(errorMessage);
+                } catch (e) {
+                    // Если ошибка, используем простую замену
+                    errorMessage = errorMessage
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                }
                 
                 // Добавляем кнопки действий в зависимости от типа ошибки
                 if (data.error_type === 'api_error' || data.error_type === 'config_error') {
@@ -795,7 +849,7 @@ $(document).ready(function() {
         }
     });
     
-    // Check RAG status on page load
+    // Проверка статуса системы поиска при загрузке страницы
     async function checkRagStatus() {
         try {
             const response = await fetch('/api/rag/status');
@@ -1179,5 +1233,67 @@ $(document).ready(function() {
 .message-content strong {
     color: var(--primary-color);
 }
+
+/* Markdown таблицы в сообщениях */
+.message-content.markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5em 0;
+    font-size: 0.95em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: white;
+}
+
+.message-content.markdown-content table thead {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+}
+
+.message-content.markdown-content table th {
+    padding: 1em;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.message-content.markdown-content table td {
+    padding: 0.875em 1em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.message-content.markdown-content table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.message-content.markdown-content table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.message-content.markdown-content table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.message-content.markdown-content table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.message-content.markdown-content table tbody tr:nth-child(even):hover {
+    background-color: #f1f5f9;
+}
+
+/* Адаптивность таблиц на мобильных */
+@media (max-width: 768px) {
+    .message-content.markdown-content table {
+        font-size: 0.85em;
+    }
+    
+    .message-content.markdown-content table th,
+    .message-content.markdown-content table td {
+        padding: 0.5em 0.75em;
+    }
+}
+
 </style>
 {% endblock %} 

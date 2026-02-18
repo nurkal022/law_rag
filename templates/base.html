@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}RAG Система - Юридические документы Казахстана{% endblock %}</title>
+    <title>{% block title %}ИИ Система - Юридические документы Казахстана{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -152,6 +152,158 @@
             border-top: 1px solid var(--border-color);
             margin-top: 2rem;
         }
+        
+        /* Markdown стили */
+        .markdown-content {
+            line-height: 1.6;
+        }
+        
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .markdown-content h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; }
+        .markdown-content h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
+        .markdown-content h3 { font-size: 1.25rem; }
+        .markdown-content h4 { font-size: 1.1rem; }
+        
+        .markdown-content p {
+            margin-bottom: 1em;
+        }
+        
+        .markdown-content ul,
+        .markdown-content ol {
+            margin-bottom: 1em;
+            padding-left: 2em;
+        }
+        
+        .markdown-content li {
+            margin-bottom: 0.5em;
+        }
+        
+        .markdown-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding-left: 1em;
+            margin-left: 0;
+            margin-right: 0;
+            color: var(--secondary-color);
+            font-style: italic;
+            background-color: #f8f9fa;
+            padding: 1em;
+            border-radius: 4px;
+        }
+        
+        .markdown-content code {
+            background-color: #f1f5f9;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e11d48;
+        }
+        
+        .markdown-content pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1em;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 1em;
+        }
+        
+        .markdown-content pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            font-size: 0.95em;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .markdown-content table thead {
+            background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+            color: white;
+        }
+        
+        .markdown-content table th {
+            padding: 1em;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .markdown-content table td {
+            padding: 0.875em 1em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .markdown-content table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+        
+        .markdown-content table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        
+        .markdown-content table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .markdown-content table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .markdown-content table tbody tr:nth-child(even):hover {
+            background-color: #f1f5f9;
+        }
+        
+        .markdown-content strong {
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .markdown-content em {
+            font-style: italic;
+        }
+        
+        .markdown-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+        
+        .markdown-content a:hover {
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .markdown-content hr {
+            border: none;
+            border-top: 2px solid var(--border-color);
+            margin: 2em 0;
+        }
+        
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1em 0;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -162,7 +314,7 @@
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="fas fa-scale-balanced me-2"></i>
-                <strong>LawRAG</strong>
+                <strong>LawAI</strong>
                 <small class="text-muted ms-2">Юридические документы Казахстана</small>
             </a>
             
@@ -171,7 +323,10 @@
                     <i class="fas fa-th-large me-1"></i>Дашборд
                 </a>
                 <a class="nav-link" href="/chat">
-                    <i class="fas fa-comments me-1"></i>Чат
+                    <i class="fas fa-book me-1"></i>Чат с поиском
+                </a>
+                <a class="nav-link" href="/chat-simple">
+                    <i class="fas fa-comments me-1"></i>Простой чат
                 </a>
                 <a class="nav-link" href="/admin">
                     <i class="fas fa-cog me-1"></i>Админ
@@ -194,8 +349,8 @@
                         <i class="fas fa-info-circle me-2"></i>О системе
                     </h6>
                     <p class="text-muted small mb-0">
-                        RAG система для работы с юридическими документами Республики Казахстан. 
-                        Использует AI для поиска и анализа правовой информации.
+                        ИИ система для работы с юридическими документами Республики Казахстан. 
+                        Использует искусственный интеллект для поиска и анализа правовой информации.
                     </p>
                 </div>
                 <div class="col-md-6">
@@ -215,6 +370,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     
     {% block extra_js %}{% endblock %}
 </body>

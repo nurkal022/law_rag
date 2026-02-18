@@ -11,18 +11,17 @@ class ResponseGenerator:
         
         Args:
             provider: Провайдер LLM (если None, создается из конфигурации)
-            api_key: API ключ (для обратной совместимости с OpenAI)
+            api_key: API ключ (deprecated, для обратной совместимости)
         """
         if provider:
             self.provider = provider
         else:
-            # Если передан api_key, используем OpenAI
+            # Используем провайдер из конфигурации (локальные провайдеры)
+            self.provider = LLMProviderFactory.get_current_provider()
+            
+            # Если передан api_key (старый способ), предупреждаем
             if api_key:
-                from llm_providers.openai_provider import OpenAIProvider
-                self.provider = OpenAIProvider(api_key=api_key, default_model=Config.LLM_MODEL)
-            else:
-                # Иначе используем провайдер из конфигурации
-                self.provider = LLMProviderFactory.get_current_provider()
+                print("⚠️  Использование api_key устарело. Используйте локальные провайдеры (Ollama/Fine-tuned)")
         
         if not self.provider:
             raise ValueError("Не удалось инициализировать LLM провайдер. Проверьте настройки.")
@@ -60,33 +59,43 @@ class ResponseGenerator:
                          conversation_history: List[Dict] = None) -> Dict:
         """Генерация ответа на основе найденных документов"""
         
-        if not search_results:
-            return {
-                'answer': "Извините, я не смог найти релевантную информацию в документах для ответа на ваш вопрос. Попробуйте переформулировать запрос или задать более конкретный вопрос.",
-                'sources': [],
-                'confidence': 0.0
-            }
-        
         # Подготавливаем контекст
-        context = self._prepare_context(search_results)
-        sources = self._prepare_sources_list(search_results)
+        has_context = bool(search_results)
+        context = self._prepare_context(search_results) if has_context else "Релевантные документы не найдены в базе данных."
+        sources = self._prepare_sources_list(search_results) if has_context else []
         
         # Формируем системный промпт
-        system_prompt = f"""Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять точные и полезные ответы на основе предоставленных юридических документов.
+        if has_context:
+            system_prompt = f"""Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять точные и полезные ответы на основе предоставленных юридических документов.
 
 ИНСТРУКЦИИ:
-1. Отвечайте ТОЛЬКО на основе предоставленного контекста из документов
-2. Если информации недостаточно, четко об этом скажите
-3. Всегда указывайте источники, используя номера [Источник 1], [Источник 2] и т.д.
-4. Предоставляйте конкретные ссылки на статьи, пункты или разделы документов
-5. Отвечайте на русском языке
-6. Будьте точными и избегайте домыслов
-7. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
+1. В первую очередь используйте информацию из предоставленного контекста документов
+2. Если в контексте недостаточно информации для полного ответа, дополните ответ своими знаниями о законодательстве Казахстана
+3. Всегда указывайте источники из документов, используя номера [Источник 1], [Источник 2] и т.д., если используете информацию из контекста
+4. Если используете свои знания (не из контекста), укажите это явно: "На основе общих знаний о законодательстве РК..."
+5. Предоставляйте конкретные ссылки на статьи, пункты или разделы документов, когда это возможно
+6. Отвечайте на русском языке
+7. Будьте точными и избегайте домыслов
+8. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
 
 КОНТЕКСТ ИЗ ДОКУМЕНТОВ:
 {context}
 
-При ответе обязательно указывайте номера источников в квадратных скобках, например [Источник 1], [Источник 2]."""
+При ответе обязательно указывайте номера источников в квадратных скобках, если используете информацию из контекста, например [Источник 1], [Источник 2]."""
+        else:
+            # Если контекста нет, модель отвечает из своих знаний
+            system_prompt = """Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять точные и полезные ответы на юридические вопросы.
+
+ИНСТРУКЦИИ:
+1. Отвечайте на основе ваших знаний о законодательстве Республики Казахстан
+2. Укажите, что ответ основан на общих знаниях о законодательстве РК
+3. Будьте точными и информативными
+4. Если вы не уверены в ответе, честно об этом скажите
+5. Отвечайте на русском языке
+6. Если вопрос требует конкретной информации из документов, которые не были найдены, укажите это
+7. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
+
+ВАЖНО: В базе документов не найдено релевантной информации для данного запроса, поэтому отвечайте на основе своих знаний о законодательстве Казахстана."""
 
         # Подготавливаем историю разговора
         messages = [{"role": "system", "content": system_prompt}]
@@ -116,16 +125,21 @@ class ResponseGenerator:
             answer = response['content']
             
             # Вычисляем уверенность на основе количества и качества источников
-            confidence = min(0.9, len(search_results) * 0.15 + 
-                           sum(r.get('final_score', r.get('similarity_score', 0)) 
-                               for r in search_results) / len(search_results))
+            if has_context and search_results:
+                confidence = min(0.9, len(search_results) * 0.15 + 
+                               sum(r.get('final_score', r.get('similarity_score', 0)) 
+                                   for r in search_results) / len(search_results))
+            else:
+                # Если отвечаем из памяти модели, confidence ниже
+                confidence = 0.6  # Средняя уверенность для ответов из памяти модели
             
             return {
                 'answer': answer,
                 'sources': sources,
                 'confidence': confidence,
                 'model_used': response.get('model', Config.LLM_MODEL),
-                'tokens_used': response.get('usage', {}).get('total_tokens', 0) if response.get('usage') else 0
+                'tokens_used': response.get('usage', {}).get('total_tokens', 0) if response.get('usage') else 0,
+                'used_model_knowledge': not has_context  # Флаг, что использовались знания модели
             }
             
         except Exception as e:
@@ -134,29 +148,41 @@ class ResponseGenerator:
             
             # Определяем тип ошибки и формируем понятное сообщение
             if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
-                user_message = """⚠️ **Проблема с API ключом OpenAI**
+                user_message = """⚠️ **Проблема с подключением к LLM провайдеру**
 
-Ваш API ключ неверный или истек. 
+**Решения для локальной работы:**
+1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`)
+2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000
+3. Проверьте настройки в `/admin` → Настройки моделей LLM
 
-**Решения:**
-1. Проверьте API ключ в настройках (`/admin` → Настройки моделей LLM)
-2. Или переключитесь на **Ollama** для локальных моделей (работает без интернета)
+**Быстрый старт:**
+```bash
+# Для Ollama
+ollama serve
+ollama pull gpt-oss:20b
 
-Для переключения на Ollama:
-- Установите Ollama: https://ollama.ai
-- Запустите: `ollama serve`
-- Скачайте модель: `ollama pull llama3.2`
-- В настройках выберите "Ollama (Локальный)" и сохраните"""
+# Для Fine-tuned API
+cd /home/kaznu2025/fine_tune_llm_2222
+./api_manager.sh start
+```"""
             elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
-                user_message = """⚠️ **Превышен лимит запросов к OpenAI**
-
-Вы достигли лимита запросов к OpenAI API.
+                user_message = """⚠️ **Превышен лимит запросов**
 
 **Решения:**
 1. Подождите несколько минут и попробуйте снова
-2. Или переключитесь на **Ollama** для локальных моделей (без лимитов)"""
+2. Для Ollama: лимитов нет, проверьте что сервер запущен
+3. Для Fine-tuned: проверьте статус API сервера"""
+            elif "connection" in error_msg.lower() or "недоступен" in error_msg.lower():
+                user_message = f"""⚠️ **Провайдер недоступен**
+
+**Ошибка:** {error_msg}
+
+**Решения:**
+1. Для Ollama: проверьте что `ollama serve` запущен
+2. Для Fine-tuned: проверьте что API запущен на {Config.FINETUNED_API_URL}
+3. Проверьте настройки в `/admin` → Настройки моделей LLM"""
             else:
-                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}"
+                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}\n\nПроверьте настройки LLM провайдера в `/admin`"
             
             return {
                 'answer': user_message,
@@ -164,6 +190,125 @@ class ResponseGenerator:
                 'confidence': 0.0,
                 'error': error_msg,
                 'error_type': 'api_error'
+            }
+    
+    def generate_response_without_rag(self, user_query: str, 
+                                      conversation_history: List[Dict] = None) -> Dict:
+        """Генерация ответа без использования RAG (чистый чат с моделью)"""
+        
+        # Проверяем, является ли провайдер fine-tuned моделью
+        # Fine-tuned модель работает напрямую с вопросом без системного промпта
+        is_finetuned = hasattr(self.provider, '__class__') and 'FineTuned' in self.provider.__class__.__name__
+        
+        if is_finetuned:
+            # Для fine-tuned модели используем только вопрос пользователя
+            # История разговора не поддерживается API
+            messages = [{"role": "user", "content": user_query}]
+        else:
+            # Системный промпт для режима без RAG (для обычных моделей)
+            system_prompt = """Вы - AI-ассистент по юридическим вопросам Казахстана. Ваша задача - предоставлять полезные и информативные ответы на вопросы пользователей.
+
+ИНСТРУКЦИИ:
+1. Отвечайте на основе ваших знаний о законодательстве Республики Казахстан
+2. Будьте точными, информативными и полезными
+3. Если вы не уверены в ответе, честно об этом скажите
+4. Отвечайте на русском языке
+5. Если вопрос требует конкретной информации из документов, укажите, что для точного ответа нужен доступ к актуальным документам
+6. Если вопрос требует юридической консультации, рекомендуйте обратиться к квалифицированному юристу
+7. Можете отвечать на общие вопросы о законодательстве, правах граждан, процедурах и т.д.
+
+ВАЖНО: Вы работаете в режиме общего чата без доступа к базе документов. Отвечайте на основе своих знаний о законодательстве Казахстана."""
+            
+            # Подготавливаем историю разговора
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            if conversation_history:
+                for msg in conversation_history[-5:]:  # Последние 5 сообщений
+                    messages.extend([
+                        {"role": "user", "content": msg['user_query']},
+                        {"role": "assistant", "content": msg['ai_response']}
+                    ])
+            
+            # Добавляем текущий запрос
+            messages.append({"role": "user", "content": user_query})
+        
+        try:
+            # Вызываем LLM через провайдер
+            # Для fine-tuned модели используем меньший max_tokens (API ограничивает до 1024)
+            max_tokens = 512 if is_finetuned else Config.MAX_TOKENS
+            temperature = 0.75 if is_finetuned else Config.TEMPERATURE
+            
+            response = self.provider.chat_completion(
+                messages=messages,
+                model=Config.LLM_MODEL,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=0.92 if is_finetuned else 0.9,
+                frequency_penalty=0.1 if not is_finetuned else None,
+                presence_penalty=0.1 if not is_finetuned else None
+            )
+            
+            answer = response['content']
+            
+            return {
+                'answer': answer,
+                'sources': [],  # Нет источников в режиме без RAG
+                'confidence': 0.7,  # Средняя уверенность для ответов из памяти модели
+                'model_used': response.get('model', Config.LLM_MODEL),
+                'tokens_used': response.get('usage', {}).get('total_tokens', 0) if response.get('usage') else 0,
+                'used_model_knowledge': True,  # Всегда используем знания модели
+                'rag_mode': False  # Флаг режима без RAG
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Ошибка при генерации ответа (без RAG): {e}")
+            
+            # Определяем тип ошибки и формируем понятное сообщение
+            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
+                user_message = """⚠️ **Проблема с подключением к LLM провайдеру**
+
+**Решения для локальной работы:**
+1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`)
+2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000
+3. Проверьте настройки в `/admin` → Настройки моделей LLM
+
+**Быстрый старт:**
+```bash
+# Для Ollama
+ollama serve
+ollama pull gpt-oss:20b
+
+# Для Fine-tuned API
+cd /home/kaznu2025/fine_tune_llm_2222
+./api_manager.sh start
+```"""
+            elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
+                user_message = """⚠️ **Превышен лимит запросов**
+
+**Решения:**
+1. Подождите несколько минут и попробуйте снова
+2. Для Ollama: лимитов нет, проверьте что сервер запущен
+3. Для Fine-tuned: проверьте статус API сервера"""
+            elif "connection" in error_msg.lower() or "недоступен" in error_msg.lower():
+                user_message = f"""⚠️ **Провайдер недоступен**
+
+**Ошибка:** {error_msg}
+
+**Решения:**
+1. Для Ollama: проверьте что `ollama serve` запущен
+2. Для Fine-tuned: проверьте что API запущен на {Config.FINETUNED_API_URL}
+3. Проверьте настройки в `/admin` → Настройки моделей LLM"""
+            else:
+                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}\n\nПроверьте настройки LLM провайдера в `/admin`"
+            
+            return {
+                'answer': user_message,
+                'sources': [],
+                'confidence': 0.0,
+                'error': error_msg,
+                'error_type': 'api_error',
+                'rag_mode': False
             }
     
     def generate_summary(self, search_results: List[Dict], topic: str = None) -> str:
@@ -284,7 +429,7 @@ class ResponseGenerator:
                     "category": "общий",
                     "complexity": "средний",
                     "needs_specialist": False,
-                    "recommendations": ["⚠️ API ключ OpenAI неверный. Проверьте настройки или переключитесь на Ollama."]
+                    "recommendations": ["⚠️ LLM провайдер недоступен. Проверьте настройки Ollama или Fine-tuned модели в /admin"]
                 }
             
             return {

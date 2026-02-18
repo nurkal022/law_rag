@@ -21,14 +21,17 @@ class LegalCommentAnalyzer:
     """Продвинутый анализатор комментариев к законопроектам"""
     
     def __init__(self):
-        # Инициализация NLTK компонентов
-        try:
-            nltk.download('punkt', quiet=True)
-            nltk.download('punkt_tab', quiet=True)
-            nltk.download('stopwords', quiet=True)
-            nltk.download('averaged_perceptron_tagger', quiet=True)
-        except:
-            pass
+        # Инициализация NLTK компонентов (офлайн режим - данные уже скачаны)
+        # Пропускаем загрузку если нет интернета
+        import os
+        if os.environ.get('HF_HUB_OFFLINE') != '1':
+            try:
+                nltk.download('punkt', quiet=True)
+                nltk.download('punkt_tab', quiet=True)
+                nltk.download('stopwords', quiet=True)
+                nltk.download('averaged_perceptron_tagger', quiet=True)
+            except:
+                pass
         
         self.stemmer = SnowballStemmer('russian')
         

@@ -1,11 +1,11 @@
-# 🏛️ LawRAG - Система правовых инструментов Казахстана
+# 🏛️ ИИ Система - Правовые инструменты Казахстана
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-2.3+-green.svg)](https://flask.palletsprojects.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![AI Powered](https://img.shields.io/badge/AI-Powered-purple.svg)](https://openai.com/)
 
-**LawRAG** - это современная платформа для работы с правовыми документами Республики Казахстан, использующая технологии искусственного интеллекта для поиска, анализа и консультирования по вопросам законодательства.
+**ИИ Система** - это современная платформа для работы с правовыми документами Республики Казахстан, использующая технологии искусственного интеллекта для поиска, анализа и консультирования по вопросам законодательства.
 
 ![Dashboard Screenshot](screenshots/dashboard.png)
 
@@ -35,7 +35,8 @@
 ### Требования
 - Python 3.8 или выше
 - 2GB свободной оперативной памяти
-- OpenAI API ключ (опционально для полной функциональности)
+- OpenAI API ключ или Ollama (опционально для полной функциональности)
+- Fine-tuned модель (опционально, для простого чата)
 
 ### Установка
 
@@ -47,7 +48,7 @@ cd lawrag
 
 2. **Создайте виртуальное окружение**
 ```bash
-python -m venv .venv
+python -m venv venv
 source .venv/bin/activate  # Linux/Mac
 # или
 .venv\Scripts\activate     # Windows
@@ -73,14 +74,31 @@ mkdir current
 ```
 
 6. **Запустите приложение**
+
+**Вариант 1: Автоматический запуск (рекомендуется)**
+```bash
+chmod +x start_system.sh stop_system.sh
+./start_system.sh
+```
+
+Скрипт автоматически:
+- ✅ Проверит виртуальное окружение
+- ✅ Установит зависимости при необходимости
+- ✅ Запустит Fine-tuned API сервер (если доступен)
+- ✅ Запустит Flask приложение
+
+**Вариант 2: Ручной запуск**
 ```bash
 python app.py
 ```
 
 7. **Откройте в браузере**
-- Дашборд: http://localhost:5001
-- Чат: http://localhost:5001/chat
-- Админ панель: http://localhost:5001/admin
+- Дашборд: http://localhost:5003
+- Чат с поиском по документам: http://localhost:5003/chat
+- Простой чат (с fine-tuned моделью): http://localhost:5003/chat-simple
+- Админ панель: http://localhost:5003/admin
+
+📖 **Подробная инструкция**: См. [START_SYSTEM.md](START_SYSTEM.md)
 
 ## 📖 Документация
 
@@ -114,7 +132,7 @@ lawrag/
 
 #### Основные
 - `GET /` - Дашборд с инструментами
-- `GET /chat` - Чат-интерфейс RAG системы
+- `GET /chat` - Чат-интерфейс с поиском по документам
 - `GET /admin` - Панель администратора
 
 #### API
@@ -138,7 +156,7 @@ lawrag/
 CHUNK_SIZE = 1000          # Размер чанка в символах
 CHUNK_OVERLAP = 200        # Перекрытие между чанками
 
-# RAG настройки
+# Настройки ИИ системы
 MAX_TOKENS = 4000          # Максимум токенов для GPT
 TEMPERATURE = 0.1          # Температура для точности ответов
 TOP_K_RESULTS = 5          # Количество релевантных документов

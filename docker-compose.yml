@@ -1,0 +1,19 @@
+services:
+  app:
+    image: llm_rag:v1.0
+    container_name: llm_app
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222:/home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222
+    command: ["/bin/bash", "./start_system_in_docker.sh"]
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ "gpu" ]
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "all"   # or "0", "1", etc.
+      NVIDIA_DRIVER_CAPABILITIES: "all"
+    runtime: nvidia

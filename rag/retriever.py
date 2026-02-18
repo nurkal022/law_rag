@@ -1,5 +1,6 @@
 import numpy as np
 import sqlite3
+import torch
 from typing import List, Dict, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
@@ -12,18 +13,59 @@ class DocumentRetriever:
         self.embedding_model = None
         self._chunks_cache = None
         self._embeddings_cache = None
+        self.device = self._get_device()
         
         # Пытаемся загрузить модель embeddings
+        # Офлайн режим: используем только локальный кеш
+        import os
+        os.environ['HF_HUB_OFFLINE'] = '1'
+        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+        
         try:
-            self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
+            self.embedding_model = SentenceTransformer(
+                Config.EMBEDDING_MODEL, 
+                device=self.device,
+                local_files_only=True  # Только локальные файлы
+            )
             print(f"✅ Retriever: Модель загружена {Config.EMBEDDING_MODEL}")
+            print(f"   📱 Устройство: {self.device}")
         except Exception as e:
             try:
-                self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL_OFFLINE)
+                self.embedding_model = SentenceTransformer(
+                    Config.EMBEDDING_MODEL_OFFLINE, 
+                    device=self.device,
+                    local_files_only=True  # Только локальные файлы
+                )
                 print(f"✅ Retriever: Альтернативная модель загружена {Config.EMBEDDING_MODEL_OFFLINE}")
+                print(f"   📱 Устройство: {self.device}")
             except Exception as e2:
                 print(f"⚠️  Retriever: Работаем без семантического поиска")
                 self.embedding_model = None
+    
+    def _get_device(self) -> str:
+        """Определяет устройство для вычислений (CPU или GPU)"""
+        use_gpu = Config.USE_GPU_FOR_EMBEDDINGS
+        
+        if use_gpu == 'false':
+            return 'cpu'
+        elif use_gpu == 'true' or use_gpu == 'auto':
+            if torch.cuda.is_available():
+                # Проверяем совместимость GPU с PyTorch
+                try:
+                    test_tensor = torch.zeros(1, device='cuda')
+                    del test_tensor
+                    return 'cuda'
+                except RuntimeError as e:
+                    if "no kernel image" in str(e) or "not compatible" in str(e):
+                        print("⚠️  Retriever: GPU не совместим с PyTorch, используется CPU")
+                        return 'cpu'
+                    raise
+            else:
+                if use_gpu == 'true':
+                    print("⚠️  Retriever: GPU запрошен, но недоступен. Используется CPU.")
+                return 'cpu'
+        else:
+            return 'cpu'
         
     def _load_chunks_and_embeddings(self) -> bool:
         """Загрузка всех чанков и embeddings в память для быстрого поиска"""

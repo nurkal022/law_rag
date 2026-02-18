@@ -1,0 +1,167 @@
+#!/bin/bash
+# Скрипт для запуска всей системы Law RAG (локальная конфигурация)
+# Использует только локальные провайдеры: Ollama и Fine-tuned модели
+
+set -e  # Останавливаем выполнение при ошибке
+
+# ============================================================
+# ОФЛАЙН РЕЖИМ: Используем только локальные модели
+# ============================================================
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+export HF_DATASETS_OFFLINE=1
+export HF_LOCAL_FILES_ONLY=true
+# Отключаем проверку обновлений для sentence-transformers
+export SENTENCE_TRANSFORMERS_HOME="$HOME/.cache/huggingface/hub"
+
+echo "🚀 Запуск ИИ системы для юридических документов (локальная конфигурация)"
+echo "============================================================"
+
+# Цвета для вывода
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Проверка виртуального окружения
+#if [ ! -d "venv" ]; then
+#    echo -e "${YELLOW}📦 Создание виртуального окружения...${NC}"
+#    python3 -m venv venv
+#fi
+
+# Активация виртуального окружения
+#echo -e "${YELLOW}📦 Активация виртуального окружения...${NC}"
+#source venv/bin/activate
+
+# Проверка зависимостей
+#if ! venv/bin/python3 -c "import flask" 2>/dev/null; then
+#    echo -e "${YELLOW}⚠️  Установка зависимостей...${NC}"
+#    venv/bin/pip install -r requirements.txt
+#fi
+
+# Проверка и предзагрузка модели эмбеддингов (офлайн режим)
+echo ""
+echo -e "${BLUE}🧠 Проверка модели эмбеддингов (офлайн режим)...${NC}"
+if python3 -c "
+import os
+os.environ['HF_HUB_OFFLINE'] = '1'
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', local_files_only=True, device='cpu')
+embedding = model.encode('тест')
+print(f'OK: размерность {len(embedding)}')
+" 2>/dev/null; then
+    echo -e "${GREEN}✅ Модель эмбеддингов доступна (офлайн)${NC}"
+else
+    echo -e "${YELLOW}⚠️  Модель эмбеддингов не найдена в локальном кеше${NC}"
+    echo -e "${YELLOW}   Для загрузки моделей нужен интернет (один раз)${NC}"
+    echo -e "${YELLOW}   Система будет работать с поиском по ключевым словам${NC}"
+fi
+
+echo ""
+echo -e "${BLUE}🔍 Проверка Ollama...${NC}"
+if command -v ollama &> /dev/null; then
+    if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Ollama запущена${NC}"
+        # Проверяем наличие модели gpt-oss:20b
+        if ollama list 2>/dev/null | grep -q "gpt-oss:20b"; then
+            echo -e "${GREEN}   ✅ Модель gpt-oss:20b найдена${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Модель gpt-oss:20b не найдена. Установите модель:${NC}"
+            echo "   ollama pull gpt-oss:20b"
+            # Показываем общее количество моделей для информации
+            MODEL_COUNT=$(ollama list 2>/dev/null | wc -l 2>/dev/null || echo "0")
+            MODEL_COUNT=$(echo "$MODEL_COUNT" | tr -d '[:space:]')
+            if [ -n "$MODEL_COUNT" ] && [ "$MODEL_COUNT" != "0" ] && [ "$MODEL_COUNT" != "1" ]; then
+                echo -e "${BLUE}   (Всего моделей в Ollama: $((MODEL_COUNT - 1)))${NC}"
+            fi
+        fi
+    else
+        echo -e "${YELLOW}⚠️  Ollama не запущена. Запустите:${NC}"
+        echo "   ollama serve"
+        echo ""
+        echo -e "${YELLOW}   Или установите Ollama: https://ollama.ai${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  Ollama не установлена${NC}"
+    echo "   Установите: https://ollama.ai"
+fi
+
+# Проверка и запуск Fine-tuned API сервера
+FINETUNED_DIR="/home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222"
+if [ -d "$FINETUNED_DIR" ]; then
+    echo ""
+    echo -e "${YELLOW}🔧 Проверка Fine-tuned API сервера...${NC}"
+    
+    # Проверяем статус API сервера
+    if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Fine-tuned API сервер уже запущен${NC}"
+    else
+        echo -e "${YELLOW}📡 Запуск Fine-tuned API сервера (локальный режим)...${NC}"
+        cd "$FINETUNED_DIR"
+        
+        # Режим без интернета - использовать только локальные файлы модели
+        export HF_LOCAL_FILES_ONLY=true
+        export HF_HUB_OFFLINE=1
+        
+        set +e  # Временно отключаем set -e для этой команды
+        ./api_manager.sh start
+        API_START_RESULT=$?
+        set -e  # Включаем обратно
+        cd - > /dev/null
+        
+        # Если сервер уже запущен, это нормально - продолжаем
+        if [ $API_START_RESULT -ne 0 ]; then
+            echo -e "${YELLOW}   (API сервер уже был запущен или произошла ошибка, продолжаем...)${NC}"
+        fi
+        
+        # Ждем пока сервер запустится
+        echo "⏳ Ожидание загрузки модели (это может занять несколько минут)..."
+        for i in {1..60}; do
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+                echo -e "${GREEN}✅ Fine-tuned API сервер готов!${NC}"
+                break
+            fi
+            if [ $i -eq 60 ]; then
+                echo -e "${RED}⚠️  Fine-tuned API сервер не запустился за 5 минут${NC}"
+                echo "   Продолжаем без fine-tuned модели..."
+            else
+                sleep 5
+                echo -n "."
+            fi
+        done
+        echo ""
+    fi
+else
+    echo -e "${YELLOW}⚠️  Директория fine-tuned модели не найдена: $FINETUNED_DIR${NC}"
+    echo "   Система будет работать без fine-tuned модели"
+fi
+
+echo ""
+echo -e "${GREEN}🌐 Запуск Flask приложения...${NC}"
+echo "============================================================"
+echo ""
+echo -e "${BLUE}Локальная конфигурация:${NC}"
+echo "  ✅ Используются только локальные провайдеры (Ollama/Fine-tuned)"
+echo "  ✅ Работает без интернета (после загрузки моделей)"
+echo "  ✅ Нет зависимости от облачных API"
+echo ""
+echo "Приложение будет доступно по адресам:"
+echo "  - http://localhost:5003 (Главная страница)"
+echo "  - http://localhost:5003/chat (Чат с поиском по документам)"
+echo "  - http://localhost:5003/chat-simple (Простой чат с fine-tuned моделью)"
+echo "  - http://localhost:5003/admin (Админ панель)"
+echo ""
+echo -e "${YELLOW}Настройка провайдера:${NC}"
+echo "  - По умолчанию используется Ollama"
+echo "  - Измените LLM_PROVIDER_TYPE в .env для переключения"
+echo "  - Или настройте в /admin → Настройки моделей LLM"
+echo ""
+echo "Для остановки нажмите Ctrl+C"
+echo "============================================================"
+echo ""
+
+# Запуск Flask приложения
+python3 app.py
+

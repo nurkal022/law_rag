@@ -237,7 +237,7 @@ class DatabaseManager:
         """Массовая загрузка документов из директории"""
         if not os.path.exists(directory):
             print(f"⚠️  Директория {directory} не найдена")
-            return {'loaded': 0, 'errors': []}
+            return {'loaded': 0, 'errors': [], 'skipped': 0}
         
         txt_files = glob.glob(os.path.join(directory, '*.txt'))
         
@@ -246,11 +246,15 @@ class DatabaseManager:
         
         if not txt_files:
             print(f"📁 В директории {directory} нет .txt файлов")
-            return {'loaded': 0, 'errors': []}
+            return {'loaded': 0, 'errors': [], 'skipped': 0}
         
-        print(f"📚 Найдено {len(txt_files)} документов для загрузки")
+        print(f"📚 Найдено {len(txt_files)} документов в директории")
+        
+        # Получаем список уже загруженных документов для быстрой проверки
+        existing_filenames = {doc.filename for doc in Document.query.all()}
         
         loaded = 0
+        skipped = 0
         errors = []
         
         for i, file_path in enumerate(txt_files):
@@ -258,8 +262,8 @@ class DatabaseManager:
                 filename = os.path.basename(file_path)
                 
                 # Проверяем существование документа
-                existing = Document.query.filter_by(filename=filename).first()
-                if existing:
+                if filename in existing_filenames:
+                    skipped += 1
                     continue  # Документ уже существует
                 
                 # Читаем файл
@@ -267,6 +271,7 @@ class DatabaseManager:
                     content = f.read().strip()
                 
                 if not content:
+                    skipped += 1
                     continue
                 
                 # Извлекаем заголовок из имени файла
@@ -281,10 +286,11 @@ class DatabaseManager:
                 )
                 
                 db.session.add(document)
+                existing_filenames.add(filename)  # Добавляем в кэш
                 loaded += 1
                 
                 if (i + 1) % 100 == 0:
-                    print(f"  📄 Загружено {i + 1}/{len(txt_files)} документов...")
+                    print(f"  📄 Обработано {i + 1}/{len(txt_files)} документов (загружено: {loaded}, пропущено: {skipped})...")
                     db.session.commit()  # Промежуточный commit
                 
             except Exception as e:
@@ -298,11 +304,13 @@ class DatabaseManager:
             db.session.rollback()
             print(f"Ошибка при сохранении в базу: {e}")
         
-        print(f"✅ Загружено {loaded} документов в базу данных")
+        print(f"✅ Загружено {loaded} новых документов в базу данных")
+        if skipped > 0:
+            print(f"⏭️  Пропущено {skipped} документов (уже в базе)")
         if errors:
             print(f"⚠️  Ошибок: {len(errors)}")
         
-        return {'loaded': loaded, 'errors': errors}
+        return {'loaded': loaded, 'errors': errors, 'skipped': skipped}
     
     def _extract_title_from_filename(self, filename: str) -> str:
         """Извлечение заголовка из имени файла"""
