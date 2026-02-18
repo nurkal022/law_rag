@@ -1,93 +1,222 @@
 {% extends "base.html" %}
 
-{% block title %}Простой чат - Юридический помощник{% endblock %}
+{% block title %}Быстрый чат — LawAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .simple-chat-layout {
+        max-width: 800px;
+        margin: 0 auto;
+        height: calc(100vh - 160px);
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .simple-chat-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    /* Header */
+    .sc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .sc-header-left {
+        display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sc-header-icon {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: rgba(168,85,247,0.08);
+        display: flex; align-items: center; justify-content: center;
+        color: #a855f7; font-size: 0.875rem;
+    }
+    .sc-header h2 {
+        font-size: 0.9375rem; font-weight: 600;
+        margin: 0; color: var(--text);
+    }
+    .sc-badge {
+        font-size: 0.625rem; font-weight: 600;
+        background: rgba(168,85,247,0.08); color: #a855f7;
+        padding: 0.15rem 0.5rem; border-radius: 6px;
+        text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .sc-header .actions { display: flex; gap: 0.375rem; }
+    .sc-header .actions .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 6px;
+    }
+
+    /* Messages area */
+    .sc-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.25rem;
+    }
+
+    /* Welcome */
+    .sc-welcome {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+    .sc-welcome .icon {
+        width: 56px; height: 56px;
+        background: rgba(168,85,247,0.08);
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        color: #a855f7; font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .sc-welcome h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.375rem; }
+    .sc-welcome p { font-size: 0.8125rem; max-width: 380px; margin-bottom: 1.25rem; }
+    .sc-welcome p a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    .sc-welcome p a:hover { text-decoration: underline; }
+
+    .sc-examples {
+        display: flex; flex-wrap: wrap; gap: 0.5rem;
+        justify-content: center; max-width: 500px;
+    }
+    .sc-example-btn {
+        padding: 0.375rem 0.875rem;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-light);
+        border-radius: 100px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .sc-example-btn:hover {
+        background: rgba(168,85,247,0.06);
+        color: #a855f7;
+        border-color: rgba(168,85,247,0.2);
+    }
+
+    /* Messages */
+    .message { margin-bottom: 1rem; animation: fadeIn 0.3s ease; }
+    .user-message { text-align: right; }
+    .user-message .msg-bubble {
+        display: inline-block; max-width: 70%;
+        background: #a855f7; color: white;
+        padding: 0.625rem 1rem;
+        border-radius: 12px 12px 4px 12px;
+        font-size: 0.875rem; text-align: left;
+    }
+    .ai-message .msg-bubble {
+        display: inline-block; max-width: 85%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 0.875rem 1.125rem;
+        border-radius: 4px 12px 12px 12px;
+        text-align: left;
+    }
+    .ai-message .msg-header {
+        display: flex; align-items: center; gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.75rem; color: var(--text-light);
+    }
+    .ai-message .msg-header i { color: #a855f7; }
+
+    .error-message .msg-bubble { background: #fef2f2; border-color: #fecaca; }
+    .error-message .msg-bubble a { color: var(--primary); }
+
+    /* Typing */
+    .typing-animation { display: flex; align-items: center; gap: 4px; padding: 0.5rem 0; }
+    .typing-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #a855f7;
+        animation: typing 1.2s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+    .typing-text { color: var(--text-light); font-size: 0.75rem; margin-left: 0.375rem; }
+
+    /* Input */
+    .sc-input-area {
+        padding: 0.75rem 1.25rem;
+        border-top: 1px solid var(--border);
+        background: var(--bg);
+    }
+    .sc-input-area .input-group { border-radius: var(--radius); overflow: hidden; }
+    .sc-input-area .form-control {
+        border: 1px solid var(--border); border-right: none;
+        padding: 0.625rem 1rem; font-size: 0.875rem;
+    }
+    .sc-input-area .btn-send {
+        background: #a855f7; color: white;
+        border: 1px solid #a855f7; padding: 0 1rem;
+    }
+    .sc-input-area .btn-send:hover { background: #9333ea; border-color: #9333ea; }
+
+    @media (max-width: 768px) {
+        .sc-messages { min-height: 60vh; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Simple Chat Interface -->
-    <div class="col-lg-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-comments me-2"></i>Простой чат (без поиска по документам)
-                </h5>
-                <div>
-                    <a href="/chat" class="btn btn-sm btn-outline-primary me-2">
-                        <i class="fas fa-book me-1"></i>Чат с поиском
-                    </a>
-                    <button class="btn btn-sm btn-outline-secondary" id="clearChatBtn">
-                        <i class="fas fa-trash me-1"></i>Очистить
-                    </button>
-                    <button class="btn btn-sm btn-outline-info" id="historyBtn">
-                        <i class="fas fa-history me-1"></i>История
-                    </button>
-                    <a href="/" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-home me-1"></i>Дашборд
-                    </a>
-                </div>
+<div class="simple-chat-layout">
+    <div class="simple-chat-card">
+        <div class="sc-header">
+            <div class="sc-header-left">
+                <div class="sc-header-icon"><i class="fas fa-bolt"></i></div>
+                <h2>Быстрый чат</h2>
+                <span class="sc-badge">без поиска</span>
             </div>
-
-            <!-- Chat Messages -->
-            <div class="card-body p-0">
-                <div id="chatContainer" class="chat-container p-3">
-                    <div id="welcomeMessage" class="text-center text-muted py-5">
-                        <i class="fas fa-comments fa-3x mb-3 text-info"></i>
-                        <h6>Добро пожаловать в простой чат!</h6>
-                        <p>Задайте вопрос о законодательстве Казахстана. Я отвечу на основе своих знаний без поиска по документам.</p>
-                        <div class="alert alert-info mt-3" id="modelInfo" style="display: none;">
-                            <i class="fas fa-brain me-2"></i>
-                            <strong>Используется:</strong> <span id="modelName">Fine-tuned модель Gemma 3N 4B</span>
-                        </div>
-                        <p class="small mt-3 text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Для поиска по документам используйте <a href="/chat" class="text-decoration-none">чат с поиском</a>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chat Input -->
-            <div class="card-footer">
-                <form id="chatForm">
-                    <div class="input-group">
-                        <input type="text" 
-                               id="userInput" 
-                               class="form-control" 
-                               placeholder="Задайте вопрос о законодательстве Казахстана..."
-                               autocomplete="off">
-                        <button type="submit" 
-                                id="sendBtn" 
-                                class="btn btn-primary">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Нажмите Enter для отправки сообщения. Ответы формируются на основе знаний модели без поиска по документам.
-                    </small>
-                </form>
+            <div class="actions">
+                <a href="/chat" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-search me-1"></i>С поиском
+                </a>
+                <button class="btn btn-outline-secondary btn-sm" id="clearChatBtn">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- History Modal -->
-<div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">История разговоров</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="historyContent">
-                    <div class="text-center text-muted py-3">
-                        <div class="spinner-border" role="status">
-                            <span class="visually-hidden">Загрузка...</span>
-                        </div>
-                    </div>
+        <div id="chatContainer" class="sc-messages">
+            <div id="welcomeMessage" class="sc-welcome">
+                <div class="icon"><i class="fas fa-bolt"></i></div>
+                <h3>Быстрый вопрос — быстрый ответ</h3>
+                <p>Прямое общение с AI без поиска по базе документов. Для ответов со ссылками на НПА — <a href="/chat">Юридический консультант</a></p>
+                <div class="sc-examples">
+                    <button class="sc-example-btn" data-query="Что такое правоспособность?">Правоспособность</button>
+                    <button class="sc-example-btn" data-query="Отличие трудового договора от гражданско-правового">Трудовой vs ГП договор</button>
+                    <button class="sc-example-btn" data-query="Виды юридической ответственности">Виды ответственности</button>
+                    <button class="sc-example-btn" data-query="Что такое исковая давность?">Исковая давность</button>
                 </div>
             </div>
+        </div>
+
+        <div class="sc-input-area">
+            <form id="chatForm">
+                <div class="input-group">
+                    <input type="text" id="userInput" class="form-control"
+                           placeholder="Задайте вопрос..." autocomplete="off">
+                    <button type="submit" id="sendBtn" class="btn-send">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -98,396 +227,140 @@
 $(document).ready(function() {
     let isLoading = false;
     let messageCounter = 0;
-    
-    // Всегда используем режим без поиска по документам на этой странице
-    const useRag = false;
 
-    // Auto-scroll to bottom of chat
     function scrollToBottom() {
-        const chatContainer = document.getElementById('chatContainer');
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        const c = document.getElementById('chatContainer');
+        c.scrollTop = c.scrollHeight;
     }
 
-    // Add typing animation
     function addTypingIndicator() {
-        const chatContainer = document.getElementById('chatContainer');
-        if (!chatContainer) {
-            console.error('chatContainer не найден!');
-            return;
-        }
-        
-        const existingIndicator = document.getElementById('typing-indicator');
-        if (existingIndicator) {
-            existingIndicator.remove();
-        }
-        
-        const typingDiv = document.createElement('div');
-        typingDiv.id = 'typing-indicator';
-        typingDiv.className = 'message ai-message fade-in';
-        
-        typingDiv.innerHTML = `
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-robot text-primary me-2"></i>
-                        <small class="text-muted">AI Assistant</small>
-                        <span class="ms-auto">
-                            <i class="fas fa-brain text-primary me-1"></i>
-                            <small class="text-muted">думает...</small>
-                        </span>
-                    </div>
-                    <div class="typing-animation">
-                        <span class="typing-dot"></span>
-                        <span class="typing-dot"></span>
-                        <span class="typing-dot"></span>
-                        <span class="typing-text ms-2">Формирую ответ</span>
-                    </div>
+        const c = document.getElementById('chatContainer');
+        const existing = document.getElementById('typing-indicator');
+        if (existing) existing.remove();
+        const div = document.createElement('div');
+        div.id = 'typing-indicator';
+        div.className = 'message ai-message fade-in';
+        div.innerHTML = `
+            <div class="msg-bubble">
+                <div class="typing-animation">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-text">Думаю...</span>
                 </div>
-            </div>
-        `;
-        
-        chatContainer.appendChild(typingDiv);
+            </div>`;
+        c.appendChild(div);
         scrollToBottom();
     }
 
-    // Remove typing indicator
     function removeTypingIndicator() {
-        const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
+        const el = document.getElementById('typing-indicator');
+        if (el) el.remove();
     }
 
-    // Add message to chat
-    function addMessage(message, isUser = false, sources = null, confidence = null) {
-        const chatContainer = document.getElementById('chatContainer');
+    function addMessage(message, isUser = false) {
+        const c = document.getElementById('chatContainer');
         messageCounter++;
-        
-        const welcomeMsg = document.getElementById('welcomeMessage');
-        if (welcomeMsg) {
-            welcomeMsg.style.display = 'none';
-        }
+        const welcome = document.getElementById('welcomeMessage');
+        if (welcome) welcome.style.display = 'none';
 
-        const messageDiv = document.createElement('div');
-        const messageId = `message-${messageCounter}`;
-        
-        let messageClass = isUser ? 'user-message' : 'ai-message';
-        if (!isUser && (message.includes('⚠️') || message.includes('Ошибка') || message.includes('API ключ'))) {
-            messageClass += ' error-message';
-        }
-        
-        messageDiv.className = `message ${messageClass} fade-in`;
-        
-        let confidenceIcon = '';
-        let confidenceClass = '';
-        let confidenceText = '';
-        if (confidence !== null) {
-            if (confidence > 0.7) {
-                confidenceIcon = '<i class="fas fa-check-circle confidence-high"></i>';
-                confidenceClass = 'confidence-high';
-                confidenceText = 'Высокая уверенность';
-            } else if (confidence > 0.4) {
-                confidenceIcon = '<i class="fas fa-exclamation-circle confidence-medium"></i>';
-                confidenceClass = 'confidence-medium';
-                confidenceText = 'Средняя уверенность';
-            } else {
-                confidenceIcon = '<i class="fas fa-times-circle confidence-low"></i>';
-                confidenceClass = 'confidence-low';
-                confidenceText = 'Низкая уверенность';
+        const div = document.createElement('div');
+        let cls = isUser ? 'user-message' : 'ai-message';
+        if (!isUser && (message.includes('Ошибка') || message.includes('не настроен'))) cls += ' error-message';
+        div.className = `message ${cls} fade-in`;
+
+        let processed = message;
+        if (!isUser) {
+            const isHtml = message.includes('<a ') || message.includes('<button ');
+            if (!isHtml) {
+                try {
+                    marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
+                    processed = marked.parse(message);
+                } catch(e) { processed = message.replace(/\n/g, '<br>'); }
             }
+            div.innerHTML = `
+                <div class="msg-bubble">
+                    <div class="msg-header">
+                        <i class="fas fa-bolt"></i>
+                        <span>LawAI</span>
+                    </div>
+                    <div class="message-content markdown-content">${processed}</div>
+                </div>`;
+        } else {
+            processed = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            div.innerHTML = `<div class="msg-bubble">${processed}</div>`;
         }
 
-        // Process message with Markdown rendering
-        let processedMessage = message;
-        const isHtmlMessage = message.includes('<a ') || message.includes('<button ') || 
-                             (message.includes('<') && message.includes('</') && 
-                              !message.includes('&lt;') && !message.includes('&gt;'));
-        
-        if (!isHtmlMessage) {
-            try {
-                marked.setOptions({
-                    breaks: true,
-                    gfm: true,
-                    headerIds: false,
-                    mangle: false
-                });
-                
-                processedMessage = marked.parse(message);
-            } catch (e) {
-                console.error('Ошибка рендеринга markdown:', e);
-                processedMessage = message
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n/g, '<br>');
-            }
-        }
-
-        messageDiv.innerHTML = `
-            <div class="card message-card">
-                <div class="card-body">
-                    ${isUser ? '' : `
-                        <div class="d-flex align-items-center mb-2 message-header">
-                            <i class="fas fa-robot text-primary me-2"></i>
-                            <small class="text-muted">AI Assistant</small>
-                            ${confidenceIcon ? `
-                                <span class="ms-auto confidence-indicator ${confidenceClass}" title="${confidenceText}">
-                                    ${confidenceIcon} 
-                                    <small>${(confidence * 100).toFixed(0)}%</small>
-                                </span>
-                            ` : ''}
-                        </div>
-                    `}
-                    <div class="message-content markdown-content">${processedMessage}</div>
-                </div>
-            </div>
-        `;
-
-        chatContainer.appendChild(messageDiv);
+        c.appendChild(div);
         scrollToBottom();
     }
 
-    // Handle form submission
-    const chatForm = document.getElementById('chatForm');
-    if (chatForm) {
-        chatForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            if (isLoading) return;
+    // Form submit
+    const form = document.getElementById('chatForm');
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (isLoading) return;
 
-            const userInput = document.getElementById('userInput');
-            const query = userInput.value.trim();
-            
-            if (!query) return;
+        const input = document.getElementById('userInput');
+        const query = input.value.trim();
+        if (!query) return;
 
-            console.log('Отправка запроса:', query);
+        addMessage(query, true);
+        input.value = '';
+        addTypingIndicator();
+        isLoading = true;
 
-            addMessage(query, true);
-            userInput.value = '';
+        const btn = document.getElementById('sendBtn');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
+        btn.disabled = true;
 
-            addTypingIndicator();
-            isLoading = true;
-            const sendBtn = document.getElementById('sendBtn');
-            const originalBtnContent = sendBtn.innerHTML;
-            sendBtn.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div>';
-            sendBtn.disabled = true;
-
-            try {
-                console.log('Отправка запроса на /api/chat...', { query, use_rag: false });
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        query: query,
-                        use_rag: false  // Всегда режим без поиска по документам на этой странице
-                    })
-                });
-
-                console.log('Получен ответ:', response.status, response.statusText);
-                const data = await response.json();
-                console.log('Данные ответа:', data);
-
-                removeTypingIndicator();
-
-                if (!response.ok || data.error || data.error_type) {
-                    let errorMessage = data.answer || data.error || 'Произошла ошибка';
-                    
-                    try {
-                        marked.setOptions({
-                            breaks: true,
-                            gfm: true
-                        });
-                        errorMessage = marked.parse(errorMessage);
-                    } catch (e) {
-                        errorMessage = errorMessage
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\n/g, '<br>');
-                    }
-                    
-                    if (data.error_type === 'api_error' || data.error_type === 'config_error') {
-                        errorMessage += '<br><br><a href="/admin" class="btn btn-sm btn-primary mt-2"><i class="fas fa-cog me-1"></i>Перейти в настройки моделей</a>';
-                    }
-                    
-                    addMessage(errorMessage, false);
-                } else {
-                    addMessage(data.answer, false, data.sources, data.confidence);
-                    
-                    // Показываем информацию о модели
-                    if (data.model_type === 'finetuned') {
-                        const modelInfo = document.getElementById('modelInfo');
-                        const modelName = document.getElementById('modelName');
-                        if (modelInfo) {
-                            modelInfo.style.display = 'block';
-                            if (modelName) {
-                                modelName.textContent = 'Fine-tuned модель Gemma 3N 4B (обучена на юридических документах РК)';
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Ошибка при отправке запроса:', error);
-                removeTypingIndicator();
-                addMessage(`❌ Ошибка подключения: ${error.message}`, false);
-            } finally {
-                isLoading = false;
-                sendBtn.innerHTML = originalBtnContent;
-                sendBtn.disabled = false;
-                userInput.focus();
-            }
-        });
-        
-        const userInput = document.getElementById('userInput');
-        if (userInput) {
-            userInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    chatForm.dispatchEvent(new Event('submit'));
-                }
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, use_rag: false })
             });
+            const data = await response.json();
+            removeTypingIndicator();
+
+            if (!response.ok || data.error_type) {
+                let err = data.answer || data.error || 'Произошла ошибка';
+                if (data.error_type === 'api_error' || data.error_type === 'config_error') {
+                    err += '\n\n[Перейти в настройки](/admin)';
+                }
+                addMessage(err, false);
+            } else {
+                addMessage(data.answer, false);
+            }
+        } catch(error) {
+            removeTypingIndicator();
+            addMessage(`Ошибка подключения: ${error.message}`, false);
+        } finally {
+            isLoading = false;
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+            input.focus();
         }
-    }
+    });
+
+    // Example buttons
+    document.querySelectorAll('.sc-example-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('userInput').value = this.dataset.query;
+            form.dispatchEvent(new Event('submit'));
+        });
+    });
 
     // Clear chat
     document.getElementById('clearChatBtn').addEventListener('click', function() {
-        const welcomeMsg = document.getElementById('welcomeMessage');
-        if (welcomeMsg) {
-            welcomeMsg.style.display = 'block';
-        }
-        
-        const messages = document.querySelectorAll('.message');
-        messages.forEach(msg => msg.remove());
-        
+        const w = document.getElementById('welcomeMessage');
+        if (w) w.style.display = '';
+        document.querySelectorAll('.message').forEach(m => m.remove());
         messageCounter = 0;
     });
 
-    // Show history
-    document.getElementById('historyBtn').addEventListener('click', async function() {
-        const modal = new bootstrap.Modal(document.getElementById('historyModal'));
-        modal.show();
-
-        try {
-            const response = await fetch('/api/history');
-            const data = await response.json();
-            
-            const historyContent = document.getElementById('historyContent');
-            
-            if (data.success && data.history && data.history.length > 0) {
-                historyContent.innerHTML = data.history.map(item => `
-                    <div class="card mb-2">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <small class="text-muted">${new Date(item.timestamp).toLocaleString('ru-RU')}</small>
-                            </div>
-                            <div class="mb-2">
-                                <strong>Вопрос:</strong> ${item.user_query}
-                            </div>
-                            <div>
-                                <strong>Ответ:</strong>
-                                <p class="text-muted">${item.ai_response.substring(0, 200)}...</p>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                historyContent.innerHTML = '<p class="text-muted text-center">История пуста</p>';
-            }
-        } catch (error) {
-            document.getElementById('historyContent').innerHTML = 
-                '<p class="text-danger text-center">Ошибка загрузки истории</p>';
-        }
-    });
+    document.getElementById('userInput').focus();
 });
 </script>
-
-<style>
-.chat-container {
-    height: 70vh;
-    overflow-y: auto;
-}
-
-.message {
-    margin-bottom: 1rem;
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateX(-20px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-.user-message {
-    text-align: right;
-}
-
-.user-message .card {
-    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
-    color: white;
-    display: inline-block;
-    max-width: 70%;
-}
-
-.ai-message .card {
-    display: inline-block;
-    max-width: 85%;
-    background-color: white;
-}
-
-.typing-animation {
-    display: flex;
-    align-items: center;
-}
-
-.typing-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--primary-color);
-    margin: 0 2px;
-    animation: typing 1.4s infinite;
-}
-
-.typing-dot:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.typing-dot:nth-child(3) {
-    animation-delay: 0.4s;
-}
-
-@keyframes typing {
-    0%, 60%, 100% {
-        transform: translateY(0);
-        opacity: 0.7;
-    }
-    30% {
-        transform: translateY(-10px);
-        opacity: 1;
-    }
-}
-
-.fade-in {
-    animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.message-content {
-    line-height: 1.6;
-    color: var(--dark-color);
-}
-
-.message-content p {
-    margin-bottom: 1rem;
-}
-
-.message-content strong {
-    color: var(--primary-color);
-}
-</style>
 {% endblock %}
-

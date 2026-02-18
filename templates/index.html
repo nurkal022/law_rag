@@ -1,311 +1,627 @@
 {% extends "base.html" %}
 
-{% block title %}Дашборд - Правовые Инструменты{% endblock %}
+{% block title %}LawAI — Юридическая платформа{% endblock %}
+{% block nav_home %}active{% endblock %}
+{% block main_class %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ─── Hero ─── */
+    .hero-section {
+        position: relative;
+        padding: 5rem 0 4rem;
+        background: #f7f8fc;
+        overflow: hidden;
+    }
+    .hero-section::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(ellipse 80% 50% at 70% 40%, rgba(79,110,247,0.04) 0%, transparent 100%);
+        pointer-events: none;
+    }
+    .hero-row {
+        display: flex; align-items: center; gap: 3rem;
+    }
+    .hero-left { flex: 1; position: relative; z-index: 2; }
+    .hero-right { flex: 1; position: relative; z-index: 2; }
+
+    .hero-pill {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: #eef1fb; border-radius: 100px;
+        padding: 0.375rem 1rem; font-size: 0.8125rem;
+        color: var(--primary); font-weight: 600;
+        margin-bottom: 1.5rem; border: 1px solid rgba(79,110,247,0.1);
+    }
+    .hero-pill .pulse-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #22c55e; position: relative;
+    }
+    .hero-pill .pulse-dot::after {
+        content: ''; position: absolute; inset: -3px;
+        border-radius: 50%; background: rgba(34,197,94,0.3);
+        animation: pulse-ring 2s ease-out infinite;
+    }
+    @keyframes pulse-ring {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .hero-left h1 {
+        font-size: 3.5rem; font-weight: 800; color: #0f172a;
+        letter-spacing: -0.035em; line-height: 1.1;
+        margin-bottom: 1.25rem;
+    }
+    .hero-left h1 .text-accent-hero {
+        background: linear-gradient(135deg, #4f6ef7 0%, #7b5bf5 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .hero-left p {
+        font-size: 1.125rem; color: #64748b;
+        line-height: 1.75; margin-bottom: 2rem; max-width: 460px;
+    }
+    .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .btn-hero-dark {
+        background: #0f172a; color: white; border: none;
+        padding: 0.8125rem 1.75rem; font-size: 0.9375rem; font-weight: 600;
+        border-radius: 12px; display: inline-flex; align-items: center; gap: 0.5rem;
+        transition: all 0.25s ease; box-shadow: 0 2px 12px rgba(15,23,42,0.15);
+    }
+    .btn-hero-dark:hover {
+        background: #1e293b; color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(15,23,42,0.25);
+    }
+    .btn-hero-outline {
+        background: transparent; color: #475569;
+        border: 1.5px solid #e2e8f0;
+        padding: 0.75rem 1.5rem; font-size: 0.9375rem; font-weight: 500;
+        border-radius: 12px; display: inline-flex; align-items: center; gap: 0.5rem;
+        transition: all 0.25s ease;
+    }
+    .btn-hero-outline:hover {
+        color: var(--primary); border-color: var(--primary);
+        background: rgba(79,110,247,0.04);
+    }
+
+    /* ─── Hero card (right side) ─── */
+    .hero-card-stack {
+        position: relative;
+        padding: 20px 20px 30px 30px;
+    }
+    .hero-main-card {
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 20px; padding: 2rem 2.25rem;
+        color: white; position: relative; overflow: hidden;
+        box-shadow: 0 20px 60px rgba(15,23,42,0.25), 0 8px 20px rgba(15,23,42,0.15);
+    }
+    .hero-main-card::before {
+        content: '';
+        position: absolute; top: -40%; right: -30%;
+        width: 300px; height: 300px;
+        background: radial-gradient(circle, rgba(79,110,247,0.15) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+    .hero-main-card::after {
+        content: '';
+        position: absolute; bottom: -30%; left: -20%;
+        width: 250px; height: 250px;
+        background: radial-gradient(circle, rgba(123,91,245,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+    .hmc-header {
+        display: flex; align-items: center; gap: 0.75rem;
+        margin-bottom: 1.5rem; position: relative; z-index: 2;
+    }
+    .hmc-logo {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: rgba(255,255,255,0.12); display: flex;
+        align-items: center; justify-content: center;
+        font-size: 1rem;
+    }
+    .hmc-title { font-weight: 700; font-size: 1.1rem; }
+    .hmc-badge {
+        margin-left: auto; padding: 0.25rem 0.75rem;
+        background: rgba(34,197,94,0.15); border-radius: 100px;
+        font-size: 0.7rem; color: #4ade80; font-weight: 600;
+        display: flex; align-items: center; gap: 0.375rem;
+    }
+    .hmc-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; }
+
+    .hmc-chat-preview {
+        position: relative; z-index: 2;
+    }
+    .hmc-msg {
+        padding: 0.875rem 1rem; border-radius: 14px;
+        font-size: 0.8125rem; line-height: 1.55; margin-bottom: 0.75rem;
+        max-width: 85%;
+    }
+    .hmc-msg.user {
+        background: rgba(79,110,247,0.2); color: rgba(255,255,255,0.9);
+        margin-left: auto; border-bottom-right-radius: 4px;
+    }
+    .hmc-msg.ai {
+        background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85);
+        border-bottom-left-radius: 4px;
+    }
+    .hmc-msg .msg-label {
+        font-size: 0.6875rem; font-weight: 600; margin-bottom: 0.25rem;
+        color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .hmc-input-bar {
+        margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;
+        background: rgba(255,255,255,0.06); border-radius: 12px;
+        padding: 0.625rem 0.875rem; border: 1px solid rgba(255,255,255,0.08);
+        position: relative; z-index: 2;
+    }
+    .hmc-input-bar span {
+        flex: 1; font-size: 0.8125rem; color: rgba(255,255,255,0.3);
+    }
+    .hmc-input-bar i {
+        color: rgba(79,110,247,0.6); font-size: 0.875rem;
+    }
+
+    /* Floating stat cards */
+    .hero-float-card {
+        position: absolute; padding: 0.875rem 1.125rem;
+        background: white; border-radius: 14px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+        display: flex; align-items: center; gap: 0.75rem;
+        z-index: 5;
+        animation: float 4s ease-in-out infinite;
+    }
+    .hero-float-card.card-top {
+        top: 0; right: 0;
+        animation-delay: 0s;
+    }
+    .hero-float-card.card-bottom {
+        bottom: 10px; left: 0;
+        animation-delay: 2s;
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+    .hfc-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem;
+    }
+    .hfc-text .hfc-number {
+        font-size: 1rem; font-weight: 700; color: #0f172a; line-height: 1.2;
+    }
+    .hfc-text .hfc-label {
+        font-size: 0.6875rem; color: #94a3b8; font-weight: 500;
+    }
+
+    @media (max-width: 992px) {
+        .hero-row { flex-direction: column; gap: 2.5rem; }
+        .hero-left h1 { font-size: 2.5rem; }
+        .hero-right { max-width: 480px; width: 100%; }
+    }
+    @media (max-width: 576px) {
+        .hero-section { padding: 3rem 0 2.5rem; }
+        .hero-left h1 { font-size: 2rem; }
+        .hero-float-card { display: none; }
+        .hero-card-stack { padding: 0; }
+    }
+
+    /* ─── Section helpers ─── */
+    .home-section { padding: 5rem 0; }
+    .home-section.alt-bg { background: #f7f8fc; }
+
+    .section-pill {
+        display: inline-flex; align-items: center; gap: 0.375rem;
+        font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.08em; color: var(--primary);
+        background: #eef1fb; border-radius: 100px;
+        padding: 0.3rem 0.875rem; margin-bottom: 0.875rem;
+    }
+    .section-title {
+        font-size: 2.25rem; font-weight: 800; color: #0f172a;
+        letter-spacing: -0.03em; margin-bottom: 0.5rem;
+    }
+    .section-subtitle {
+        font-size: 1.05rem; color: #64748b;
+        max-width: 520px; margin-bottom: 3rem; line-height: 1.7;
+    }
+
+    /* ─── Bento feature grid ─── */
+    .bento-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: auto auto;
+        gap: 1.25rem;
+    }
+    .bento-card {
+        background: #f1f3f9;
+        border-radius: 20px;
+        padding: 2rem;
+        transition: all 0.35s ease;
+        position: relative; overflow: hidden;
+    }
+    .bento-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+    }
+    .bento-card.span-2 { grid-column: span 2; }
+    .bento-card.highlight {
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+    }
+    .bento-card.highlight h4 { color: white; }
+    .bento-card.highlight p { color: rgba(255,255,255,0.65); }
+    .bento-card.highlight .bento-icon { background: rgba(255,255,255,0.1); color: #93c5fd; }
+    .bento-card.accent-card {
+        background: linear-gradient(145deg, #4f6ef7 0%, #6b8aff 100%);
+        color: white;
+    }
+    .bento-card.accent-card h4 { color: white; }
+    .bento-card.accent-card p { color: rgba(255,255,255,0.75); }
+    .bento-card.accent-card .bento-icon { background: rgba(255,255,255,0.15); color: white; }
+
+    .bento-icon {
+        width: 48px; height: 48px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; margin-bottom: 1.25rem;
+    }
+    .bi-blue { background: rgba(79,110,247,0.1); color: var(--primary); }
+    .bi-green { background: rgba(5,150,105,0.08); color: #059669; }
+    .bi-amber { background: rgba(245,158,11,0.1); color: #d97706; }
+    .bi-purple { background: rgba(123,91,245,0.08); color: #7b5bf5; }
+
+    .bento-card h4 {
+        font-size: 1.0625rem; font-weight: 700; margin-bottom: 0.5rem;
+        color: #0f172a;
+    }
+    .bento-card p {
+        font-size: 0.875rem; color: #64748b; margin: 0; line-height: 1.6;
+    }
+    .bento-stat {
+        font-size: 2.5rem; font-weight: 800; line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    @media (max-width: 992px) {
+        .bento-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .bento-grid { grid-template-columns: 1fr; }
+        .bento-card.span-2 { grid-column: span 1; }
+    }
+
+    /* ─── Tool cards ─── */
+    .tool-card-compact {
+        background: white; border-radius: 20px;
+        padding: 2rem; height: 100%;
+        border: 1px solid #eef0f5;
+        transition: all 0.35s ease;
+        position: relative; overflow: hidden;
+    }
+    .tool-card-compact:hover {
+        border-color: transparent;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.07);
+        transform: translateY(-4px);
+    }
+    .tool-card-compact .tc-icon {
+        width: 56px; height: 56px; border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; margin-bottom: 1.25rem;
+    }
+    .tool-card-compact h3 {
+        font-size: 1.1875rem; font-weight: 700; color: #0f172a;
+        margin-bottom: 0.5rem;
+    }
+    .tool-card-compact p {
+        font-size: 0.875rem; color: #64748b;
+        line-height: 1.65; margin-bottom: 1.25rem;
+    }
+    .tool-card-compact .tc-tags {
+        display: flex; gap: 0.375rem; flex-wrap: wrap; margin-bottom: 1.25rem;
+    }
+    .tc-tag {
+        display: inline-block; padding: 0.25rem 0.625rem;
+        background: #f1f3f9; border-radius: 8px;
+        font-size: 0.75rem; font-weight: 500; color: #64748b;
+    }
+    .tool-card-compact .tc-link {
+        display: inline-flex; align-items: center; gap: 0.375rem;
+        font-size: 0.875rem; font-weight: 600; color: var(--primary);
+        text-decoration: none; transition: gap 0.2s ease;
+    }
+    .tool-card-compact:hover .tc-link { gap: 0.625rem; }
+
+    /* ─── Stats row ─── */
+    .stats-row {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+    }
+    .stat-card-v2 {
+        text-align: center; padding: 2.25rem 1.25rem;
+        border-radius: 20px; background: white;
+        border: 1px solid #eef0f5;
+        transition: all 0.3s ease;
+    }
+    .stat-card-v2:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.05);
+    }
+    .stat-number-v2 {
+        font-size: 2.75rem; font-weight: 800; line-height: 1;
+        margin-bottom: 0.5rem; color: #0f172a;
+    }
+    .stat-number-v2.gradient {
+        background: linear-gradient(135deg, #4f6ef7 0%, #7b5bf5 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .stat-label-v2 {
+        font-size: 0.8125rem; color: #94a3b8; font-weight: 500;
+    }
+    @media (max-width: 768px) {
+        .stats-row { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ─── CTA ─── */
+    .cta-section { padding: 5rem 0; }
+    .cta-box-v2 {
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 24px;
+        padding: 4rem; text-align: center;
+        position: relative; overflow: hidden;
+    }
+    .cta-box-v2::before {
+        content: '';
+        position: absolute; top: -60%; right: -10%;
+        width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(79,110,247,0.12) 0%, transparent 70%);
+        border-radius: 50%; pointer-events: none;
+    }
+    .cta-box-v2::after {
+        content: '';
+        position: absolute; bottom: -40%; left: -10%;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(123,91,245,0.08) 0%, transparent 70%);
+        border-radius: 50%; pointer-events: none;
+    }
+    .cta-box-v2 h2 {
+        font-size: 2rem; font-weight: 800; color: white;
+        margin-bottom: 0.75rem; position: relative; z-index: 2;
+        letter-spacing: -0.02em;
+    }
+    .cta-box-v2 p {
+        font-size: 1.0625rem; color: rgba(255,255,255,0.6);
+        max-width: 480px; margin: 0 auto 2rem;
+        position: relative; z-index: 2;
+    }
+    .cta-box-v2 .btn-cta {
+        background: white; color: #0f172a; border: none;
+        padding: 0.8125rem 2rem; font-size: 0.9375rem; font-weight: 600;
+        border-radius: 12px; position: relative; z-index: 2;
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        transition: all 0.25s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    }
+    .cta-box-v2 .btn-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        background: #f8fafc;
+    }
+</style>
+{% endblock %}
+
+{% block hero %}
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-row">
+            <div class="hero-left">
+                <div class="hero-pill">
+                    <span class="pulse-dot"></span>
+                    Платформа на базе ИИ
+                </div>
+                <h1>Юридическая<br>платформа<br><span class="text-accent-hero">нового поколения</span></h1>
+                <p>Работайте с законодательством Республики Казахстан при поддержке искусственного интеллекта — быстро, точно и удобно</p>
+                <div class="hero-actions">
+                    <a href="/tools" class="btn-hero-dark">Начать работу <i class="fas fa-arrow-right"></i></a>
+                    <a href="/about" class="btn-hero-outline">Узнать больше</a>
+                </div>
+            </div>
+            <div class="hero-right">
+                <div class="hero-card-stack">
+                    <div class="hero-main-card">
+                        <div class="hmc-header">
+                            <div class="hmc-logo"><i class="fas fa-scale-balanced"></i></div>
+                            <div class="hmc-title">LawAI Консультант</div>
+                            <div class="hmc-badge"><span class="dot"></span> Online</div>
+                        </div>
+                        <div class="hmc-chat-preview">
+                            <div class="hmc-msg user">
+                                <div class="msg-label">Вы</div>
+                                Какие права имеет работник при задержке заработной платы?
+                            </div>
+                            <div class="hmc-msg ai">
+                                <div class="msg-label">LawAI</div>
+                                Согласно ст. 113 Трудового кодекса РК, при задержке заработной платы работодатель обязан выплатить пеню за каждый день просрочки...
+                            </div>
+                        </div>
+                        <div class="hmc-input-bar">
+                            <span>Задайте правовой вопрос...</span>
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                    </div>
+
+                    <div class="hero-float-card card-top">
+                        <div class="hfc-icon" style="background: rgba(79,110,247,0.08); color: var(--primary);">
+                            <i class="fas fa-file-lines"></i>
+                        </div>
+                        <div class="hfc-text">
+                            <div class="hfc-number" id="hero-stat-docs">1 300+</div>
+                            <div class="hfc-label">Документов НПА</div>
+                        </div>
+                    </div>
+
+                    <div class="hero-float-card card-bottom">
+                        <div class="hfc-icon" style="background: rgba(5,150,105,0.08); color: #059669;">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="hfc-text">
+                            <div class="hfc-number">AI</div>
+                            <div class="hfc-label">Умный поиск</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <!-- Заголовок дашборда -->
-    <div class="row mb-5">
-        <div class="col-12 text-center">
-            <h1 class="display-4 text-primary mb-3">
-                <i class="fas fa-balance-scale me-3"></i>
-                Правовые Инструменты Казахстана
-            </h1>
-            <p class="lead text-muted">Комплексная платформа для работы с правовой информацией</p>
+<!-- Features — Bento Grid -->
+<section class="home-section">
+    <div class="container">
+        <div class="section-pill"><i class="fas fa-sparkles"></i> Возможности</div>
+        <h2 class="section-title">Всё для работы с правом</h2>
+        <p class="section-subtitle">Современные AI-инструменты для юристов, госорганов и граждан Казахстана</p>
+
+        <div class="bento-grid">
+            <div class="bento-card span-2 highlight">
+                <div class="bento-icon"><i class="fas fa-robot"></i></div>
+                <h4>ИИ-консультант</h4>
+                <p>Мгновенные ответы на правовые вопросы с поиском по базе нормативных документов и точными ссылками на конкретные статьи и нормы</p>
+            </div>
+            <div class="bento-card">
+                <div class="bento-icon bi-amber"><i class="fas fa-file-signature"></i></div>
+                <h4>Генерация документов</h4>
+                <p>Автоматическое создание законопроектов по стандартам РК с 13 обязательными разделами</p>
+            </div>
+            <div class="bento-card">
+                <div class="bento-icon bi-green"><i class="fas fa-chart-mixed"></i></div>
+                <h4>Правовая аналитика</h4>
+                <p>Анализ тональности и тематик комментариев к законопроектам с визуализацией</p>
+            </div>
+            <div class="bento-card">
+                <div class="bento-icon bi-purple"><i class="fas fa-database"></i></div>
+                <h4>База НПА</h4>
+                <p>Более 1 300 нормативных актов с полнотекстовым и семантическим поиском</p>
+            </div>
+            <div class="bento-card span-2 accent-card">
+                <div class="bento-stat">340 000+</div>
+                <h4>Текстовых блоков проиндексировано</h4>
+                <p>Полная база законодательства Казахстана обработана для точного поиска по контексту</p>
+            </div>
+            <div class="bento-card">
+                <div class="bento-icon bi-blue"><i class="fas fa-shield-halved"></i></div>
+                <h4>Безопасность</h4>
+                <p>Локальная обработка данных — ваши запросы защищены</p>
+            </div>
         </div>
     </div>
+</section>
 
-    <!-- Сетка инструментов -->
-    <div class="row g-4">
-        <!-- 1. RAG Система - Юридический консультант -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="rag">
-                <div class="card-body text-center p-4">
-                    <div class="tool-icon mb-3">
-                        <i class="fas fa-robot fa-3x text-primary"></i>
+<!-- Tools -->
+<section class="home-section alt-bg">
+    <div class="container">
+        <div class="section-pill"><i class="fas fa-tools"></i> Инструменты</div>
+        <h2 class="section-title">Три ключевых инструмента</h2>
+        <p class="section-subtitle">Каждый решает конкретную задачу юриста</p>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="tool-card-compact">
+                    <div class="tc-icon" style="background: rgba(79,110,247,0.08); color: var(--primary);">
+                        <i class="fas fa-comment-dots"></i>
                     </div>
-                    <h4 class="card-title mb-3">Юридический Консультант</h4>
-                    <p class="card-text text-muted mb-4">
-                        AI-помощник для получения ответов на правовые вопросы с ссылками на источники
-                    </p>
-                    <a href="/chat" class="btn btn-primary btn-lg w-100">
-                        <i class="fas fa-comments me-2"></i>Начать консультацию
-                    </a>
-                </div>
-                <div class="card-footer bg-light border-0">
-                    <small class="text-muted">
-                        <i class="fas fa-check-circle text-success me-1"></i>Активен
-                    </small>
+                    <h3>Юридический консультант</h3>
+                    <p>Задайте вопрос — получите развёрнутый ответ со ссылками на конкретные статьи и нормативные акты</p>
+                    <div class="tc-tags">
+                        <span class="tc-tag">Поиск по базе</span>
+                        <span class="tc-tag">Ссылки на источники</span>
+                    </div>
+                    <a href="/chat" class="tc-link">Открыть <i class="fas fa-arrow-right"></i></a>
                 </div>
             </div>
-        </div>
-
-        <!-- 2. Поиск по документам -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="search">
-                <div class="card-body text-center p-4">
-                    <div class="tool-icon mb-3">
-                        <i class="fas fa-search fa-3x text-info"></i>
+            <div class="col-md-4">
+                <div class="tool-card-compact">
+                    <div class="tc-icon" style="background: rgba(212,149,43,0.08); color: #d4952b;">
+                        <i class="fas fa-gavel"></i>
                     </div>
-                    <h4 class="card-title mb-3">Поиск по документам</h4>
-                    <p class="card-text text-muted mb-4">
-                        Расширенный поиск по базе правовых документов с фильтрацией и сортировкой
-                    </p>
-                    <button class="btn btn-info btn-lg w-100" onclick="showComingSoon('Поиск по документам')">
-                        <i class="fas fa-file-search me-2"></i>Открыть поиск
-                    </button>
-                </div>
-                <div class="card-footer bg-light border-0">
-                    <small class="text-muted">
-                        <i class="fas fa-clock text-warning me-1"></i>В разработке
-                    </small>
+                    <h3>Генератор законопроектов</h3>
+                    <p>Создавайте проекты законов по стандартам РК с 13 разделами, валидацией и зарубежным опытом</p>
+                    <div class="tc-tags">
+                        <span class="tc-tag">13 разделов</span>
+                        <span class="tc-tag">Экспорт</span>
+                    </div>
+                    <a href="/law-generator" class="tc-link">Открыть <i class="fas fa-arrow-right"></i></a>
                 </div>
             </div>
-        </div>
-
-        <!-- 3. Анализ договоров -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="contracts">
-                <div class="card-body text-center p-4">
-                    <div class="tool-icon mb-3">
-                        <i class="fas fa-file-contract fa-3x text-success"></i>
+            <div class="col-md-4">
+                <div class="tool-card-compact">
+                    <div class="tc-icon" style="background: rgba(5,150,105,0.08); color: #059669;">
+                        <i class="fas fa-chart-line"></i>
                     </div>
-                    <h4 class="card-title mb-3">Анализ договоров</h4>
-                    <p class="card-text text-muted mb-4">
-                        Автоматический анализ договоров на соответствие законодательству Казахстана
-                    </p>
-                    <button class="btn btn-success btn-lg w-100" onclick="showComingSoon('Анализ договоров')">
-                        <i class="fas fa-file-signature me-2"></i>Загрузить договор
-                    </button>
-                </div>
-                <div class="card-footer bg-light border-0">
-                    <small class="text-muted">
-                        <i class="fas fa-clock text-warning me-1"></i>В разработке
-                    </small>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. Генератор законопроектов -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="law-generator">
-                <div class="card-body text-center p-4">
-                    <div class="tool-icon mb-3">
-                        <i class="fas fa-gavel fa-3x text-warning"></i>
+                    <h3>Правовая аналитика</h3>
+                    <p>Загрузите данные комментариев — получите полную картину: тональность, эмоции, темы</p>
+                    <div class="tc-tags">
+                        <span class="tc-tag">Визуализации</span>
+                        <span class="tc-tag">Экспорт</span>
                     </div>
-                    <h4 class="card-title mb-3">Генератор законопроектов</h4>
-                    <p class="card-text text-muted mb-4">
-                        Создание полного документа законопроекта со всеми 13 разделами по стандартам РК
-                    </p>
-                    <a href="/law-generator" class="btn btn-warning btn-lg w-100">
-                        <i class="fas fa-gavel me-2"></i>Создать законопроект
-                    </a>
-                </div>
-                <div class="card-footer bg-light border-0">
-                    <small class="text-muted">
-                        <i class="fas fa-check-circle text-success me-1"></i>Активен
-                    </small>
-                </div>
-            </div>
-        </div>
-
-        <!-- 5. Правовой календарь -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="calendar">
-                <div class="card-body text-center p-4">
-                    <div class="tool-icon mb-3">
-                        <i class="fas fa-calendar-alt fa-3x text-danger"></i>
-                    </div>
-                    <h4 class="card-title mb-3">Правовой календарь</h4>
-                    <p class="card-text text-muted mb-4">
-                        Отслеживание сроков, изменений в законодательстве и важных правовых событий
-                    </p>
-                    <button class="btn btn-danger btn-lg w-100" onclick="showComingSoon('Правовой календарь')">
-                        <i class="fas fa-calendar-check me-2"></i>Открыть календарь
-                    </button>
-                </div>
-                <div class="card-footer bg-light border-0">
-                    <small class="text-muted">
-                        <i class="fas fa-clock text-warning me-1"></i>В разработке
-                    </small>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6. Правовая аналитика -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm tool-card" data-tool="analytics">
-                <div class="card-body text-center p-4">
-                    <div class="tool-icon mb-3">
-                        <i class="fas fa-chart-line fa-3x text-success"></i>
-                    </div>
-                    <h4 class="card-title mb-3">Правовая аналитика</h4>
-                    <p class="card-text text-muted mb-4">
-                        Анализ комментариев к законопроектам и настроений аудитории
-                    </p>
-                    <a href="/legal-analytics" class="btn btn-success btn-lg w-100">
-                        <i class="fas fa-chart-bar me-2"></i>Открыть аналитику
-                    </a>
-                </div>
-                <div class="card-footer bg-light border-0">
-                    <small class="text-muted">
-                        <i class="fas fa-check-circle text-success me-1"></i>Активен
-                    </small>
+                    <a href="/legal-analytics" class="tc-link">Открыть <i class="fas fa-arrow-right"></i></a>
                 </div>
             </div>
         </div>
     </div>
+</section>
 
-    <!-- Дополнительная информация -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <div class="card border-0 bg-light">
-                <div class="card-body text-center p-4">
-                    <h5 class="card-title mb-3">
-                        <i class="fas fa-info-circle text-primary me-2"></i>
-                        О платформе
-                    </h5>
-                    <p class="card-text text-muted mb-3">
-                        Наша платформа объединяет современные AI-технологии с глубокими знаниями 
-                        законодательства Казахстана для предоставления комплексных правовых услуг.
-                    </p>
-                    <div class="row">
-                        <div class="col-md-3 mb-2">
-                            <small class="text-muted">
-                                <i class="fas fa-database me-1"></i>
-                                <span id="docs-count">5000+</span> документов
-                            </small>
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>
-                                Обновлено сегодня
-                            </small>
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <small class="text-muted">
-                                <i class="fas fa-shield-alt me-1"></i>
-                                Безопасно и конфиденциально
-                            </small>
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <small class="text-muted">
-                                <i class="fas fa-support me-1"></i>
-                                24/7 поддержка
-                            </small>
-                        </div>
-                    </div>
-                </div>
+<!-- Stats -->
+<section class="home-section">
+    <div class="container">
+        <div class="stats-row">
+            <div class="stat-card-v2">
+                <div class="stat-number-v2 gradient" id="stat-docs">1 300+</div>
+                <div class="stat-label-v2">Документов в базе</div>
+            </div>
+            <div class="stat-card-v2">
+                <div class="stat-number-v2 gradient" id="stat-chunks">340 000+</div>
+                <div class="stat-label-v2">Текстовых блоков</div>
+            </div>
+            <div class="stat-card-v2">
+                <div class="stat-number-v2 gradient">3</div>
+                <div class="stat-label-v2">ИИ-инструмента</div>
+            </div>
+            <div class="stat-card-v2">
+                <div class="stat-number-v2 gradient">24/7</div>
+                <div class="stat-label-v2">Доступность</div>
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<!-- Модальное окно "Скоро будет" -->
-<div class="modal fade" id="comingSoonModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-rocket text-primary me-2"></i>
-                    Скоро будет доступно
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <div class="mb-3">
-                    <i class="fas fa-cogs fa-3x text-muted"></i>
-                </div>
-                <h6 id="coming-soon-title" class="mb-3"></h6>
-                <p class="text-muted">
-                    Этот инструмент находится в разработке. Мы работаем над его созданием 
-                    и скоро добавим его на платформу.
-                </p>
-                <div class="alert alert-info">
-                    <i class="fas fa-bell me-2"></i>
-                    Хотите получить уведомление о запуске? Свяжитесь с нами!
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Понятно</button>
-                <a href="/chat" class="btn btn-primary">
-                    <i class="fas fa-comments me-2"></i>Попробовать RAG-систему
-                </a>
-            </div>
+<!-- CTA -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-box-v2">
+            <h2>Готовы начать работу?</h2>
+            <p>Выберите инструмент и получите результат за считанные секунды</p>
+            <a href="/tools" class="btn-cta">
+                Перейти к инструментам <i class="fas fa-arrow-right"></i>
+            </a>
         </div>
     </div>
-</div>
-
-<style>
-.tool-card {
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.tool-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-.tool-icon {
-    transition: transform 0.3s ease;
-}
-
-.tool-card:hover .tool-icon {
-    transform: scale(1.1);
-}
-
-.card-footer {
-    font-size: 0.875rem;
-}
-
-@media (max-width: 768px) {
-    .display-4 {
-        font-size: 2rem;
-    }
-    
-    .tool-card .btn {
-        padding: 0.75rem 1rem;
-    }
-}
-</style>
+</section>
 
 <script>
-function showComingSoon(toolName) {
-    document.getElementById('coming-soon-title').textContent = toolName;
-    const modal = new bootstrap.Modal(document.getElementById('comingSoonModal'));
-    modal.show();
-}
-
-// Анимация появления карточек
-document.addEventListener('DOMContentLoaded', function() {
-    const cards = document.querySelectorAll('.tool-card');
-    cards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        
-        setTimeout(() => {
-            card.style.transition = 'all 0.5s ease';
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }, index * 100);
-    });
-});
-
-// Обновление счетчика документов
-async function updateStats() {
+async function loadStats() {
     try {
-        const response = await fetch('/api/admin/stats');
-        const data = await response.json();
-        if (data.documents > 0) {
-            document.getElementById('docs-count').textContent = data.documents.toLocaleString() + '+';
+        const r = await fetch('/api/admin/stats');
+        const d = await r.json();
+        if (d.documents_count) {
+            const fmt = d.documents_count.toLocaleString('ru-RU');
+            document.getElementById('stat-docs').textContent = fmt;
+            document.getElementById('hero-stat-docs').textContent = fmt + '+';
         }
-    } catch (error) {
-        console.log('Не удалось загрузить статистику');
-    }
+        if (d.chunks_count) document.getElementById('stat-chunks').textContent = d.chunks_count.toLocaleString('ru-RU');
+    } catch(e) {}
 }
-
-// Загружаем статистику при загрузке страницы
-updateStats();
+loadStats();
 </script>
-{% endblock %} 
+{% endblock %}

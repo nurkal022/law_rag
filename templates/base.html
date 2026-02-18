@@ -3,376 +3,454 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ИИ Система - Юридические документы Казахстана{% endblock %}</title>
-    
+    <title>{% block title %}LawAI — Юридическая платформа{% endblock %}</title>
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --primary-color: #2563eb;
-            --secondary-color: #64748b;
-            --success-color: #059669;
-            --warning-color: #d97706;
-            --danger-color: #dc2626;
-            --dark-color: #1e293b;
-            --light-color: #f8fafc;
-            --border-color: #e2e8f0;
+            /* Light theme palette */
+            --bg: #ffffff;
+            --bg-body: #f7f8fc;
+            --bg-dark: #0f172a;
+            --bg-card: #ffffff;
+            --bg-card-elevated: #f7f8fc;
+            --bg-subtle: #f1f3f9;
+            --bg-muted: #e2e8f0;
+            --bg-glass: rgba(255, 255, 255, 0.85);
+            --bg-glass-light: rgba(0, 0, 0, 0.02);
+
+            /* Primary — vibrant blue */
+            --primary: #4f6ef7;
+            --primary-light: #6b8aff;
+            --primary-dark: #3b54d4;
+            --primary-glow: rgba(79, 110, 247, 0.1);
+            --primary-glow-strong: rgba(79, 110, 247, 0.2);
+            --primary-gradient: linear-gradient(135deg, #4f6ef7 0%, #7b5bf5 100%);
+            --primary-lighter: rgba(79, 110, 247, 0.08);
+
+            /* Accent — gold */
+            --accent: #d4952b;
+            --accent-light: #f0b35a;
+            --accent-bg: rgba(212, 149, 43, 0.08);
+            --accent-gradient: linear-gradient(135deg, #d4952b 0%, #f0b35a 100%);
+
+            /* Text */
+            --text: #0f172a;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --text-muted: #cbd5e1;
+
+            /* Borders */
+            --border: #eef0f5;
+            --border-light: #f1f5f9;
+            --border-active: rgba(79, 110, 247, 0.35);
+
+            /* Semantic */
+            --success: #059669;
+            --success-light: rgba(5, 150, 105, 0.08);
+            --warning: #d97706;
+            --danger: #dc2626;
+
+            /* Shapes */
+            --radius: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.03);
+            --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.03);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.07), 0 4px 10px rgba(0,0,0,0.03);
+            --shadow-glow: 0 4px 20px rgba(79, 110, 247, 0.1);
+            --shadow-glow-strong: 0 8px 40px rgba(79, 110, 247, 0.15);
         }
-        
+
+        * { box-sizing: border-box; }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--light-color);
-            color: var(--dark-color);
+            background-color: var(--bg-body);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
-        
-        .navbar-brand {
-            font-weight: 600;
-            color: var(--primary-color) !important;
-        }
-        
+
+        /* ─── Navbar ─── */
         .navbar {
-            background-color: white !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-glass) !important;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.625rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1030;
         }
-        
-        .card {
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: var(--text) !important;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
         }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: #1d4ed8;
-            border-color: #1d4ed8;
-        }
-        
-        .text-primary {
-            color: var(--primary-color) !important;
-        }
-        
-        .bg-primary {
-            background-color: var(--primary-color) !important;
-        }
-        
-        .border-primary {
-            border-color: var(--primary-color) !important;
-        }
-        
-        .spinner-border-sm {
-            width: 1rem;
-            height: 1rem;
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .source-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
-            background-color: #e0f2fe;
-            color: #0369a1;
-        }
-        
-        .confidence-high { color: var(--success-color); }
-        .confidence-medium { color: var(--warning-color); }
-        .confidence-low { color: var(--danger-color); }
-        
-        .chat-container {
-            height: 70vh;
-            overflow-y: auto;
-        }
-        
-        .message {
-            margin-bottom: 1rem;
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        
-        .user-message {
-            text-align: right;
-        }
-        
-        .user-message .card {
-            background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+
+        .navbar-brand .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
-            display: inline-block;
-            max-width: 70%;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 8px rgba(79, 110, 247, 0.3);
         }
-        
-        .ai-message .card {
-            display: inline-block;
-            max-width: 85%;
-            background-color: white;
-        }
-        
-        .sources-container {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-        }
-        
-        .source-item {
-            background-color: #f8f9fa;
-            border: 1px solid var(--border-color);
+
+        .nav-link {
+            color: var(--text-secondary) !important;
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem !important;
             border-radius: 8px;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
             transition: all 0.2s ease;
         }
-        
-        .source-item:hover {
-            background-color: #e9ecef;
-            border-color: var(--primary-color);
+
+        .nav-link:hover {
+            color: var(--primary) !important;
+            background-color: var(--primary-lighter);
         }
-        
-        .footer {
-            background-color: white;
-            border-top: 1px solid var(--border-color);
-            margin-top: 2rem;
-        }
-        
-        /* Markdown стили */
-        .markdown-content {
-            line-height: 1.6;
-        }
-        
-        .markdown-content h1,
-        .markdown-content h2,
-        .markdown-content h3,
-        .markdown-content h4,
-        .markdown-content h5,
-        .markdown-content h6 {
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
+        .nav-link.active {
+            color: var(--primary) !important;
+            background-color: var(--primary-lighter);
             font-weight: 600;
-            color: var(--dark-color);
         }
-        
-        .markdown-content h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; }
-        .markdown-content h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
-        .markdown-content h3 { font-size: 1.25rem; }
-        .markdown-content h4 { font-size: 1.1rem; }
-        
-        .markdown-content p {
-            margin-bottom: 1em;
+
+        /* ─── Cards ─── */
+        .card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            background: var(--bg-card);
+            transition: all 0.25s ease;
         }
-        
-        .markdown-content ul,
-        .markdown-content ol {
-            margin-bottom: 1em;
-            padding-left: 2em;
+
+        .card-header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.25rem;
         }
-        
-        .markdown-content li {
-            margin-bottom: 0.5em;
+
+        /* ─── Buttons ─── */
+        .btn {
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
-        
-        .markdown-content blockquote {
-            border-left: 4px solid var(--primary-color);
-            padding-left: 1em;
-            margin-left: 0;
-            margin-right: 0;
-            color: var(--secondary-color);
-            font-style: italic;
-            background-color: #f8f9fa;
-            padding: 1em;
-            border-radius: 4px;
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            box-shadow: 0 2px 12px rgba(79, 110, 247, 0.3);
         }
-        
-        .markdown-content code {
-            background-color: #f1f5f9;
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            color: #e11d48;
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(79, 110, 247, 0.4);
+            background: var(--primary-gradient);
+            filter: brightness(1.1);
         }
-        
-        .markdown-content pre {
-            background-color: #1e293b;
-            color: #e2e8f0;
-            padding: 1em;
-            border-radius: 6px;
-            overflow-x: auto;
-            margin-bottom: 1em;
+
+        .btn-accent {
+            background: var(--accent-gradient);
+            border: none;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 12px rgba(212, 149, 43, 0.25);
         }
-        
-        .markdown-content pre code {
-            background-color: transparent;
-            padding: 0;
-            color: inherit;
-        }
-        
-        .markdown-content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1.5em 0;
-            font-size: 0.95em;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .markdown-content table thead {
-            background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+        .btn-accent:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(212, 149, 43, 0.35);
+            background: var(--accent-gradient);
+            filter: brightness(1.1);
             color: white;
         }
-        
-        .markdown-content table th {
+
+        .btn-outline-primary {
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+        }
+        .btn-outline-primary:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            color: var(--text-secondary);
+            background: transparent;
+            border: 1.5px solid var(--border);
+        }
+        .btn-ghost:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+            background: var(--primary-lighter);
+        }
+
+        .text-primary { color: var(--primary) !important; }
+        .text-accent { color: var(--accent) !important; }
+
+        /* ─── Form controls ─── */
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        /* ─── Alerts ─── */
+        .alert { border-radius: var(--radius); border: none; }
+        .alert-info {
+            background: var(--primary-lighter);
+            color: var(--primary-dark);
+        }
+        .alert-success {
+            background: var(--success-light);
+            color: var(--success);
+        }
+        .alert-danger {
+            background: rgba(220, 38, 38, 0.08);
+            color: var(--danger);
+        }
+        .alert-warning {
+            background: rgba(217, 119, 6, 0.08);
+            color: var(--warning);
+        }
+
+        /* ─── Progress ─── */
+        .progress { border-radius: 6px; height: 6px; background: var(--bg-muted); }
+        .progress-bar { background: var(--primary-gradient); border-radius: 6px; }
+
+        /* ─── Animations ─── */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─── Markdown content ─── */
+        .markdown-content { line-height: 1.7; }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3,
+        .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: var(--text);
+        }
+        .markdown-content h1 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        .markdown-content h2 { font-size: 1.3rem; }
+        .markdown-content h3 { font-size: 1.15rem; }
+        .markdown-content p { margin-bottom: 0.75em; }
+        .markdown-content ul, .markdown-content ol { padding-left: 1.75em; margin-bottom: 0.75em; }
+        .markdown-content li { margin-bottom: 0.25em; }
+        .markdown-content blockquote {
+            border-left: 3px solid var(--primary);
+            padding: 0.75em 1em;
+            margin: 1em 0;
+            background: var(--bg-subtle);
+            color: var(--text-secondary);
+            border-radius: 0 var(--radius) var(--radius) 0;
+        }
+        .markdown-content code {
+            background: var(--bg-subtle);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-size: 0.875em;
+            color: var(--primary);
+        }
+        .markdown-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
             padding: 1em;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .markdown-content table td {
-            padding: 0.875em 1em;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .markdown-content table tbody tr {
-            transition: background-color 0.2s ease;
-        }
-        
-        .markdown-content table tbody tr:hover {
-            background-color: #f8fafc;
-        }
-        
-        .markdown-content table tbody tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .markdown-content table tbody tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-        
-        .markdown-content table tbody tr:nth-child(even):hover {
-            background-color: #f1f5f9;
-        }
-        
-        .markdown-content strong {
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-        
-        .markdown-content em {
-            font-style: italic;
-        }
-        
-        .markdown-content a {
-            color: var(--primary-color);
-            text-decoration: none;
-            border-bottom: 1px solid transparent;
-            transition: border-color 0.2s ease;
-        }
-        
-        .markdown-content a:hover {
-            border-bottom-color: var(--primary-color);
-        }
-        
-        .markdown-content hr {
-            border: none;
-            border-top: 2px solid var(--border-color);
-            margin: 2em 0;
-        }
-        
-        .markdown-content img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
+            border-radius: var(--radius);
+            overflow-x: auto;
             margin: 1em 0;
         }
+        .markdown-content pre code { background: none; padding: 0; color: inherit; }
+        .markdown-content table {
+            width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.9em;
+        }
+        .markdown-content table thead { background: var(--primary); color: white; }
+        .markdown-content table th { padding: 0.75em 1em; text-align: left; font-weight: 600; }
+        .markdown-content table td { padding: 0.625em 1em; border-bottom: 1px solid var(--border); }
+        .markdown-content table tbody tr:hover { background: var(--bg-subtle); }
+        .markdown-content strong { font-weight: 600; color: var(--text); }
+        .markdown-content a { color: var(--primary); text-decoration: none; }
+        .markdown-content a:hover { text-decoration: underline; }
+        .markdown-content hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+
+        /* ─── Scrollbar ─── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+
+        /* ─── Utility ─── */
+        .text-gradient {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section { padding: 4rem 0; }
+
+        .glow-border {
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-glow);
+        }
+
+        /* ─── Footer ─── */
+        .site-footer {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+            color: rgba(255,255,255,0.8);
+            margin-top: 0;
+            padding: 3.5rem 0 0;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr;
+            gap: 2.5rem;
+            padding-bottom: 2.5rem;
+        }
+        @media (max-width: 768px) {
+            .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+        }
+        @media (max-width: 480px) {
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+        .footer-brand {
+            display: flex; align-items: center; gap: 0.625rem;
+            color: white; font-weight: 700; font-size: 1.2rem;
+            margin-bottom: 0.75rem;
+        }
+        .footer-brand .brand-icon {
+            width: 32px; height: 32px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px; display: flex; align-items: center;
+            justify-content: center; font-size: 0.85rem;
+        }
+        .footer-desc {
+            font-size: 0.8125rem; color: rgba(255,255,255,0.5);
+            line-height: 1.7; max-width: 280px;
+        }
+        .footer-heading {
+            color: white; font-weight: 600; font-size: 0.8125rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+        .footer-links { list-style: none; padding: 0; margin: 0; }
+        .footer-links li { margin-bottom: 0.5rem; }
+        .footer-links a {
+            color: rgba(255,255,255,0.5); text-decoration: none;
+            font-size: 0.875rem; transition: color 0.15s;
+        }
+        .footer-links a:hover { color: white; }
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 1.25rem 0;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.35);
+        }
     </style>
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light">
+    <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <i class="fas fa-scale-balanced me-2"></i>
-                <strong>LawAI</strong>
-                <small class="text-muted ms-2">Юридические документы Казахстана</small>
+                <span class="brand-icon"><i class="fas fa-scale-balanced"></i></span>
+                LawAI
             </a>
-            
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/">
-                    <i class="fas fa-th-large me-1"></i>Дашборд
-                </a>
-                <a class="nav-link" href="/chat">
-                    <i class="fas fa-book me-1"></i>Чат с поиском
-                </a>
-                <a class="nav-link" href="/chat-simple">
-                    <i class="fas fa-comments me-1"></i>Простой чат
-                </a>
-                <a class="nav-link" href="/admin">
-                    <i class="fas fa-cog me-1"></i>Админ
-                </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto gap-1">
+                    <a class="nav-link {% block nav_home %}{% endblock %}" href="/">Главная</a>
+                    <a class="nav-link {% block nav_tools %}{% endblock %}" href="/tools">Инструменты</a>
+                    <a class="nav-link {% block nav_about %}{% endblock %}" href="/about">О нас</a>
+                    <a class="nav-link {% block nav_admin %}{% endblock %}" href="/admin">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="container mt-4">
+    {% block hero %}{% endblock %}
+
+    <main class="{% block main_class %}container mt-4 mb-4{% endblock %}">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="footer py-4 mt-5">
+    <footer class="site-footer">
         <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6 class="text-primary">
-                        <i class="fas fa-info-circle me-2"></i>О системе
-                    </h6>
-                    <p class="text-muted small mb-0">
-                        ИИ система для работы с юридическими документами Республики Казахстан. 
-                        Использует искусственный интеллект для поиска и анализа правовой информации.
-                    </p>
+            <div class="footer-grid">
+                <div>
+                    <div class="footer-brand">
+                        <span class="brand-icon"><i class="fas fa-scale-balanced"></i></span>
+                        LawAI
+                    </div>
+                    <p class="footer-desc">Юридическая платформа на базе искусственного интеллекта для работы с законодательством Республики Казахстан</p>
                 </div>
-                <div class="col-md-6">
-                    <h6 class="text-primary">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Важное предупреждение
-                    </h6>
-                    <p class="text-muted small mb-0">
-                        Информация носит справочный характер. Для принятия юридических решений 
-                        обязательно консультируйтесь с квалифицированными юристами.
-                    </p>
+                <div>
+                    <div class="footer-heading">Инструменты</div>
+                    <ul class="footer-links">
+                        <li><a href="/chat">Юридический консультант</a></li>
+                        <li><a href="/law-generator">Генератор законопроектов</a></li>
+                        <li><a href="/legal-analytics">Правовая аналитика</a></li>
+                    </ul>
                 </div>
+                <div>
+                    <div class="footer-heading">Платформа</div>
+                    <ul class="footer-links">
+                        <li><a href="/">Главная</a></li>
+                        <li><a href="/tools">Инструменты</a></li>
+                        <li><a href="/about">О нас</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="footer-heading">Правовая информация</div>
+                    <ul class="footer-links">
+                        <li><a href="#">Информация носит справочный характер</a></li>
+                        <li><a href="#">Не является юридической консультацией</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span>&copy; 2024—2026 LawAI. Все права защищены.</span>
+                <span>Сделано в Казахстане</span>
             </div>
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
-    
+
     {% block extra_js %}{% endblock %}
 </body>
-</html> 
+</html>

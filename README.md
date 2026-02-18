@@ -77,8 +77,8 @@ mkdir current
 
 **Вариант 1: Автоматический запуск (рекомендуется)**
 ```bash
-chmod +x start_system.sh stop_system.sh
-./start_system.sh
+chmod +x scripts/start_system.sh scripts/stop_system.sh
+./scripts/start_system.sh
 ```
 
 Скрипт автоматически:

@@ -1,163 +1,424 @@
 {% extends "base.html" %}
 
-{% block title %}Админ панель - RAG Система{% endblock %}
+{% block title %}Администрирование — LawAI{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-grid {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 1.25rem;
+    }
+    .admin-sidebar .stat-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem;
+    }
+    .stat-card .label {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-light);
+        margin-bottom: 0.25rem;
+    }
+    .stat-card .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary);
+    }
+    .stat-card .sub { font-size: 0.75rem; color: var(--text-secondary); }
+
+    .admin-section {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        margin-bottom: 1.25rem;
+    }
+    .admin-section-header {
+        padding: 0.875rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .admin-section-body { padding: 1.25rem; }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        width: 100%;
+        text-align: left;
+        margin-bottom: 0.5rem;
+        font-size: 0.8125rem;
+    }
+    .action-btn:hover { border-color: var(--primary); background: var(--primary-lighter); }
+    .action-btn .icon {
+        width: 36px; height: 36px;
+        background: var(--primary-lighter);
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+    .action-btn .text strong { display: block; font-size: 0.8125rem; color: var(--text); }
+    .action-btn .text small { color: var(--text-secondary); }
+
+    #progressArea { display: none; }
+    #progressLog {
+        height: 180px;
+        overflow-y: auto;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.75rem;
+        font-family: monospace;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    /* ─── Provider cards ─── */
+    .provider-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+    @media (max-width: 768px) { .provider-cards { grid-template-columns: 1fr; } }
+    .provider-card {
+        border: 2px solid var(--border); border-radius: 14px;
+        padding: 1rem; cursor: pointer; transition: all 0.2s ease;
+        text-align: center; position: relative; background: white;
+    }
+    .provider-card:hover { border-color: #c7d0e6; }
+    .provider-card.active { border-color: var(--primary); background: rgba(79,110,247,0.03); }
+    .provider-card .pc-icon {
+        width: 42px; height: 42px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 0.625rem; font-size: 1rem;
+    }
+    .provider-card .pc-name { font-size: 0.8125rem; font-weight: 700; color: var(--text); margin-bottom: 0.125rem; }
+    .provider-card .pc-desc { font-size: 0.6875rem; color: var(--text-secondary); line-height: 1.4; }
+    .provider-card .pc-check {
+        position: absolute; top: 8px; right: 8px;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: var(--primary); color: white;
+        display: none; align-items: center; justify-content: center; font-size: 0.625rem;
+    }
+    .provider-card.active .pc-check { display: flex; }
+
+    /* ─── Provider fields ─── */
+    .provider-fields { margin-top: 1rem; }
+    .provider-panel { display: none; }
+    .provider-panel.active { display: block; }
+    .field-label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.375rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .field-input {
+        width: 100%; padding: 0.5rem 0.75rem; font-size: 0.8125rem;
+        border: 1px solid var(--border); border-radius: 10px;
+        background: var(--bg); transition: border-color 0.2s;
+        color: var(--text);
+    }
+    .field-input:focus { outline: none; border-color: var(--primary); }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 768px) { .field-row { grid-template-columns: 1fr; } }
+
+    /* ─── AI Parameters ─── */
+    .ai-params-toggle {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.5rem 0; cursor: pointer; font-size: 0.8125rem;
+        font-weight: 600; color: var(--text-secondary); border: none; background: none;
+        margin-top: 1rem;
+    }
+    .ai-params-toggle i { transition: transform 0.2s; font-size: 0.625rem; }
+    .ai-params-toggle.open i { transform: rotate(90deg); }
+    .ai-params-body { display: none; padding: 0.75rem 0; }
+    .ai-params-body.open { display: block; }
+    .param-row {
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    @media (max-width: 768px) { .param-row { grid-template-columns: 1fr; } }
+    .param-group { }
+    .param-group .field-label { margin-bottom: 0.25rem; }
+    .param-slider { display: flex; align-items: center; gap: 0.5rem; }
+    .param-slider input[type="range"] { flex: 1; accent-color: var(--primary); }
+    .param-slider .param-val {
+        min-width: 2.5rem; text-align: center;
+        font-size: 0.8125rem; font-weight: 600; color: var(--primary);
+    }
+
+    /* ─── Test result ─── */
+    .test-result {
+        margin-top: 0.75rem; padding: 0.75rem 1rem;
+        border-radius: 10px; font-size: 0.8125rem;
+        display: none; line-height: 1.5;
+    }
+    .test-result.success { background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.15); color: #059669; }
+    .test-result.error { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); color: #ef4444; }
+
+    /* ─── Save toast ─── */
+    .save-toast {
+        display: none; align-items: center; gap: 0.5rem;
+        padding: 0.5rem 1rem; border-radius: 10px;
+        background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.15);
+        color: #059669; font-size: 0.8125rem; font-weight: 500;
+    }
+    .save-toast.show { display: inline-flex; }
+
+    /* ─── Status dot ─── */
+    .status-dot {
+        width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .status-dot.online { background: #059669; }
+    .status-dot.offline { background: #ef4444; }
+    .status-dot.unknown { background: #94a3b8; }
+
+    @media (max-width: 992px) {
+        .admin-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h2 class="mb-4">
-            <i class="fas fa-cog me-2"></i>Администрирование системы
-        </h2>
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 style="font-size: 1.375rem; font-weight: 700; margin: 0;">Администрирование</h1>
 </div>
 
-<div class="row">
-    <!-- System Status -->
-    <div class="col-md-4 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-server me-2"></i>Статус системы
-                </h5>
+<div class="admin-grid">
+    <!-- Sidebar stats -->
+    <div class="admin-sidebar">
+        <div class="stat-card mb-3">
+            <div class="label">Документов</div>
+            <div class="value">{{ stats.documents_count }}</div>
+        </div>
+        <div class="stat-card mb-3">
+            <div class="label">Текстовых блоков</div>
+            <div class="value">{{ stats.chunks_count }}</div>
+            <div class="sub">{{ stats.embedded_chunks }} с embeddings</div>
+        </div>
+        <div class="stat-card mb-3">
+            <div class="label">Готовность</div>
+            <div class="value">{{ "%.0f"|format(stats.embedding_progress) }}%</div>
+            <div class="progress mt-2">
+                <div class="progress-bar {% if stats.embedding_progress >= 100 %}bg-success{% endif %}"
+                     style="width: {{ stats.embedding_progress }}%"></div>
             </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-4">
-                        <h4 class="text-primary">{{ stats.documents_count }}</h4>
-                        <small class="text-muted">Документов</small>
-                    </div>
-                    <div class="col-4">
-                        <h4 class="text-info">{{ stats.chunks_count }}</h4>
-                        <small class="text-muted">Чанков</small>
-                    </div>
-                    <div class="col-4">
-                        <h4 class="text-success">{{ stats.embedded_chunks }}</h4>
-                        <small class="text-muted">С embeddings</small>
-                    </div>
-                </div>
-                
-                <hr>
-                
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between">
-                        <small>Готовность системы:</small>
-                        <small>{{ "%.1f"|format(stats.embedding_progress) }}%</small>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar 
-                            {% if stats.embedding_progress >= 100 %}bg-success
-                            {% elif stats.embedding_progress >= 50 %}bg-warning
-                            {% else %}bg-danger{% endif %}" 
-                            style="width: {{ stats.embedding_progress }}%">
-                        </div>
-                    </div>
-                </div>
-                
-                {% if stats.embedding_progress < 100 %}
-                <div class="alert alert-warning p-2">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <small>Система не полностью готова к работе</small>
-                </div>
-                {% else %}
-                <div class="alert alert-success p-2">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <small>Система готова к работе</small>
-                </div>
-                {% endif %}
+        </div>
+        <div class="stat-card" id="apiStatusCard">
+            <div class="label">API</div>
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <div class="spinner-border spinner-border-sm text-muted"></div>
+                <span class="sub">Проверка...</span>
             </div>
         </div>
     </div>
 
-    <!-- Document Processing -->
-    <div class="col-md-8 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-file-text me-2"></i>Обработка документов
-                </h5>
+    <!-- Main area -->
+    <div class="admin-main">
+        <!-- Document processing -->
+        <div class="admin-section">
+            <div class="admin-section-header">
+                <i class="fas fa-file-lines text-primary"></i>
+                Обработка документов
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6>Автоматическая настройка</h6>
-                        <p class="text-muted small">
-                            Автоматическая загрузка документов и создание embeddings
-                        </p>
-                        <button id="autoSetupBtn" class="btn btn-success">
-                            <i class="fas fa-magic me-2"></i>Автоматическая настройка
+            <div class="admin-section-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <button class="action-btn" id="autoSetupBtn">
+                            <div class="icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+                            <div class="text">
+                                <strong>Авто-настройка</strong>
+                                <small>Загрузка и обработка документов</small>
+                            </div>
                         </button>
                     </div>
-                    <div class="col-md-6">
-                        <h6>Ручная обработка</h6>
-                        <p class="text-muted small">
-                            Пошаговая обработка документов
-                        </p>
-                        <div class="d-grid gap-2">
-                            <button id="processDocsBtn" class="btn btn-primary btn-sm">
-                                <i class="fas fa-cogs me-2"></i>Обработать все документы
-                            </button>
-                            <button id="updateEmbeddingsBtn" class="btn btn-info btn-sm">
-                                <i class="fas fa-sync me-2"></i>Обновить embeddings
-                            </button>
-                        </div>
+                    <div class="col-md-4">
+                        <button class="action-btn" id="processDocsBtn">
+                            <div class="icon"><i class="fas fa-gears"></i></div>
+                            <div class="text">
+                                <strong>Обработать документы</strong>
+                                <small>Пошаговая обработка</small>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="action-btn" id="updateEmbeddingsBtn">
+                            <div class="icon"><i class="fas fa-rotate"></i></div>
+                            <div class="text">
+                                <strong>Обновить embeddings</strong>
+                                <small>Пересчитать векторы</small>
+                            </div>
+                        </button>
                     </div>
                 </div>
-                
-                <!-- Progress Area -->
-                <div id="progressArea" class="mt-4" style="display: none;">
-                    <hr>
-                    <h6>Прогресс обработки</h6>
+
+                <div id="progressArea" class="mt-3">
                     <div class="progress mb-2">
                         <div id="progressBar" class="progress-bar" style="width: 0%"></div>
                     </div>
-                    <div id="progressLog" class="border rounded p-3" style="height: 200px; overflow-y: auto; background-color: #f8f9fa; font-family: monospace; font-size: 0.85rem;">
-                    </div>
+                    <div id="progressLog"></div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="row">
-    <!-- System Management -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-tools me-2"></i>Управление системой
-                </h5>
+        <!-- System management -->
+        <div class="admin-section">
+            <div class="admin-section-header">
+                <i class="fas fa-sliders text-primary"></i>
+                Управление
             </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <button id="clearHistoryBtn" class="btn btn-warning">
-                        <i class="fas fa-trash me-2"></i>Очистить историю чатов
+            <div class="admin-section-body">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button id="clearHistoryBtn" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-trash me-1"></i>Очистить историю чатов
                     </button>
-                    <button id="refreshStatsBtn" class="btn btn-secondary">
-                        <i class="fas fa-refresh me-2"></i>Обновить статистику
+                    <button id="refreshStatsBtn" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-rotate me-1"></i>Обновить статистику
                     </button>
-                    <a href="/" class="btn btn-success">
-                        <i class="fas fa-comments me-2"></i>Перейти к чату
+                    <a href="/" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>На главную
                     </a>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- API Status -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-plug me-2"></i>Статус API
-                </h5>
+        <!-- LLM Settings -->
+        <div class="admin-section">
+            <div class="admin-section-header">
+                <i class="fas fa-brain text-primary"></i>
+                Настройки AI-провайдера
             </div>
-            <div class="card-body">
-                <div id="apiStatus">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Проверка...</span>
+            <div class="admin-section-body">
+                <!-- Loading state -->
+                <div id="llmSettingsLoader">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="spinner-border spinner-border-sm text-muted"></div>
+                        <span class="text-muted" style="font-size: 0.8125rem">Загрузка настроек...</span>
+                    </div>
+                </div>
+
+                <!-- Settings form -->
+                <div id="llmSettingsForm" style="display: none;">
+                    <!-- Provider status -->
+                    <div id="llmProviderStatus" class="d-flex align-items-center gap-2 mb-3" style="font-size: 0.8125rem;"></div>
+
+                    <!-- Provider selection cards -->
+                    <div class="field-label">Провайдер</div>
+                    <div class="provider-cards">
+                        <div class="provider-card" data-provider="ollama">
+                            <div class="pc-check"><i class="fas fa-check"></i></div>
+                            <div class="pc-icon" style="background: rgba(79,110,247,0.08); color: var(--primary);">
+                                <i class="fas fa-server"></i>
+                            </div>
+                            <div class="pc-name">Ollama</div>
+                            <div class="pc-desc">Локальный сервер</div>
                         </div>
-                        <p class="text-muted mt-2">Проверка статуса API...</p>
+                        <div class="provider-card" data-provider="finetuned">
+                            <div class="pc-check"><i class="fas fa-check"></i></div>
+                            <div class="pc-icon" style="background: rgba(168,85,247,0.08); color: #a855f7;">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <div class="pc-name">Своя модель</div>
+                            <div class="pc-desc">Обученная локально</div>
+                        </div>
+                        <div class="provider-card" data-provider="openai">
+                            <div class="pc-check"><i class="fas fa-check"></i></div>
+                            <div class="pc-icon" style="background: rgba(5,150,105,0.08); color: #059669;">
+                                <i class="fas fa-cloud"></i>
+                            </div>
+                            <div class="pc-name">OpenAI</div>
+                            <div class="pc-desc">Облачный API</div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic provider fields -->
+                    <div class="provider-fields">
+                        <!-- Ollama -->
+                        <div class="provider-panel" id="panel-ollama">
+                            <div class="field-row">
+                                <div>
+                                    <div class="field-label">URL сервера</div>
+                                    <input type="text" class="field-input" id="ollamaBaseUrl" value="http://localhost:11434" placeholder="http://localhost:11434">
+                                </div>
+                                <div>
+                                    <div class="field-label">Модель</div>
+                                    <select class="field-input" id="ollamaModel"><option value="">Загрузка...</option></select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Finetuned -->
+                        <div class="provider-panel" id="panel-finetuned">
+                            <div>
+                                <div class="field-label">URL API модели</div>
+                                <input type="text" class="field-input" id="finetunedApiUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+                            </div>
+                        </div>
+
+                        <!-- OpenAI -->
+                        <div class="provider-panel" id="panel-openai">
+                            <div class="field-row">
+                                <div>
+                                    <div class="field-label">API ключ</div>
+                                    <input type="password" class="field-input" id="openaiApiKey" placeholder="sk-...">
+                                </div>
+                                <div>
+                                    <div class="field-label">Модель</div>
+                                    <select class="field-input" id="openaiModel">
+                                        <option value="gpt-4o-mini">gpt-4o-mini</option>
+                                        <option value="gpt-4o">gpt-4o</option>
+                                        <option value="gpt-4-turbo">gpt-4-turbo</option>
+                                        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Parameters -->
+                    <button type="button" class="ai-params-toggle" id="aiParamsToggle">
+                        <i class="fas fa-chevron-right"></i> Параметры генерации
+                    </button>
+                    <div class="ai-params-body" id="aiParamsBody">
+                        <div class="param-row">
+                            <div class="param-group">
+                                <div class="field-label">Temperature</div>
+                                <div class="param-slider">
+                                    <input type="range" id="paramTemperature" min="0" max="1" step="0.05" value="0.1">
+                                    <span class="param-val" id="paramTemperatureVal">0.10</span>
+                                </div>
+                            </div>
+                            <div class="param-group">
+                                <div class="field-label">Max tokens</div>
+                                <input type="number" class="field-input" id="paramMaxTokens" min="256" max="8000" step="256" value="4000">
+                            </div>
+                            <div class="param-group">
+                                <div class="field-label">Top K результатов</div>
+                                <input type="number" class="field-input" id="paramTopK" min="1" max="20" step="1" value="5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test result (inline) -->
+                    <div class="test-result" id="testResult"></div>
+
+                    <!-- Actions -->
+                    <div class="d-flex align-items-center gap-2 mt-3">
+                        <button type="button" id="testProviderBtn" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-vial me-1"></i>Тест
+                        </button>
+                        <button type="button" id="saveSettingsBtn" class="btn btn-primary btn-sm">
+                            <i class="fas fa-check me-1"></i>Сохранить
+                        </button>
+                        <div class="save-toast" id="saveToast">
+                            <i class="fas fa-check-circle"></i> <span id="saveToastText">Сохранено в .env</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -165,93 +426,14 @@
     </div>
 </div>
 
-<div class="row">
-    <!-- LLM Settings -->
-    <div class="col-12 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-brain me-2"></i>Настройки моделей LLM
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="llmSettingsStatus" class="mb-3">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Загрузка...</span>
-                        </div>
-                        <p class="text-muted mt-2">Загрузка настроек...</p>
-                    </div>
-                </div>
-                
-                <form id="llmSettingsForm" style="display: none;">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="providerType" class="form-label">Тип провайдера</label>
-                            <select class="form-select" id="providerType" name="provider_type" required>
-                                <option value="openai">OpenAI (Облачный)</option>
-                                <option value="ollama">Ollama (Локальный)</option>
-                            </select>
-                            <small class="form-text text-muted">
-                                OpenAI - облачные модели GPT. Ollama - локальные модели на вашем компьютере.
-                            </small>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="llmModel" class="form-label">Модель</label>
-                            <select class="form-select" id="llmModel" name="model" required>
-                                <option value="">Загрузка моделей...</option>
-                            </select>
-                            <small class="form-text text-muted">
-                                Выберите модель для использования
-                            </small>
-                        </div>
-                    </div>
-                    
-                    <div class="row" id="ollamaSettings" style="display: none;">
-                        <div class="col-md-12 mb-3">
-                            <label for="ollamaBaseUrl" class="form-label">URL Ollama сервера</label>
-                            <input type="text" class="form-control" id="ollamaBaseUrl" name="ollama_base_url" 
-                                   value="http://localhost:11434" placeholder="http://localhost:11434">
-                            <small class="form-text text-muted">
-                                Адрес вашего локального Ollama сервера
-                            </small>
-                        </div>
-                    </div>
-                    
-                    <div class="alert alert-info" id="llmInfo" style="display: none;">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <span id="llmInfoText"></span>
-                    </div>
-                    
-                    <div class="d-flex gap-2">
-                        <button type="button" id="testProviderBtn" class="btn btn-info">
-                            <i class="fas fa-vial me-2"></i>Тестировать подключение
-                        </button>
-                        <button type="submit" id="saveSettingsBtn" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Сохранить настройки
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal for confirmations -->
 <div class="modal fade" id="confirmModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-sm">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Подтверждение</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmMessage">Вы уверены, что хотите выполнить это действие?</p>
-            </div>
+            <div class="modal-header"><h6 class="modal-title">Подтверждение</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body"><p id="confirmMessage" style="font-size:0.875rem"></p></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" id="confirmBtn" class="btn btn-danger">Подтвердить</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" id="confirmBtn" class="btn btn-sm btn-danger">Подтвердить</button>
             </div>
         </div>
     </div>
@@ -263,451 +445,311 @@
 $(document).ready(function() {
     let currentAction = null;
 
-    // Check API status on load
-    checkApiStatus();
-
-    function checkApiStatus() {
-        fetch('/api/stats')
-            .then(response => response.json())
-            .then(data => {
-                const statusDiv = document.getElementById('apiStatus');
-                if (data.error) {
-                    statusDiv.innerHTML = `
-                        <div class="alert alert-danger p-2">
-                            <i class="fas fa-times-circle me-2"></i>
-                            <strong>Ошибка:</strong> ${data.error}
-                        </div>
-                    `;
-                } else {
-                    statusDiv.innerHTML = `
-                        <div class="alert alert-success p-2">
-                            <i class="fas fa-check-circle me-2"></i>
-                            <strong>API работает нормально</strong>
-                        </div>
-                        <small class="text-muted">
-                            Документов: ${data.documents_count} | 
-                            Чанков: ${data.chunks_count} | 
-                            Готовность: ${data.embedding_progress.toFixed(1)}%
-                        </small>
-                    `;
-                }
-            })
-            .catch(error => {
-                document.getElementById('apiStatus').innerHTML = `
-                    <div class="alert alert-danger p-2">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Нет связи с API</strong>
-                    </div>
-                `;
-            });
-    }
-
-    function showProgress() {
-        document.getElementById('progressArea').style.display = 'block';
-        document.getElementById('progressLog').innerHTML = '';
-        document.getElementById('progressBar').style.width = '0%';
-    }
-
-    function addLogMessage(message, type = 'info') {
-        const log = document.getElementById('progressLog');
-        const timestamp = new Date().toLocaleTimeString();
-        const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
-        
-        log.innerHTML += `<div>[${timestamp}] ${icon} ${message}</div>`;
-        log.scrollTop = log.scrollHeight;
-    }
-
-    function updateProgress(percent) {
-        document.getElementById('progressBar').style.width = percent + '%';
-    }
-
-    // Auto-setup functionality
-    document.getElementById('autoSetupBtn').addEventListener('click', function() {
-        if (this.disabled) return;
-        
-        showProgress();
-        addLogMessage('🚀 Запуск автоматической настройки системы...');
-        
-        this.disabled = true;
-        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Настройка...';
-        
-        fetch('/api/admin/auto_setup', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addLogMessage('✅ Автоматическая настройка завершена успешно!', 'success');
-                
-                // Показываем результаты каждого шага
-                data.steps.forEach(step => {
-                    const icon = step.status === 'completed' ? '✅' : 
-                                step.status === 'skipped' ? '⏭️' : '❌';
-                    const type = step.status === 'completed' ? 'success' : 
-                                step.status === 'skipped' ? 'info' : 'error';
-                    addLogMessage(`${icon} ${step.step}: ${step.message}`, type);
-                });
-                
-                // Показываем финальную статистику
-                const stats = data.final_stats;
-                addLogMessage(`📊 Итого: ${stats.documents_count} документов, ${stats.chunks_count} чанков, готовность ${stats.embedding_progress.toFixed(1)}%`, 'success');
-                
-                updateProgress(100);
-                
-                // Обновляем страницу через 3 секунды
-                setTimeout(() => {
-                    location.reload();
-                }, 3000);
-            } else {
-                addLogMessage(`❌ Ошибка автоматической настройки: ${data.error}`, 'error');
-                
-                if (data.steps) {
-                    data.steps.forEach(step => {
-                        addLogMessage(`${step.step}: ${step.message}`, 'error');
-                    });
-                }
-                
-                updateProgress(0);
-            }
-        })
-        .catch(error => {
-            addLogMessage(`❌ Ошибка сети: ${error.message}`, 'error');
-        })
-        .finally(() => {
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-magic me-2"></i>Автоматическая настройка';
-        });
+    // API status
+    fetch('/api/stats').then(r=>r.json()).then(d=>{
+        const el = document.getElementById('apiStatusCard');
+        if (d.error) {
+            el.innerHTML = `<div class="label">API</div><div class="d-flex align-items-center gap-2 mt-1"><i class="fas fa-circle" style="color:var(--danger);font-size:0.5rem"></i><span class="sub">Ошибка</span></div>`;
+        } else {
+            el.innerHTML = `<div class="label">API</div><div class="d-flex align-items-center gap-2 mt-1"><i class="fas fa-circle" style="color:var(--success);font-size:0.5rem"></i><span class="sub">Работает</span></div>`;
+        }
+    }).catch(()=>{
+        document.getElementById('apiStatusCard').innerHTML = `<div class="label">API</div><div class="d-flex align-items-center gap-2 mt-1"><i class="fas fa-circle" style="color:var(--danger);font-size:0.5rem"></i><span class="sub">Недоступен</span></div>`;
     });
 
-    // Process all documents
-    document.getElementById('processDocsBtn').addEventListener('click', function() {
-        if (this.disabled) return;
-        
-        showProgress();
-        addLogMessage('Начинаем обработку всех документов...');
-        
-        this.disabled = true;
-        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Обработка...';
-        
-        fetch('/api/admin/process_documents', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addLogMessage(`Успешно обработано: ${data.result.processed} документов`, 'success');
-                addLogMessage(`Ошибок: ${data.result.failed}`, data.result.failed > 0 ? 'error' : 'info');
-                addLogMessage(`Всего документов: ${data.result.total}`, 'info');
-                
-                if (data.result.errors && data.result.errors.length > 0) {
-                    data.result.errors.forEach(error => {
-                        addLogMessage(error, 'error');
-                    });
-                }
-                
+    function showProgress() { document.getElementById('progressArea').style.display='block'; document.getElementById('progressLog').innerHTML=''; document.getElementById('progressBar').style.width='0%'; }
+    function addLog(msg,type='info') {
+        const log=document.getElementById('progressLog');
+        const t=new Date().toLocaleTimeString();
+        const icon=type==='error'?'x':type==='success'?'v':'>';
+        log.innerHTML+=`<div>[${t}] ${icon} ${msg}</div>`;
+        log.scrollTop=log.scrollHeight;
+    }
+    function updateProgress(p) { document.getElementById('progressBar').style.width=p+'%'; }
+
+    // Auto setup
+    document.getElementById('autoSetupBtn').addEventListener('click', function(){
+        if(this.disabled)return;
+        showProgress(); addLog('Запуск авто-настройки...');
+        this.disabled=true;
+        fetch('/api/admin/auto_setup',{method:'POST'}).then(r=>r.json()).then(d=>{
+            if(d.success){
+                addLog('Настройка завершена','success');
+                if(d.steps) d.steps.forEach(s=>addLog(`${s.step}: ${s.message}`, s.status==='completed'?'success':'info'));
                 updateProgress(100);
-                
-                // Refresh page after delay
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
-            } else {
-                addLogMessage(`Ошибка: ${data.error}`, 'error');
-                updateProgress(0);
-            }
-        })
-        .catch(error => {
-            addLogMessage(`Ошибка сети: ${error.message}`, 'error');
-        })
-        .finally(() => {
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-cogs me-2"></i>Обработать все документы';
-        });
+                setTimeout(()=>location.reload(),2000);
+            } else { addLog(`Ошибка: ${d.error}`,'error'); }
+        }).catch(e=>addLog(`Ошибка: ${e.message}`,'error')).finally(()=>this.disabled=false);
+    });
+
+    // Process docs
+    document.getElementById('processDocsBtn').addEventListener('click', function(){
+        if(this.disabled)return;
+        showProgress(); addLog('Обработка документов...');
+        this.disabled=true;
+        fetch('/api/admin/process_documents',{method:'POST'}).then(r=>r.json()).then(d=>{
+            if(d.success){
+                addLog(`Обработано: ${d.result.processed}, ошибок: ${d.result.failed}`,'success');
+                updateProgress(100);
+                setTimeout(()=>location.reload(),2000);
+            } else { addLog(`Ошибка: ${d.error}`,'error'); }
+        }).catch(e=>addLog(`Ошибка: ${e.message}`,'error')).finally(()=>this.disabled=false);
     });
 
     // Update embeddings
-    document.getElementById('updateEmbeddingsBtn').addEventListener('click', function() {
-        if (this.disabled) return;
-        
-        showProgress();
-        addLogMessage('Обновляем embeddings...');
-        
-        this.disabled = true;
-        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Обновление...';
-        
-        fetch('/api/admin/update_embeddings', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addLogMessage('Embeddings успешно обновлены', 'success');
-                updateProgress(100);
-                
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                addLogMessage(`Ошибка: ${data.error || 'Неизвестная ошибка'}`, 'error');
-            }
-        })
-        .catch(error => {
-            addLogMessage(`Ошибка сети: ${error.message}`, 'error');
-        })
-        .finally(() => {
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-sync me-2"></i>Обновить embeddings';
-        });
+    document.getElementById('updateEmbeddingsBtn').addEventListener('click', function(){
+        if(this.disabled)return;
+        showProgress(); addLog('Обновление embeddings...');
+        this.disabled=true;
+        fetch('/api/admin/update_embeddings',{method:'POST'}).then(r=>r.json()).then(d=>{
+            if(d.success){ addLog('Готово','success'); updateProgress(100); setTimeout(()=>location.reload(),1500); }
+            else addLog(`Ошибка: ${d.error||'Неизвестная'}`,'error');
+        }).catch(e=>addLog(`Ошибка: ${e.message}`,'error')).finally(()=>this.disabled=false);
     });
 
-    // Clear history with confirmation
-    document.getElementById('clearHistoryBtn').addEventListener('click', function() {
-        currentAction = 'clearHistory';
-        document.getElementById('confirmMessage').textContent = 
-            'Вы уверены, что хотите очистить всю историю чатов? Это действие нельзя отменить.';
-        
-        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-        modal.show();
+    // Clear history
+    document.getElementById('clearHistoryBtn').addEventListener('click', function(){
+        currentAction='clearHistory';
+        document.getElementById('confirmMessage').textContent='Очистить всю историю чатов?';
+        new bootstrap.Modal(document.getElementById('confirmModal')).show();
     });
-
-    // Confirm action
-    document.getElementById('confirmBtn').addEventListener('click', function() {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
-        modal.hide();
-        
-        if (currentAction === 'clearHistory') {
-            clearChatHistory();
+    document.getElementById('confirmBtn').addEventListener('click', function(){
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        if(currentAction==='clearHistory'){
+            const btn=document.getElementById('clearHistoryBtn');
+            btn.disabled=true;
+            fetch('/api/admin/clear_history',{method:'POST'}).then(r=>r.json()).then(d=>{
+                alert(d.success?'История очищена':`Ошибка: ${d.error}`);
+            }).catch(e=>alert(`Ошибка: ${e.message}`)).finally(()=>btn.disabled=false);
         }
     });
 
-    function clearChatHistory() {
-        const btn = document.getElementById('clearHistoryBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Очистка...';
-        
-        fetch('/api/admin/clear_history', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('История чатов успешно очищена');
+    // Refresh
+    document.getElementById('refreshStatsBtn').addEventListener('click', function(){ this.disabled=true; setTimeout(()=>location.reload(),300); });
+
+    // ─── LLM Settings ───
+    let currentProvider = 'ollama';
+
+    // Provider card selection
+    document.querySelectorAll('.provider-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            currentProvider = card.dataset.provider;
+            // Show/hide panels
+            document.querySelectorAll('.provider-panel').forEach(p => p.classList.remove('active'));
+            const panel = document.getElementById('panel-' + currentProvider);
+            if (panel) panel.classList.add('active');
+            // Load models for ollama when switching
+            if (currentProvider === 'ollama') loadOllamaModels();
+        });
+    });
+
+    // AI params toggle
+    document.getElementById('aiParamsToggle').addEventListener('click', function() {
+        this.classList.toggle('open');
+        document.getElementById('aiParamsBody').classList.toggle('open');
+    });
+
+    // Temperature slider value display
+    const tempSlider = document.getElementById('paramTemperature');
+    const tempVal = document.getElementById('paramTemperatureVal');
+    tempSlider.addEventListener('input', () => { tempVal.textContent = parseFloat(tempSlider.value).toFixed(2); });
+
+    // Load Ollama models
+    function loadOllamaModels() {
+        const url = document.getElementById('ollamaBaseUrl').value;
+        const sel = document.getElementById('ollamaModel');
+        sel.innerHTML = '<option value="">Загрузка...</option>';
+        fetch(url + '/api/tags').then(r => r.json()).then(d => {
+            sel.innerHTML = '';
+            if (d.models && d.models.length > 0) {
+                d.models.forEach(m => {
+                    const o = document.createElement('option');
+                    o.value = m.name; o.textContent = m.name;
+                    sel.appendChild(o);
+                });
             } else {
-                alert(`Ошибка: ${data.error}`);
+                sel.innerHTML = '<option value="">Нет моделей</option>';
             }
-        })
-        .catch(error => {
-            alert(`Ошибка: ${error.message}`);
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-trash me-2"></i>Очистить историю чатов';
+        }).catch(() => {
+            sel.innerHTML = '<option value="">Сервер недоступен</option>';
         });
     }
 
-    // Refresh stats
-    document.getElementById('refreshStatsBtn').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Обновление...';
-        
-        setTimeout(() => {
-            location.reload();
-        }, 500);
-    });
-
-    // LLM Settings Management
+    // Load settings from API
     function loadLLMSettings() {
-        fetch('/api/settings/llm')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const settings = data.settings;
-                    document.getElementById('providerType').value = settings.provider_type;
-                    document.getElementById('llmModel').value = settings.model;
-                    
-                    if (settings.provider_type === 'ollama') {
-                        document.getElementById('ollamaSettings').style.display = 'block';
-                        document.getElementById('ollamaBaseUrl').value = settings.ollama_base_url || 'http://localhost:11434';
-                    } else {
-                        document.getElementById('ollamaSettings').style.display = 'none';
-                    }
-                    
-                    // Заполняем список моделей
-                    const modelSelect = document.getElementById('llmModel');
-                    modelSelect.innerHTML = '';
-                    if (settings.available_models && settings.available_models.length > 0) {
-                        settings.available_models.forEach(model => {
-                            const option = document.createElement('option');
-                            option.value = model;
-                            option.textContent = model;
-                            if (model === settings.model) {
-                                option.selected = true;
-                            }
-                            modelSelect.appendChild(option);
-                        });
-                    } else {
-                        const option = document.createElement('option');
-                        option.value = settings.model;
-                        option.textContent = settings.model || 'Не выбрано';
-                        option.selected = true;
-                        modelSelect.appendChild(option);
-                    }
-                    
-                    // Показываем статус
-                    const statusDiv = document.getElementById('llmSettingsStatus');
-                    const statusIcon = settings.available ? '✅' : '❌';
-                    const statusText = settings.available ? 
-                        `Провайдер доступен (${settings.provider_type})` : 
-                        `Провайдер недоступен (${settings.provider_type})`;
-                    
-                    statusDiv.innerHTML = `
-                        <div class="alert ${settings.available ? 'alert-success' : 'alert-warning'} p-2">
-                            <i class="fas fa-${settings.available ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-                            <strong>${statusText}</strong>
-                        </div>
-                    `;
-                    
-                    // Показываем форму
-                    document.getElementById('llmSettingsForm').style.display = 'block';
-                    
-                    // Показываем информацию
-                    const infoDiv = document.getElementById('llmInfo');
-                    const infoText = document.getElementById('llmInfoText');
-                    if (settings.provider_type === 'openai') {
-                        if (settings.has_openai_key) {
-                            infoText.textContent = 'OpenAI API ключ настроен. Вы можете использовать облачные модели GPT.';
-                            infoDiv.className = 'alert alert-success';
-                        } else {
-                            infoText.textContent = 'OpenAI API ключ не найден. Добавьте OPENAI_API_KEY в файл .env';
-                            infoDiv.className = 'alert alert-warning';
-                        }
-                    } else {
-                        infoText.textContent = 'Убедитесь, что Ollama запущена локально. Модели будут работать без интернета.';
-                        infoDiv.className = 'alert alert-info';
-                    }
-                    infoDiv.style.display = 'block';
-                } else {
-                    document.getElementById('llmSettingsStatus').innerHTML = `
-                        <div class="alert alert-danger p-2">
-                            <i class="fas fa-times-circle me-2"></i>
-                            <strong>Ошибка загрузки настроек:</strong> ${data.error}
-                        </div>
-                    `;
+        fetch('/api/settings/llm').then(r => r.json()).then(d => {
+            if (!d.success) {
+                document.getElementById('llmSettingsLoader').innerHTML = `<span class="text-danger" style="font-size:0.8125rem">Ошибка: ${d.error}</span>`;
+                return;
+            }
+            const s = d.settings;
+
+            // Hide loader, show form
+            document.getElementById('llmSettingsLoader').style.display = 'none';
+            document.getElementById('llmSettingsForm').style.display = 'block';
+
+            // Status
+            const statusEl = document.getElementById('llmProviderStatus');
+            statusEl.innerHTML = `<div class="status-dot ${s.available ? 'online' : 'offline'}"></div>
+                <span>${s.available ? 'Провайдер подключён' : 'Провайдер недоступен'}</span>`;
+
+            // Activate correct provider card
+            currentProvider = s.provider_type || 'ollama';
+            document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('active'));
+            const activeCard = document.querySelector(`.provider-card[data-provider="${currentProvider}"]`);
+            if (activeCard) activeCard.classList.add('active');
+
+            // Show correct panel
+            document.querySelectorAll('.provider-panel').forEach(p => p.classList.remove('active'));
+            const panel = document.getElementById('panel-' + currentProvider);
+            if (panel) panel.classList.add('active');
+
+            // Fill fields
+            if (s.ollama_base_url) document.getElementById('ollamaBaseUrl').value = s.ollama_base_url;
+            if (s.finetuned_api_url) document.getElementById('finetunedApiUrl').value = s.finetuned_api_url;
+
+            // Ollama models
+            if (currentProvider === 'ollama' && s.available_models && s.available_models.length > 0) {
+                const sel = document.getElementById('ollamaModel');
+                sel.innerHTML = '';
+                s.available_models.forEach(m => {
+                    const o = document.createElement('option');
+                    o.value = m; o.textContent = m;
+                    if (m === s.model) o.selected = true;
+                    sel.appendChild(o);
+                });
+            } else if (currentProvider === 'ollama') {
+                loadOllamaModels();
+            }
+
+            // OpenAI model
+            if (s.model && currentProvider === 'openai') {
+                const oSel = document.getElementById('openaiModel');
+                // Select matching or add custom
+                let found = false;
+                for (let i = 0; i < oSel.options.length; i++) {
+                    if (oSel.options[i].value === s.model) { oSel.selectedIndex = i; found = true; break; }
                 }
-            })
-            .catch(error => {
-                document.getElementById('llmSettingsStatus').innerHTML = `
-                    <div class="alert alert-danger p-2">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Ошибка:</strong> ${error.message}
-                    </div>
-                `;
-            });
+                if (!found) {
+                    const o = document.createElement('option');
+                    o.value = s.model; o.textContent = s.model; o.selected = true;
+                    oSel.prepend(o);
+                }
+            }
+
+            // OpenAI key hint
+            if (s.has_openai_key) {
+                document.getElementById('openaiApiKey').placeholder = 'Ключ настроен (оставьте пустым)';
+            }
+
+            // AI params
+            if (s.temperature !== undefined) {
+                tempSlider.value = s.temperature;
+                tempVal.textContent = parseFloat(s.temperature).toFixed(2);
+            }
+            if (s.max_tokens !== undefined) document.getElementById('paramMaxTokens').value = s.max_tokens;
+            if (s.top_k_results !== undefined) document.getElementById('paramTopK').value = s.top_k_results;
+
+        }).catch(e => {
+            document.getElementById('llmSettingsLoader').innerHTML = `<span class="text-danger" style="font-size:0.8125rem">Ошибка: ${e.message}</span>`;
+        });
     }
 
-    // Показываем/скрываем настройки Ollama
-    document.getElementById('providerType').addEventListener('change', function() {
-        if (this.value === 'ollama') {
-            document.getElementById('ollamaSettings').style.display = 'block';
-            loadModelsForProvider('ollama');
-        } else {
-            document.getElementById('ollamaSettings').style.display = 'none';
-            loadModelsForProvider('openai');
+    // Collect settings
+    function collectSettings() {
+        const data = { provider_type: currentProvider };
+        if (currentProvider === 'ollama') {
+            data.ollama_base_url = document.getElementById('ollamaBaseUrl').value;
+            data.model = document.getElementById('ollamaModel').value;
+        } else if (currentProvider === 'finetuned') {
+            data.finetuned_api_url = document.getElementById('finetunedApiUrl').value;
+        } else if (currentProvider === 'openai') {
+            data.model = document.getElementById('openaiModel').value;
+            const key = document.getElementById('openaiApiKey').value.trim();
+            if (key) data.openai_api_key = key;
         }
-    });
-
-    function loadModelsForProvider(providerType) {
-        const modelSelect = document.getElementById('llmModel');
-        modelSelect.innerHTML = '<option value="">Загрузка моделей...</option>';
-        
-        fetch('/api/settings/llm')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.settings.available_models) {
-                    modelSelect.innerHTML = '';
-                    data.settings.available_models.forEach(model => {
-                        const option = document.createElement('option');
-                        option.value = model;
-                        option.textContent = model;
-                        modelSelect.appendChild(option);
-                    });
-                }
-            });
+        data.temperature = parseFloat(tempSlider.value);
+        data.max_tokens = parseInt(document.getElementById('paramMaxTokens').value);
+        data.top_k_results = parseInt(document.getElementById('paramTopK').value);
+        return data;
     }
 
-    // Тестирование провайдера
+    // Test provider
     document.getElementById('testProviderBtn').addEventListener('click', function() {
         const btn = this;
+        const result = document.getElementById('testResult');
         btn.disabled = true;
-        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Тестирование...';
-        
-        const formData = {
-            provider_type: document.getElementById('providerType').value,
-            model: document.getElementById('llmModel').value,
-            ollama_base_url: document.getElementById('ollamaBaseUrl').value
-        };
-        
+        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Тестирование...';
+        result.style.display = 'none';
+
         fetch('/api/settings/llm/test', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(`✅ Тест успешен!\n\nМодель: ${data.model_used}\nОтвет: ${data.test_response}`);
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(collectSettings())
+        }).then(r => r.json()).then(d => {
+            result.style.display = 'block';
+            if (d.success) {
+                result.className = 'test-result success';
+                result.innerHTML = `<i class="fas fa-check-circle me-1"></i> Тест пройден — модель: <strong>${d.model_used || '—'}</strong>`;
             } else {
-                alert(`❌ Ошибка теста: ${data.error}`);
+                result.className = 'test-result error';
+                result.innerHTML = `<i class="fas fa-times-circle me-1"></i> ${d.error}`;
             }
-        })
-        .catch(error => {
-            alert(`❌ Ошибка: ${error.message}`);
-        })
-        .finally(() => {
+        }).catch(e => {
+            result.style.display = 'block';
+            result.className = 'test-result error';
+            result.innerHTML = `<i class="fas fa-times-circle me-1"></i> ${e.message}`;
+        }).finally(() => {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-vial me-2"></i>Тестировать подключение';
+            btn.innerHTML = '<i class="fas fa-vial me-1"></i>Тест';
         });
     });
 
-    // Сохранение настроек
-    document.getElementById('llmSettingsForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const btn = document.getElementById('saveSettingsBtn');
+    // Save settings
+    document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+        const btn = this;
+        const toast = document.getElementById('saveToast');
         btn.disabled = true;
-        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Сохранение...';
-        
-        const formData = {
-            provider_type: document.getElementById('providerType').value,
-            model: document.getElementById('llmModel').value,
-            ollama_base_url: document.getElementById('ollamaBaseUrl').value
-        };
-        
+        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Сохранение...';
+        toast.classList.remove('show');
+
         fetch('/api/settings/llm', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(`✅ ${data.message}`);
-                loadLLMSettings(); // Перезагружаем настройки
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(collectSettings())
+        }).then(r => r.json()).then(d => {
+            if (d.success) {
+                toast.classList.add('show');
+                document.getElementById('saveToastText').textContent = 'Настройки сохранены в .env';
+                setTimeout(() => toast.classList.remove('show'), 4000);
+                loadLLMSettings();
             } else {
-                alert(`❌ Ошибка: ${data.error}`);
+                const result = document.getElementById('testResult');
+                result.style.display = 'block';
+                result.className = 'test-result error';
+                result.innerHTML = `<i class="fas fa-times-circle me-1"></i> ${d.error}`;
             }
-        })
-        .catch(error => {
-            alert(`❌ Ошибка: ${error.message}`);
-        })
-        .finally(() => {
+        }).catch(e => {
+            const result = document.getElementById('testResult');
+            result.style.display = 'block';
+            result.className = 'test-result error';
+            result.innerHTML = `<i class="fas fa-times-circle me-1"></i> ${e.message}`;
+        }).finally(() => {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save me-2"></i>Сохранить настройки';
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Сохранить';
         });
     });
 
-    // Загружаем настройки при загрузке страницы
+    // Reload models when Ollama URL changes
+    let ollamaUrlTimer;
+    document.getElementById('ollamaBaseUrl').addEventListener('input', function() {
+        clearTimeout(ollamaUrlTimer);
+        ollamaUrlTimer = setTimeout(loadOllamaModels, 800);
+    });
+
     loadLLMSettings();
 });
 </script>
-{% endblock %} 
+{% endblock %}

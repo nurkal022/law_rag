@@ -119,6 +119,16 @@ def chat_simple_page():
     
     return render_template('chat_simple.html', use_rag=False)
 
+@app.route('/tools')
+def tools_page():
+    """Страница инструментов"""
+    return render_template('tools.html')
+
+@app.route('/about')
+def about_page():
+    """Страница о платформе"""
+    return render_template('about.html')
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """API для обработки чат-запросов"""
@@ -1187,15 +1197,19 @@ def get_llm_settings():
     try:
         from llm_providers.factory import LLMProviderFactory
         provider = LLMProviderFactory.get_current_provider()
-        
+
         settings = {
             'provider_type': Config.LLM_PROVIDER_TYPE,
             'model': Config.LLM_MODEL,
             'available': provider.is_available() if provider else False,
-            'ollama_base_url': Config.OLLAMA_BASE_URL
+            'ollama_base_url': Config.OLLAMA_BASE_URL,
+            'finetuned_api_url': Config.FINETUNED_API_URL,
+            'has_openai_key': bool(Config.OPENAI_API_KEY and Config.OPENAI_API_KEY.startswith('sk-')),
+            'temperature': Config.TEMPERATURE,
+            'max_tokens': Config.MAX_TOKENS,
+            'top_k_results': Config.TOP_K_RESULTS,
         }
-        
-        # Получаем список доступных моделей
+
         if provider:
             try:
                 settings['available_models'] = provider.get_available_models()
@@ -1203,64 +1217,107 @@ def get_llm_settings():
                 settings['available_models'] = []
         else:
             settings['available_models'] = []
-        
-        return jsonify({
-            'success': True,
-            'settings': settings
-        })
+
+        return jsonify({'success': True, 'settings': settings})
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/settings/llm/providers', methods=['GET'])
+def get_llm_providers_status():
+    """Статус всех доступных провайдеров"""
+    try:
+        from llm_providers.factory import LLMProviderFactory
+        from llm_providers.ollama_provider import OllamaProvider
+        from llm_providers.finetuned_provider import FineTunedModelProvider
+
+        result = {}
+
+        # Ollama
+        try:
+            ollama = OllamaProvider(base_url=Config.OLLAMA_BASE_URL)
+            ollama_available = ollama.is_available()
+            ollama_models = ollama.get_available_models() if ollama_available else []
+            result['ollama'] = {'available': ollama_available, 'url': Config.OLLAMA_BASE_URL, 'models': ollama_models}
+        except:
+            result['ollama'] = {'available': False, 'url': Config.OLLAMA_BASE_URL, 'models': []}
+
+        # Fine-tuned
+        try:
+            ft = FineTunedModelProvider(base_url=Config.FINETUNED_API_URL)
+            ft_available = ft.is_available()
+            result['finetuned'] = {'available': ft_available, 'url': Config.FINETUNED_API_URL, 'models': ['gemma-3n-4b-kazakh-law']}
+        except:
+            result['finetuned'] = {'available': False, 'url': Config.FINETUNED_API_URL, 'models': []}
+
+        # OpenAI
+        has_key = bool(Config.OPENAI_API_KEY and Config.OPENAI_API_KEY.startswith('sk-'))
+        result['openai'] = {'available': has_key, 'has_key': has_key}
+
+        return jsonify({'success': True, 'providers': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/settings/llm', methods=['POST'])
 def update_llm_settings():
-    """Обновление настроек LLM"""
+    """Обновление настроек LLM с сохранением в .env"""
     try:
         data = request.get_json()
-        provider_type = data.get('provider_type')
+        provider_type = data.get('provider_type', Config.LLM_PROVIDER_TYPE)
         model = data.get('model')
         ollama_base_url = data.get('ollama_base_url')
-        
-        # Валидация (только Ollama)
-        if provider_type != 'ollama':
-            return jsonify({
-                'success': False,
-                'error': 'Используется только Ollama. Установите provider_type=ollama'
-            }), 400
-        
-        # Обновляем переменные окружения (в памяти, не в файле)
-        import os
-        Config.LLM_PROVIDER_TYPE = 'ollama'
-        if ollama_base_url:
-            Config.OLLAMA_BASE_URL = ollama_base_url
-            os.environ['OLLAMA_BASE_URL'] = ollama_base_url
-        
+        finetuned_api_url = data.get('finetuned_api_url')
+        openai_api_key = data.get('openai_api_key')
+        temperature = data.get('temperature')
+        max_tokens = data.get('max_tokens')
+        top_k_results = data.get('top_k_results')
+
+        # Валидация типа провайдера
+        if provider_type not in ('ollama', 'finetuned', 'openai'):
+            return jsonify({'success': False, 'error': f'Неизвестный провайдер: {provider_type}'}), 400
+
+        # Собираем настройки для сохранения
+        env_settings = {'LLM_PROVIDER_TYPE': provider_type}
+
         if model:
-            Config.LLM_MODEL = model
-            os.environ['LLM_MODEL'] = model
-        
-        os.environ['LLM_PROVIDER_TYPE'] = provider_type
-        
-        # Пересоздаем провайдер
+            env_settings['LLM_MODEL'] = model
+        if ollama_base_url:
+            env_settings['OLLAMA_BASE_URL'] = ollama_base_url
+        if finetuned_api_url:
+            env_settings['FINETUNED_API_URL'] = finetuned_api_url
+        if openai_api_key is not None:
+            env_settings['OPENAI_API_KEY'] = openai_api_key
+        if temperature is not None:
+            env_settings['TEMPERATURE'] = str(temperature)
+        if max_tokens is not None:
+            env_settings['MAX_TOKENS'] = str(int(max_tokens))
+        if top_k_results is not None:
+            env_settings['TOP_K_RESULTS'] = str(int(top_k_results))
+
+        # Сохраняем в .env и обновляем runtime
+        Config.save_to_env(env_settings)
+
+        # Пересоздаём провайдер
         from llm_providers.factory import LLMProviderFactory
         global generator, law_generator
-        
+
+        kwargs = {'model': model or Config.LLM_MODEL}
+        if provider_type == 'ollama':
+            kwargs['base_url'] = ollama_base_url or Config.OLLAMA_BASE_URL
+        elif provider_type == 'finetuned':
+            kwargs['base_url'] = finetuned_api_url or Config.FINETUNED_API_URL
+        elif provider_type == 'openai':
+            kwargs['api_key'] = openai_api_key or Config.OPENAI_API_KEY
+
         try:
-            provider = LLMProviderFactory.create_provider(
-                provider_type=provider_type,
-                model=model,
-                base_url=ollama_base_url if provider_type == 'ollama' else None
-            )
-            
+            provider = LLMProviderFactory.create_provider(provider_type=provider_type, **kwargs)
+
             if provider and provider.is_available():
                 generator = ResponseGenerator(provider=provider)
                 law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
-                
+
                 return jsonify({
                     'success': True,
-                    'message': f'Настройки обновлены. Провайдер: {provider_type}, модель: {model or Config.LLM_MODEL}',
+                    'message': f'Настройки сохранены. Провайдер: {provider_type}, модель: {model or Config.LLM_MODEL}',
                     'settings': {
                         'provider_type': provider_type,
                         'model': model or Config.LLM_MODEL,
@@ -1268,21 +1325,21 @@ def update_llm_settings():
                     }
                 })
             else:
+                # Сохраняем настройки даже если провайдер сейчас недоступен
                 return jsonify({
-                    'success': False,
-                    'error': 'Провайдер недоступен. Проверьте настройки.'
-                }), 400
+                    'success': True,
+                    'message': f'Настройки сохранены в .env, но провайдер {provider_type} сейчас недоступен',
+                    'settings': {
+                        'provider_type': provider_type,
+                        'model': model or Config.LLM_MODEL,
+                        'available': False
+                    }
+                })
         except Exception as e:
-            return jsonify({
-                'success': False,
-                'error': f'Ошибка создания провайдера: {str(e)}'
-            }), 500
-            
+            return jsonify({'success': False, 'error': f'Ошибка создания провайдера: {str(e)}'}), 500
+
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/settings/llm/test', methods=['POST'])
 def test_llm_provider():
@@ -1292,48 +1349,44 @@ def test_llm_provider():
         provider_type = data.get('provider_type', Config.LLM_PROVIDER_TYPE)
         model = data.get('model', Config.LLM_MODEL)
         ollama_base_url = data.get('ollama_base_url', Config.OLLAMA_BASE_URL)
-        
+        finetuned_api_url = data.get('finetuned_api_url', Config.FINETUNED_API_URL)
+        openai_api_key = data.get('openai_api_key', Config.OPENAI_API_KEY)
+
         from llm_providers.factory import LLMProviderFactory
-        
-        provider = LLMProviderFactory.create_provider(
-            provider_type=provider_type,
-            model=model,
-            base_url=ollama_base_url if provider_type == 'ollama' else None
-        )
-        
+
+        kwargs = {'model': model}
+        if provider_type == 'ollama':
+            kwargs['base_url'] = ollama_base_url
+        elif provider_type == 'finetuned':
+            kwargs['base_url'] = finetuned_api_url
+        elif provider_type == 'openai':
+            kwargs['api_key'] = openai_api_key
+
+        provider = LLMProviderFactory.create_provider(provider_type=provider_type, **kwargs)
+
         if not provider:
-            return jsonify({
-                'success': False,
-                'error': 'Не удалось создать провайдер'
-            }), 400
-        
-        # Проверяем доступность
+            return jsonify({'success': False, 'error': 'Не удалось создать провайдер'}), 400
+
         if not provider.is_available():
-            return jsonify({
-                'success': False,
-                'error': 'Провайдер недоступен'
-            }), 400
-        
+            return jsonify({'success': False, 'error': f'Провайдер {provider_type} недоступен'}), 400
+
         # Тестовый запрос
         test_response = provider.chat_completion(
-            messages=[{"role": "user", "content": "Привет! Ответь одним словом: работает?"}],
+            messages=[{"role": "user", "content": "Привет! Ответь одним предложением: как тебя зовут и работаешь ли ты?"}],
             model=model,
             temperature=0.1,
-            max_tokens=10
+            max_tokens=50
         )
-        
+
         return jsonify({
             'success': True,
-            'message': 'Провайдер работает корректно',
-            'test_response': test_response.get('content', '')[:50],
+            'message': 'Провайдер работает',
+            'test_response': test_response.get('content', '')[:100],
             'model_used': test_response.get('model', model)
         })
-        
+
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.errorhandler(404)
 def not_found(error):
@@ -1346,7 +1399,7 @@ def internal_error(error):
 # Инициализация при запуске
 def initialize_app():
     """Инициализация приложения"""
-    print("🚀 Запуск ИИ системы для юридических документов Казахстана")
+    print("🚀 Запуск LawAI — юридическая платформа")
     print("=" * 60)
     
     # Проверяем наличие документов
@@ -1393,9 +1446,9 @@ def initialize_app():
         print(f"\n⚠️  Ошибка проверки LLM провайдера: {e}")
     
     print("=" * 60)
-    print("🌐 Приложение готово к работе!")
-    print("   Интерфейс: http://localhost:5001")
-    print("   Админ панель: http://localhost:5001/admin")
+    print("🌐 LawAI готов к работе!")
+    print("   Интерфейс: http://localhost:5003")
+    print("   Админ панель: http://localhost:5003/admin")
     print("=" * 60)
 
 if __name__ == '__main__':

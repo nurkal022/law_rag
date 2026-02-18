@@ -1,175 +1,387 @@
 {% extends "base.html" %}
 
-{% block title %}Чат с поиском - ИИ Система Юридических документов Казахстана{% endblock %}
+{% block title %}Юридический консультант — LawAI{% endblock %}
+{% block nav_chat %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 1.25rem;
+        height: calc(100vh - 160px);
+        min-height: 500px;
+    }
+
+    /* Sidebar */
+    .chat-sidebar .card { height: 100%; display: flex; flex-direction: column; }
+    .sidebar-section { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .sidebar-section:last-child { border-bottom: none; }
+    .sidebar-label {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+    }
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.25rem 0;
+        font-size: 0.8125rem;
+    }
+    .stat-row .label { color: var(--text-secondary); }
+    .stat-row .value { font-weight: 600; color: var(--text); }
+
+    .example-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        margin-bottom: 0.375rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .example-btn:hover {
+        background: var(--primary-lighter);
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    /* Chat area */
+    .chat-main .card { height: 100%; display: flex; flex-direction: column; }
+    .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .chat-header h2 {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text);
+    }
+    .chat-header .actions { display: flex; gap: 0.375rem; }
+    .chat-header .actions .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 6px;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.25rem;
+    }
+
+    .chat-input-area {
+        padding: 0.75rem 1.25rem;
+        border-top: 1px solid var(--border);
+        background: var(--bg);
+    }
+    .chat-input-area .input-group { border-radius: var(--radius); overflow: hidden; }
+    .chat-input-area .form-control {
+        border: 1px solid var(--border);
+        border-right: none;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+    }
+    .chat-input-area .btn-send {
+        background: var(--primary);
+        color: white;
+        border: 1px solid var(--primary);
+        padding: 0 1rem;
+    }
+    .chat-input-area .btn-send:hover { background: var(--primary-light); }
+
+    /* Welcome state */
+    .welcome-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+    .welcome-state .icon {
+        width: 56px; height: 56px;
+        background: var(--primary-lighter);
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--primary);
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .welcome-state h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.375rem; }
+    .welcome-state p { font-size: 0.8125rem; max-width: 360px; }
+
+    /* RAG init */
+    .rag-init-block {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        max-width: 400px;
+    }
+    .rag-init-block .btn { font-size: 0.8125rem; }
+
+    /* Messages */
+    .message { margin-bottom: 1rem; animation: fadeIn 0.3s ease; }
+    .user-message { text-align: right; }
+    .user-message .msg-bubble {
+        display: inline-block;
+        max-width: 70%;
+        background: var(--primary);
+        color: white;
+        padding: 0.625rem 1rem;
+        border-radius: 12px 12px 4px 12px;
+        font-size: 0.875rem;
+        text-align: left;
+    }
+    .ai-message .msg-bubble {
+        display: inline-block;
+        max-width: 85%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 0.875rem 1.125rem;
+        border-radius: 4px 12px 12px 12px;
+        text-align: left;
+    }
+    .ai-message .msg-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+    .ai-message .msg-header i { color: var(--primary); }
+
+    /* Error message */
+    .error-message .msg-bubble {
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+    .error-message .msg-bubble a {
+        color: var(--primary);
+    }
+
+    /* Sources */
+    .sources-section { border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.75rem; }
+    .sources-toggle {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .sources-toggle:hover { background: var(--primary-lighter); color: var(--primary); border-color: var(--primary); }
+
+    .sources-content { display: none !important; }
+    .sources-content[style*="display: block"], .sources-content.sources-slide-in {
+        display: block !important;
+    }
+
+    .source-item {
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        font-size: 0.8125rem;
+        transition: all 0.15s ease;
+    }
+    .source-item:hover { border-color: var(--primary); }
+    .source-highlight {
+        background: var(--accent-bg) !important;
+        border-color: var(--accent) !important;
+    }
+    .source-number { font-weight: 600; color: var(--primary); font-size: 0.75rem; }
+    .source-title { font-weight: 500; margin: 0.25rem 0; }
+    .score-badge {
+        background: var(--primary);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+    }
+    .source-preview {
+        background: var(--bg);
+        border-left: 2px solid var(--primary);
+        padding: 0.5rem 0.75rem;
+        margin-top: 0.375rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .source-ref-badge {
+        display: inline-block;
+        background: var(--primary-lighter);
+        color: var(--primary);
+        padding: 1px 7px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .source-ref-badge:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    /* Typing */
+    .typing-animation { display: flex; align-items: center; gap: 4px; padding: 0.5rem 0; }
+    .typing-dot {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: var(--primary);
+        animation: typing 1.2s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+    .typing-text { color: var(--text-light); font-size: 0.75rem; margin-left: 0.375rem; }
+
+    /* Confidence */
+    .confidence-indicator { font-size: 0.75rem; margin-left: auto; }
+    .confidence-high { color: var(--success); }
+    .confidence-medium { color: var(--warning); }
+    .confidence-low { color: var(--danger); }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .chat-layout { grid-template-columns: 1fr; height: auto; }
+        .chat-sidebar { display: none; }
+        .chat-messages { min-height: 60vh; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Statistics Sidebar -->
-    <div class="col-lg-3 mb-4">
+<div class="chat-layout">
+    <!-- Sidebar -->
+    <div class="chat-sidebar">
         <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-chart-bar me-2"></i>Статистика
-                </h6>
+            <div class="sidebar-section">
+                <div class="sidebar-label">Статистика</div>
+                <div class="stat-row">
+                    <span class="label">Документов</span>
+                    <span class="value">{{ stats.documents_count }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="label">Блоков</span>
+                    <span class="value">{{ stats.chunks_count }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="label">Готовность</span>
+                    <span class="value">{{ "%.0f"|format(stats.embedding_progress) }}%</span>
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar" style="width: {{ stats.embedding_progress }}%"></div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <small class="text-muted">Документов в базе</small>
-                    <div class="h5 text-primary mb-0">{{ stats.documents_count }}</div>
-                </div>
-                <div class="mb-3">
-                    <small class="text-muted">Текстовых блоков</small>
-                    <div class="h5 text-info mb-0">{{ stats.chunks_count }}</div>
-                </div>
-                <div class="mb-3">
-                    <small class="text-muted">Готовность к поиску</small>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" style="width: {{ stats.embedding_progress }}%"></div>
-                    </div>
-                    <small class="text-muted">{{ "%.1f"|format(stats.embedding_progress) }}%</small>
-                </div>
-                {% if stats.embedding_progress < 100 %}
-                <div class="alert alert-warning p-2 mt-3">
-                    <small>
-                        <i class="fas fa-exclamation-triangle me-1"></i>
-                        Некоторые документы еще обрабатываются. 
-                        <a href="/admin" class="alert-link">Перейти в админ панель</a>
-                    </small>
-                </div>
-                {% endif %}
-            </div>
-        </div>
 
-        <!-- Quick Examples -->
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="fas fa-lightbulb me-2"></i>Примеры вопросов
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
-                            data-query="Какие права имеют граждане Казахстана согласно Конституции?">
-                        Права граждан по Конституции
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
-                            data-query="Как подать жалобу на действия государственных органов?">
-                        Подача жалоб на госорганы
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
-                            data-query="Какие документы нужны для регистрации брака в Казахстане?">
-                        Регистрация брака
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm text-start example-btn" 
-                            data-query="Ответственность за нарушение трудового законодательства">
-                        Трудовое законодательство
-                    </button>
-                </div>
+            <div class="sidebar-section" style="flex: 1; overflow-y: auto;">
+                <div class="sidebar-label">Примеры вопросов</div>
+                <button class="example-btn" data-query="Какие права имеют граждане Казахстана согласно Конституции?">
+                    Права граждан по Конституции
+                </button>
+                <button class="example-btn" data-query="Как подать жалобу на действия государственных органов?">
+                    Жалоба на госорганы
+                </button>
+                <button class="example-btn" data-query="Какие документы нужны для регистрации брака в Казахстане?">
+                    Регистрация брака
+                </button>
+                <button class="example-btn" data-query="Ответственность за нарушение трудового законодательства">
+                    Трудовое законодательство
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Chat Interface -->
-    <div class="col-lg-9">
+    <!-- Chat -->
+    <div class="chat-main">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-robot me-2"></i>Юридический помощник (режим поиска по документам)
-                </h5>
-                <div>
-                    <a href="/chat-simple" class="btn btn-sm btn-outline-info me-2">
-                        <i class="fas fa-comments me-1"></i>Простой чат
-                    </a>
-                    <button class="btn btn-sm btn-outline-secondary" id="clearChatBtn">
-                        <i class="fas fa-trash me-1"></i>Очистить
+            <div class="chat-header">
+                <h2>Юридический консультант</h2>
+                <div class="actions">
+                    <a href="/chat-simple" class="btn btn-outline-secondary btn-sm">Простой чат</a>
+                    <button class="btn btn-outline-secondary btn-sm" id="clearChatBtn">
+                        <i class="fas fa-trash"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-info" id="historyBtn">
-                        <i class="fas fa-history me-1"></i>История
+                    <button class="btn btn-outline-secondary btn-sm" id="historyBtn">
+                        <i class="fas fa-history"></i>
                     </button>
-                    <a href="/" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-home me-1"></i>Дашборд
-                    </a>
                 </div>
             </div>
 
-            <!-- Chat Messages -->
-            <div class="card-body p-0">
-                <div id="chatContainer" class="chat-container p-3">
-                    <div id="welcomeMessage" class="text-center text-muted py-5">
-                        <i class="fas fa-book fa-3x mb-3 text-primary"></i>
-                        <h6>Добро пожаловать в ИИ чат-бот!</h6>
-                        <p>Задайте вопрос о законодательстве Казахстана, и я найду релевантную информацию в документах.</p>
-                        <p class="small mt-3">
-                            <a href="/chat-simple" class="text-decoration-none">
-                                <i class="fas fa-comments me-1"></i>Или используйте простой чат без поиска по документам
-                            </a>
-                        </p>
-                        
-                        <!-- RAG Initialization Section -->
-                        <div id="ragInitSection" class="mt-4">
-                            <div class="alert alert-info">
-                                <div class="d-flex align-items-center justify-content-center mb-3">
-                                    <i class="fas fa-cog fa-spin me-2"></i>
-                                    <strong>ИИ система не инициализирована</strong>
-                                </div>
-                                <p class="mb-3">Для начала работы необходимо загрузить и инициализировать систему поиска по документам.</p>
-                                <button id="initRagBtn" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-play me-2"></i>Загрузить ИИ систему
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Loading Section -->
-                        <div id="ragLoadingSection" class="mt-4" style="display: none;">
-                            <div class="alert alert-warning">
-                                <div class="d-flex align-items-center justify-content-center mb-3">
-                                    <div class="spinner-border text-warning me-3" role="status">
-                                        <span class="visually-hidden">Загрузка...</span>
-                                    </div>
-                                    <strong>Инициализация ИИ системы...</strong>
-                                </div>
-                                <div class="progress mb-3" style="height: 8px;">
-                                    <div id="ragProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                                         role="progressbar" style="width: 0%"></div>
-                                </div>
-                                <p id="ragLoadingText" class="mb-0">Подготовка компонентов...</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Ready Section -->
-                        <div id="ragReadySection" class="mt-4" style="display: none;">
-                            <div class="alert alert-success">
-                                <div class="d-flex align-items-center justify-content-center mb-3">
-                                    <i class="fas fa-check-circle me-2"></i>
-                                    <strong>ИИ система готова к работе!</strong>
-                                </div>
-                                <p class="mb-0">Теперь вы можете задавать вопросы о законодательстве Казахстана.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div id="chatContainer" class="chat-messages">
+                <div id="welcomeMessage" class="welcome-state">
+                    <div class="icon"><i class="fas fa-scale-balanced"></i></div>
+                    <h3>Задайте вопрос</h3>
+                    <p>Получите ответ на основе нормативных документов Республики Казахстан</p>
 
-            <!-- Chat Input -->
-            <div class="card-footer">
-                <form id="chatForm">
-                    <div class="input-group">
-                        <input type="text" 
-                               id="userInput" 
-                               class="form-control" 
-                               placeholder="Задайте вопрос о законодательстве Казахстана..."
-                               autocomplete="off">
-                        <button type="submit" 
-                                id="sendBtn" 
-                                class="btn btn-primary">
-                            <i class="fas fa-paper-plane"></i>
+                    <div id="ragInitSection" class="rag-init-block">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="fas fa-info-circle text-accent"></i>
+                            <strong style="font-size: 0.8125rem;">Система не инициализирована</strong>
+                        </div>
+                        <p style="font-size: 0.75rem; margin-bottom: 0.5rem;">Загрузите систему поиска для работы с документами</p>
+                        <button id="initRagBtn" class="btn btn-accent btn-sm">
+                            <i class="fas fa-play me-1"></i>Инициализировать
                         </button>
                     </div>
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Нажмите Enter для отправки сообщения. Ответы формируются на основе поиска по документам.
-                    </small>
+
+                    <div id="ragLoadingSection" style="display: none;" class="rag-init-block">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="spinner-border spinner-border-sm text-accent"></div>
+                            <strong style="font-size: 0.8125rem;">Загрузка системы...</strong>
+                        </div>
+                        <div class="progress mt-2 mb-1">
+                            <div id="ragProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                        </div>
+                        <small id="ragLoadingText" class="text-muted">Подготовка...</small>
+                    </div>
+
+                    <div id="ragReadySection" style="display: none;" class="rag-init-block">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-check-circle" style="color: var(--success)"></i>
+                            <strong style="font-size: 0.8125rem;">Система готова</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <form id="chatForm">
+                    <div class="input-group">
+                        <input type="text" id="userInput" class="form-control"
+                               placeholder="Задайте вопрос о законодательстве..." autocomplete="off">
+                        <button type="submit" id="sendBtn" class="btn-send">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -181,22 +393,15 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-history me-2"></i>История чата
-                </h5>
+                <h5 class="modal-title">История</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div id="historyContent">
                     <div class="text-center text-muted py-4">
-                        <div class="spinner-border" role="status">
-                            <span class="visually-hidden">Загрузка...</span>
-                        </div>
+                        <div class="spinner-border"></div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
             </div>
         </div>
     </div>
@@ -209,1091 +414,391 @@ $(document).ready(function() {
     let isLoading = false;
     let messageCounter = 0;
     let ragInitialized = false;
-    
-    // Всегда используем режим поиска по документам на этой странице
     const useRag = true;
 
-    // Auto-scroll to bottom of chat
     function scrollToBottom() {
-        const chatContainer = document.getElementById('chatContainer');
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        const c = document.getElementById('chatContainer');
+        c.scrollTop = c.scrollHeight;
     }
 
-    // Add typing animation
     function addTypingIndicator() {
-        const chatContainer = document.getElementById('chatContainer');
-        if (!chatContainer) {
-            console.error('chatContainer не найден!');
-            return;
-        }
-        
-        // Удаляем предыдущий индикатор если есть
-        const existingIndicator = document.getElementById('typing-indicator');
-        if (existingIndicator) {
-            existingIndicator.remove();
-        }
-        
-        const typingDiv = document.createElement('div');
-        typingDiv.id = 'typing-indicator';
-        typingDiv.className = 'message ai-message fade-in';
-        
-        typingDiv.innerHTML = `
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-robot text-primary me-2"></i>
-                        <small class="text-muted">AI Assistant</small>
-                        <span class="ms-auto">
-                            <i class="fas fa-brain text-primary me-1"></i>
-                            <small class="text-muted">думает...</small>
-                        </span>
-                    </div>
-                    <div class="typing-animation">
-                        <span class="typing-dot"></span>
-                        <span class="typing-dot"></span>
-                        <span class="typing-dot"></span>
-                        <span class="typing-text ms-2">Анализирую документы и формирую ответ</span>
-                    </div>
+        const c = document.getElementById('chatContainer');
+        if (!c) return;
+        const existing = document.getElementById('typing-indicator');
+        if (existing) existing.remove();
+
+        const div = document.createElement('div');
+        div.id = 'typing-indicator';
+        div.className = 'message ai-message fade-in';
+        div.innerHTML = `
+            <div class="msg-bubble">
+                <div class="typing-animation">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-text">Анализирую документы...</span>
                 </div>
             </div>
         `;
-        
-        chatContainer.appendChild(typingDiv);
+        c.appendChild(div);
         scrollToBottom();
     }
 
-    // Remove typing indicator
     function removeTypingIndicator() {
-        const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
+        const el = document.getElementById('typing-indicator');
+        if (el) el.remove();
     }
 
-    // Add message to chat with improved design
     function addMessage(message, isUser = false, sources = null, confidence = null) {
-        const chatContainer = document.getElementById('chatContainer');
+        const c = document.getElementById('chatContainer');
         messageCounter++;
-        
-        // Remove welcome message if it exists
-        const welcomeMsg = document.getElementById('welcomeMessage');
-        if (welcomeMsg) {
-            welcomeMsg.style.display = 'none';
-        }
-
-        const messageDiv = document.createElement('div');
         const messageId = `message-${messageCounter}`;
-        
-        // Определяем класс сообщения (ошибка или обычное)
-        let messageClass = isUser ? 'user-message' : 'ai-message';
-        if (!isUser && (message.includes('⚠️') || message.includes('Ошибка') || message.includes('API ключ'))) {
-            messageClass += ' error-message';
-        }
-        
-        messageDiv.className = `message ${messageClass} fade-in`;
-        
-        let confidenceIcon = '';
-        let confidenceClass = '';
-        let confidenceText = '';
-        if (confidence !== null) {
-            if (confidence > 0.7) {
-                confidenceIcon = '<i class="fas fa-check-circle confidence-high"></i>';
-                confidenceClass = 'confidence-high';
-                confidenceText = 'Высокая уверенность';
-            } else if (confidence > 0.4) {
-                confidenceIcon = '<i class="fas fa-exclamation-circle confidence-medium"></i>';
-                confidenceClass = 'confidence-medium';
-                confidenceText = 'Средняя уверенность';
-            } else {
-                confidenceIcon = '<i class="fas fa-times-circle confidence-low"></i>';
-                confidenceClass = 'confidence-low';
-                confidenceText = 'Низкая уверенность';
-            }
-        }
 
-        // Process message with Markdown rendering
+        const welcome = document.getElementById('welcomeMessage');
+        if (welcome) welcome.style.display = 'none';
+
+        const div = document.createElement('div');
+        div.id = messageId;
+        let cls = isUser ? 'user-message' : 'ai-message';
+        if (!isUser && (message.includes('Ошибка') || message.includes('API ключ'))) cls += ' error-message';
+        div.className = `message ${cls} fade-in`;
+
         let processedMessage = message;
-        let sourceButtons = '';
-        
-        // Проверяем, является ли сообщение уже HTML (например, ошибки с кнопками)
-        const isHtmlMessage = message.includes('<a ') || message.includes('<button ') || 
-                             (message.includes('<') && message.includes('</') && 
-                              !message.includes('&lt;') && !message.includes('&gt;'));
-        
-        if (!isHtmlMessage) {
-            // Рендерим Markdown в HTML
+        const isHtml = message.includes('<a ') || message.includes('<button ');
+
+        if (!isHtml && !isUser) {
             try {
-                // Настраиваем marked для безопасного рендеринга
-                marked.setOptions({
-                    breaks: true,  // Переносы строк как <br>
-                    gfm: true,     // GitHub Flavored Markdown (таблицы, зачеркивание и т.д.)
-                    headerIds: false,
-                    mangle: false
-                });
-                
-                // Рендерим markdown
+                marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
                 processedMessage = marked.parse(message);
-                
-                // Обрабатываем ссылки на источники после markdown рендеринга
-                // чтобы они не конфликтовали с markdown ссылками
-                processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
-                    const sourceIndex = parseInt(sourceNum) - 1;
-                    if (sources && sourceIndex < sources.length) {
-                        return `<span class="source-ref-badge badge bg-primary" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник" style="cursor: pointer;">
-                            <i class="fas fa-book me-1"></i>Источник ${sourceNum}
-                        </span>`;
+                processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, num) => {
+                    const idx = parseInt(num) - 1;
+                    if (sources && idx < sources.length) {
+                        return `<span class="source-ref-badge" data-source="${idx}">Ист. ${num}</span>`;
                     }
                     return match;
                 });
-            } catch (e) {
-                console.error('Ошибка рендеринга markdown:', e);
-                // Если ошибка, используем простую обработку
-                processedMessage = message
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n/g, '<br>');
+            } catch(e) {
+                processedMessage = message.replace(/\n/g, '<br>');
             }
-        } else {
-            // Если это уже HTML, обрабатываем ссылки на источники
-            processedMessage = processedMessage.replace(/\[Источник (\d+)\]/g, (match, sourceNum) => {
-                const sourceIndex = parseInt(sourceNum) - 1;
-                if (sources && sourceIndex < sources.length) {
-                    return `<span class="source-ref-badge badge bg-primary" data-source="${sourceIndex}" title="Нажмите чтобы посмотреть источник" style="cursor: pointer;">
-                        <i class="fas fa-book me-1"></i>Источник ${sourceNum}
-                    </span>`;
-                }
-                return match;
-            });
+        } else if (isUser) {
+            processedMessage = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
-        
-        if (sources && sources.length > 0) {
 
-            // Create collapsible sources section
-            sourceButtons = `
-                <div class="sources-section mt-3">
-                    <button type="button" class="btn btn-outline-secondary btn-sm sources-toggle" data-message="${messageId}" id="toggle-${messageId}">
-                        <i class="fas fa-book me-1"></i>
-                        <span class="toggle-text">Показать источники</span> (${sources.length})
-                        <i class="fas fa-chevron-down ms-1 toggle-icon"></i>
+        let confidenceHtml = '';
+        if (confidence !== null) {
+            const cls = confidence > 0.7 ? 'confidence-high' : confidence > 0.4 ? 'confidence-medium' : 'confidence-low';
+            confidenceHtml = `<span class="confidence-indicator ${cls}">${(confidence*100).toFixed(0)}%</span>`;
+        }
+
+        let sourcesHtml = '';
+        if (sources && sources.length > 0) {
+            sourcesHtml = `
+                <div class="sources-section">
+                    <button type="button" class="sources-toggle" data-message="${messageId}" id="toggle-${messageId}">
+                        <i class="fas fa-book-open me-1"></i>
+                        <span class="toggle-text">Источники</span> (${sources.length})
+                        <i class="fas fa-chevron-down ms-1 toggle-icon" style="font-size: 0.625rem;"></i>
                     </button>
                     <div class="sources-content" id="sources-${messageId}" style="display: none;">
-                        <div class="sources-list mt-3">
-                            ${sources.map((source, index) => {
-                                const score = (source.similarity_score * 100).toFixed(1);
-                                return `
-                                    <div class="source-item" data-source-index="${index}">
-                                        <div class="source-header">
-                                            <div class="d-flex justify-content-between align-items-start">
-                                                <div class="source-info">
-                                                    <div class="source-number">
-                                                        <i class="fas fa-file-text me-1"></i>
-                                                        Источник ${index + 1}
-                                                    </div>
-                                                    <div class="source-title">
-                                                        <strong>${source.title}</strong>
-                                                    </div>
-                                                    <div class="source-position">
-                                                        <small class="text-muted">
-                                                            <i class="fas fa-map-marker-alt me-1"></i>
-                                                            ${source.position}
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                                <div class="source-score">
-                                                    <span class="score-badge" title="Релевантность">
-                                                        ${score}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="source-preview mt-2">
-                                            <small class="text-muted">
-                                                <i class="fas fa-quote-left me-1"></i>
-                                                ${source.preview}
-                                            </small>
-                                        </div>
+                        ${sources.map((s, i) => `
+                            <div class="source-item" data-source-index="${i}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="source-number">Источник ${i+1}</div>
+                                        <div class="source-title">${s.title}</div>
+                                        <small class="text-muted">${s.position}</small>
                                     </div>
-                                `;
-                            }).join('')}
-                        </div>
+                                    <span class="score-badge">${(s.similarity_score*100).toFixed(0)}%</span>
+                                </div>
+                                <div class="source-preview">${s.preview}</div>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             `;
         }
 
-        messageDiv.innerHTML = `
-            <div class="card message-card">
-                <div class="card-body">
-                    ${isUser ? '' : `
-                        <div class="d-flex align-items-center mb-2 message-header">
-                            <i class="fas fa-robot text-primary me-2"></i>
-                            <small class="text-muted">AI Assistant</small>
-                            ${confidenceIcon ? `
-                                <span class="ms-auto confidence-indicator ${confidenceClass}" title="${confidenceText}">
-                                    ${confidenceIcon} 
-                                    <small>${(confidence * 100).toFixed(0)}%</small>
-                                </span>
-                            ` : ''}
-                        </div>
-                    `}
+        if (isUser) {
+            div.innerHTML = `<div class="msg-bubble">${processedMessage}</div>`;
+        } else {
+            div.innerHTML = `
+                <div class="msg-bubble">
+                    <div class="msg-header">
+                        <i class="fas fa-scale-balanced"></i>
+                        <span>LawAI</span>
+                        ${confidenceHtml}
+                    </div>
                     <div class="message-content markdown-content">${processedMessage}</div>
-                    ${sourceButtons}
+                    ${sourcesHtml}
                 </div>
-            </div>
-        `;
-
-        chatContainer.appendChild(messageDiv);
-        
-        // Add event listeners for source interactions (только если есть источники)
-        if (sources && sources.length > 0) {
-            // Используем requestAnimationFrame и setTimeout чтобы убедиться, что DOM полностью обновлен
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    console.log(`Добавление обработчиков для сообщения ${messageId}`);
-                    addSourceEventListeners(messageId);
-                }, 50);
-            });
+            `;
         }
-        
+
+        c.appendChild(div);
+
+        if (sources && sources.length > 0) {
+            requestAnimationFrame(() => setTimeout(() => addSourceListeners(messageId), 50));
+        }
         scrollToBottom();
     }
 
-    // Add event listeners for source interactions
-    function addSourceEventListeners(messageId) {
-        const messageDiv = document.getElementById(messageId);
-        
-        if (!messageDiv) {
-            console.warn(`Сообщение ${messageId} не найдено для добавления обработчиков событий`);
-            return;
-        }
-        
-        // Toggle sources visibility - ищем по ID и классу
-        const sourcesToggle = document.getElementById(`toggle-${messageId}`) || messageDiv.querySelector('.sources-toggle');
-        console.log(`Поиск кнопки источников для ${messageId}:`, sourcesToggle);
-        console.log(`Все кнопки в сообщении:`, messageDiv.querySelectorAll('button'));
-        
-        if (sourcesToggle) {
-            console.log(`✅ Кнопка источников найдена, привязываем обработчик для ${messageId}`);
-            
-            // Удаляем старый обработчик если есть
-            const newToggle = sourcesToggle.cloneNode(true);
-            sourcesToggle.parentNode.replaceChild(newToggle, sourcesToggle);
-            
+    function addSourceListeners(messageId) {
+        const msg = document.getElementById(messageId);
+        if (!msg) return;
+
+        const toggle = document.getElementById(`toggle-${messageId}`);
+        if (toggle) {
+            const newToggle = toggle.cloneNode(true);
+            toggle.parentNode.replaceChild(newToggle, toggle);
+
             newToggle.addEventListener('click', function(e) {
-                console.log(`🖱️ Клик по кнопке источников для ${messageId}`);
                 e.preventDefault();
                 e.stopPropagation();
-                
-                const sourcesContent = document.getElementById(`sources-${messageId}`);
-                if (!sourcesContent) {
-                    console.warn(`Источники для сообщения ${messageId} не найдены`);
-                    return;
-                }
-                
-                const toggleText = this.querySelector('.toggle-text');
-                const toggleIcon = this.querySelector('.toggle-icon');
-                
-                // Проверяем текущее состояние через несколько способов
-                const computedStyle = window.getComputedStyle(sourcesContent);
-                const isHidden = sourcesContent.style.display === 'none' || 
-                                computedStyle.display === 'none' ||
-                                sourcesContent.offsetHeight === 0 ||
-                                sourcesContent.classList.contains('hidden');
-                
-                console.log(`Переключение источников для ${messageId}, скрыто: ${isHidden}, display: ${sourcesContent.style.display}, computed: ${computedStyle.display}`);
-                
-                if (isHidden) {
-                    // Показываем источники
-                    sourcesContent.style.display = 'block';
-                    sourcesContent.style.visibility = 'visible';
-                    sourcesContent.style.opacity = '1';
-                    sourcesContent.classList.add('sources-slide-in');
-                    sourcesContent.classList.remove('hidden');
-                    
-                    if (toggleIcon) {
-                        toggleIcon.className = 'fas fa-chevron-up ms-1 toggle-icon';
-                    }
-                    
-                    if (toggleText) {
-                        toggleText.textContent = 'Скрыть источники';
-                    } else {
-                        // Fallback если toggle-text не найден
-                        const currentHtml = this.innerHTML;
-                        this.innerHTML = currentHtml.replace(/Показать источники/g, 'Скрыть источники');
-                    }
-                    
-                    console.log('✅ Источники показаны, элементов:', sourcesContent.querySelectorAll('.source-item').length);
+                const content = document.getElementById(`sources-${messageId}`);
+                if (!content) return;
+                const hidden = content.style.display === 'none' || window.getComputedStyle(content).display === 'none';
+                if (hidden) {
+                    content.style.setProperty('display', 'block', 'important');
+                    content.classList.add('sources-slide-in');
+                    const icon = this.querySelector('.toggle-icon');
+                    if (icon) icon.className = 'fas fa-chevron-up ms-1 toggle-icon';
+                    const text = this.querySelector('.toggle-text');
+                    if (text) text.textContent = 'Скрыть';
                 } else {
-                    // Скрываем источники
-                    sourcesContent.style.display = 'none';
-                    sourcesContent.style.visibility = 'hidden';
-                    sourcesContent.style.opacity = '0';
-                    sourcesContent.classList.remove('sources-slide-in');
-                    sourcesContent.classList.add('hidden');
-                    
-                    if (toggleIcon) {
-                        toggleIcon.className = 'fas fa-chevron-down ms-1 toggle-icon';
-                    }
-                    
-                    if (toggleText) {
-                        toggleText.textContent = 'Показать источники';
-                    } else {
-                        // Fallback если toggle-text не найден
-                        const currentHtml = this.innerHTML;
-                        this.innerHTML = currentHtml.replace(/Скрыть источники/g, 'Показать источники');
-                    }
-                    
-                    console.log('❌ Источники скрыты');
+                    content.style.display = 'none';
+                    content.classList.remove('sources-slide-in');
+                    const icon = this.querySelector('.toggle-icon');
+                    if (icon) icon.className = 'fas fa-chevron-down ms-1 toggle-icon';
+                    const text = this.querySelector('.toggle-text');
+                    if (text) text.textContent = 'Источники';
                 }
             });
-            
-            console.log(`✅ Обработчик привязан к кнопке для ${messageId}`);
-        } else {
-            console.error(`❌ Кнопка источников НЕ найдена для ${messageId}!`);
-            console.log('Структура сообщения:', messageDiv.innerHTML.substring(0, 500));
         }
 
-        // Click on source reference badges
-        const sourceRefs = messageDiv.querySelectorAll('.source-ref-badge');
-        sourceRefs.forEach(ref => {
+        msg.querySelectorAll('.source-ref-badge').forEach(ref => {
             ref.addEventListener('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                
-                const sourceIndex = this.dataset.source;
-                const sourcesContent = document.getElementById(`sources-${messageId}`);
-                const sourcesToggle = messageDiv.querySelector('.sources-toggle');
-                
-                if (!sourcesContent || !sourcesToggle) {
-                    console.warn(`Источники или кнопка для сообщения ${messageId} не найдены`);
-                    return;
-                }
-                
-                // Show sources if hidden
-                const isHidden = sourcesContent.style.display === 'none' || 
-                                window.getComputedStyle(sourcesContent).display === 'none' ||
-                                sourcesContent.offsetHeight === 0;
-                
-                if (isHidden) {
-                    sourcesToggle.click();
-                }
-                
-                // Highlight the specific source
+                const idx = this.dataset.source;
+                const content = document.getElementById(`sources-${messageId}`);
+                const btn = document.getElementById(`toggle-${messageId}`);
+                if (content && content.style.display === 'none') btn && btn.click();
                 setTimeout(() => {
-                    const sourceItem = sourcesContent.querySelector(`[data-source-index="${sourceIndex}"]`);
-                    if (sourceItem) {
-                        sourceItem.classList.add('source-highlight');
-                        sourceItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        setTimeout(() => {
-                            sourceItem.classList.remove('source-highlight');
-                        }, 2000);
-                    } else {
-                        console.warn(`Источник с индексом ${sourceIndex} не найден`);
+                    const item = content && content.querySelector(`[data-source-index="${idx}"]`);
+                    if (item) {
+                        item.classList.add('source-highlight');
+                        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => item.classList.remove('source-highlight'), 2000);
                     }
-                }, 300);
+                }, 200);
             });
         });
     }
 
-    // Handle form submission
-    const chatForm = document.getElementById('chatForm');
-    if (!chatForm) {
-        console.error('❌ Форма chatForm не найдена!');
-        alert('Ошибка: форма чата не найдена. Перезагрузите страницу.');
-    } else {
-        console.log('✅ Форма chatForm найдена, привязываем обработчик...');
-        chatForm.addEventListener('submit', async function(e) {
+    // Delegated click for dynamically added source toggles
+    $(document).on('click', '.sources-toggle', function(e) {
         e.preventDefault();
-        
-        if (isLoading) {
-            console.log('Запрос уже обрабатывается, пропускаем...');
-            return;
+        e.stopPropagation();
+        const msgId = this.getAttribute('data-message') || this.id.replace('toggle-', 'message-');
+        const content = document.getElementById(`sources-${msgId}`);
+        if (!content) return;
+        const hidden = content.style.display === 'none' || window.getComputedStyle(content).display === 'none';
+        if (hidden) {
+            content.style.setProperty('display', 'block', 'important');
+            content.classList.add('sources-slide-in');
+            const icon = this.querySelector('.toggle-icon');
+            if (icon) icon.className = 'fas fa-chevron-up ms-1 toggle-icon';
+            const text = this.querySelector('.toggle-text');
+            if (text) text.textContent = 'Скрыть';
+        } else {
+            content.style.display = 'none';
+            content.classList.remove('sources-slide-in');
+            const icon = this.querySelector('.toggle-icon');
+            if (icon) icon.className = 'fas fa-chevron-down ms-1 toggle-icon';
+            const text = this.querySelector('.toggle-text');
+            if (text) text.textContent = 'Источники';
         }
+    });
 
-        const userInput = document.getElementById('userInput');
-        const query = userInput.value.trim();
-        
-        if (!query) {
-            console.log('Пустой запрос, пропускаем...');
-            return;
-        }
+    // Form submit
+    const form = document.getElementById('chatForm');
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (isLoading) return;
 
-        // Убираем проверку ragInitialized - сервер сам проверит и вернет понятное сообщение
-        // if (!ragInitialized) {
-        //     alert('Пожалуйста, сначала инициализируйте RAG систему, нажав кнопку "Загрузить RAG систему"');
-        //     return;
-        // }
+            const input = document.getElementById('userInput');
+            const query = input.value.trim();
+            if (!query) return;
 
-        console.log('Отправка запроса:', query);
+            addMessage(query, true);
+            input.value = '';
+            addTypingIndicator();
+            isLoading = true;
 
-        // Add user message
-        addMessage(query, true);
-        userInput.value = '';
+            const btn = document.getElementById('sendBtn');
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
+            btn.disabled = true;
 
-        // Show typing animation
-        addTypingIndicator();
-        console.log('Индикатор загрузки показан');
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, use_rag: true })
+                });
+                const data = await response.json();
+                removeTypingIndicator();
 
-        // Show loading state
-        isLoading = true;
-        const sendBtn = document.getElementById('sendBtn');
-        const originalBtnContent = sendBtn.innerHTML;
-        sendBtn.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div>';
-        sendBtn.disabled = true;
-        console.log('Кнопка отправки заблокирована');
-
-        try {
-            console.log('Отправка запроса на /api/chat...', { query, use_rag: true });
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    query: query,
-                    use_rag: true  // Всегда режим поиска по документам на этой странице
-                })
-            });
-
-            console.log('Получен ответ:', response.status, response.statusText);
-            const data = await response.json();
-            console.log('Данные ответа:', data);
-
-            // Remove typing indicator
-            removeTypingIndicator();
-
-            // Обработка ошибок
-            if (!response.ok || data.error || data.error_type) {
-                let errorMessage = data.answer || data.error || 'Произошла ошибка';
-                
-                // Рендерим markdown для ошибок тоже
-                try {
-                    marked.setOptions({
-                        breaks: true,
-                        gfm: true
-                    });
-                    errorMessage = marked.parse(errorMessage);
-                } catch (e) {
-                    // Если ошибка, используем простую замену
-                    errorMessage = errorMessage
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\n/g, '<br>');
+                if (!response.ok || data.error || data.error_type) {
+                    let err = data.answer || data.error || 'Произошла ошибка';
+                    try { err = marked.parse(err); } catch(x) {}
+                    if (data.error_type === 'api_error' || data.error_type === 'config_error') {
+                        err += '<br><br><a href="/admin" class="btn btn-sm btn-primary mt-2">Настройки</a>';
+                    } else if (data.error_type === 'rag_not_initialized' || data.error_type === 'no_embeddings') {
+                        err += '<br><br><a href="/admin" class="btn btn-sm btn-primary mt-2">Админ панель</a>';
+                    }
+                    addMessage(err, false);
+                } else {
+                    addMessage(data.answer, false, data.sources, data.confidence);
                 }
-                
-                // Добавляем кнопки действий в зависимости от типа ошибки
-                if (data.error_type === 'api_error' || data.error_type === 'config_error') {
-                    errorMessage += '<br><br><a href="/admin" class="btn btn-sm btn-primary mt-2"><i class="fas fa-cog me-1"></i>Перейти в настройки моделей</a>';
-                } else if (data.error_type === 'rag_not_initialized' || data.error_type === 'no_embeddings') {
-                    errorMessage += '<br><br><a href="/admin" class="btn btn-sm btn-primary mt-2"><i class="fas fa-cog me-1"></i>Перейти в админ панель</a>';
-                }
-                
-                addMessage(errorMessage, false);
-            } else {
-                addMessage(data.answer, false, data.sources, data.confidence);
+            } catch(error) {
+                removeTypingIndicator();
+                addMessage(`Ошибка подключения: ${error.message}`, false);
+            } finally {
+                isLoading = false;
+                btn.innerHTML = origHtml;
+                btn.disabled = false;
+                input.focus();
             }
-        } catch (error) {
-            console.error('Ошибка при отправке запроса:', error);
-            removeTypingIndicator();
-            addMessage(`❌ Ошибка подключения: ${error.message}`, false);
-        } finally {
-            isLoading = false;
-            sendBtn.innerHTML = originalBtnContent;
-            sendBtn.disabled = false;
-            userInput.focus();
-            console.log('Запрос завершен, форма разблокирована');
-        }
         });
-        
-        // Также обрабатываем Enter в поле ввода
-        const userInput = document.getElementById('userInput');
-        if (userInput) {
-            userInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    chatForm.dispatchEvent(new Event('submit'));
-                }
-            });
-        }
+
+        document.getElementById('userInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
     }
 
-    // Example questions
+    // Example buttons
     document.querySelectorAll('.example-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.getElementById('userInput').value = this.dataset.query;
-            document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+            form.dispatchEvent(new Event('submit'));
         });
     });
 
     // Clear chat
     document.getElementById('clearChatBtn').addEventListener('click', function() {
-        const welcomeMsg = document.getElementById('welcomeMessage');
-        if (welcomeMsg) {
-            welcomeMsg.style.display = 'block';
-        }
-        
-        // Remove all messages except welcome
-        const messages = document.querySelectorAll('.message');
-        messages.forEach(msg => msg.remove());
-        
+        const w = document.getElementById('welcomeMessage');
+        if (w) w.style.display = '';
+        document.querySelectorAll('.message').forEach(m => m.remove());
         messageCounter = 0;
     });
 
-    // Show history
+    // History
     document.getElementById('historyBtn').addEventListener('click', async function() {
         const modal = new bootstrap.Modal(document.getElementById('historyModal'));
         modal.show();
-
         try {
-            const response = await fetch('/api/history');
-            const data = await response.json();
-            
-            const historyContent = document.getElementById('historyContent');
-            
-            if (data.history && data.history.length > 0) {
-                let historyHtml = '';
-                data.history.forEach(item => {
-                    historyHtml += `
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <strong>Вопрос:</strong>
-                                        <p class="text-muted">${item.user_query}</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong>Ответ:</strong>
-                                        <p class="text-muted">${item.ai_response.substring(0, 200)}...</p>
-                                        <small class="text-muted">${new Date(item.created_at).toLocaleString('ru')}</small>
-                                    </div>
-                                </div>
+            const r = await fetch('/api/history');
+            const d = await r.json();
+            const el = document.getElementById('historyContent');
+            if (d.history && d.history.length > 0) {
+                el.innerHTML = d.history.map(item => `
+                    <div class="card mb-2">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <strong style="font-size:0.8125rem">Вопрос:</strong>
+                                <small class="text-muted">${new Date(item.created_at || item.timestamp).toLocaleString('ru')}</small>
                             </div>
+                            <p class="text-muted mb-1" style="font-size:0.8125rem">${item.user_query}</p>
+                            <strong style="font-size:0.8125rem">Ответ:</strong>
+                            <p class="text-muted mb-0" style="font-size:0.8125rem">${(item.ai_response||'').substring(0, 200)}...</p>
                         </div>
-                    `;
-                });
-                historyContent.innerHTML = historyHtml;
+                    </div>
+                `).join('');
             } else {
-                historyContent.innerHTML = '<div class="text-center text-muted py-4">История чата пуста</div>';
+                el.innerHTML = '<p class="text-center text-muted py-3">История пуста</p>';
             }
-        } catch (error) {
-            document.getElementById('historyContent').innerHTML = '<div class="alert alert-danger">Ошибка загрузки истории</div>';
+        } catch(e) {
+            document.getElementById('historyContent').innerHTML = '<p class="text-center text-danger">Ошибка загрузки</p>';
         }
     });
 
-    // Делегирование событий для кнопок источников (работает для динамически добавленных элементов)
-    $(document).on('click', '.sources-toggle', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const button = this;
-        const messageId = button.getAttribute('data-message') || button.id.replace('toggle-', 'message-');
-        console.log(`🖱️ Делегированный клик по кнопке источников для ${messageId}`);
-        
-        const sourcesContent = document.getElementById(`sources-${messageId}`);
-        if (!sourcesContent) {
-            console.error(`❌ Источники для ${messageId} не найдены`);
-            return;
-        }
-        
-        const toggleText = button.querySelector('.toggle-text');
-        const toggleIcon = button.querySelector('.toggle-icon');
-        
-        const computedStyle = window.getComputedStyle(sourcesContent);
-        const isHidden = sourcesContent.style.display === 'none' || 
-                        computedStyle.display === 'none' ||
-                        sourcesContent.offsetHeight === 0;
-        
-        console.log(`Переключение источников для ${messageId}, скрыто: ${isHidden}, display: ${sourcesContent.style.display}, computed: ${computedStyle.display}`);
-        
-        if (isHidden) {
-            sourcesContent.style.setProperty('display', 'block', 'important');
-            sourcesContent.style.setProperty('visibility', 'visible', 'important');
-            sourcesContent.style.setProperty('opacity', '1', 'important');
-            sourcesContent.style.setProperty('max-height', 'none', 'important');
-            sourcesContent.style.setProperty('overflow', 'visible', 'important');
-            sourcesContent.classList.add('sources-slide-in');
-            sourcesContent.classList.remove('hidden');
-            
-            if (toggleIcon) {
-                toggleIcon.className = 'fas fa-chevron-up ms-1 toggle-icon';
-            }
-            
-            if (toggleText) {
-                toggleText.textContent = 'Скрыть источники';
-            } else {
-                const currentHtml = button.innerHTML;
-                button.innerHTML = currentHtml.replace(/Показать источники/g, 'Скрыть источники');
-            }
-            
-            console.log('✅ Источники показаны, элементов:', sourcesContent.querySelectorAll('.source-item').length);
-        } else {
-            sourcesContent.style.display = 'none';
-            sourcesContent.style.visibility = 'hidden';
-            sourcesContent.style.opacity = '0';
-            sourcesContent.classList.remove('sources-slide-in');
-            sourcesContent.classList.add('hidden');
-            
-            if (toggleIcon) {
-                toggleIcon.className = 'fas fa-chevron-down ms-1 toggle-icon';
-            }
-            
-            if (toggleText) {
-                toggleText.textContent = 'Показать источники';
-            } else {
-                const currentHtml = button.innerHTML;
-                button.innerHTML = currentHtml.replace(/Скрыть источники/g, 'Показать источники');
-            }
-            
-            console.log('❌ Источники скрыты');
-        }
-    });
-    
-    // Проверка статуса системы поиска при загрузке страницы
+    // RAG status
     async function checkRagStatus() {
         try {
-            const response = await fetch('/api/rag/status');
-            const data = await response.json();
-            
-            if (data.initialized) {
-                showRagReady();
-                ragInitialized = true;
-            } else if (data.initializing) {
-                showRagLoading();
-                // Poll for status updates
-                pollRagStatus();
-            } else {
-                showRagInit();
-            }
-        } catch (error) {
-            console.log('Ошибка проверки статуса RAG:', error);
-            showRagInit();
-        }
+            const r = await fetch('/api/rag/status');
+            const d = await r.json();
+            if (d.initialized) { showRagReady(); ragInitialized = true; }
+            else if (d.initializing) { showRagLoading(); pollRagStatus(); }
+            else showRagInit();
+        } catch(e) { showRagInit(); }
     }
 
-    // Poll RAG status during initialization
     async function pollRagStatus() {
-        const pollInterval = setInterval(async () => {
+        const iv = setInterval(async () => {
             try {
-                const response = await fetch('/api/rag/status');
-                const data = await response.json();
-                
-                if (data.initialized) {
-                    clearInterval(pollInterval);
-                    showRagReady();
-                    ragInitialized = true;
-                } else if (!data.initializing) {
-                    clearInterval(pollInterval);
-                    showRagInit();
-                }
-            } catch (error) {
-                console.log('Ошибка опроса статуса RAG:', error);
-                clearInterval(pollInterval);
-                showRagInit();
-            }
+                const r = await fetch('/api/rag/status');
+                const d = await r.json();
+                if (d.initialized) { clearInterval(iv); showRagReady(); ragInitialized = true; }
+                else if (!d.initializing) { clearInterval(iv); showRagInit(); }
+            } catch(e) { clearInterval(iv); showRagInit(); }
         }, 1000);
     }
 
-    // Show RAG initialization section
     function showRagInit() {
         document.getElementById('ragInitSection').style.display = 'block';
         document.getElementById('ragLoadingSection').style.display = 'none';
         document.getElementById('ragReadySection').style.display = 'none';
     }
-
-    // Show RAG loading section
     function showRagLoading() {
         document.getElementById('ragInitSection').style.display = 'none';
         document.getElementById('ragLoadingSection').style.display = 'block';
         document.getElementById('ragReadySection').style.display = 'none';
     }
-
-    // Show RAG ready section
     function showRagReady() {
         document.getElementById('ragInitSection').style.display = 'none';
         document.getElementById('ragLoadingSection').style.display = 'none';
         document.getElementById('ragReadySection').style.display = 'block';
     }
 
-    // Initialize RAG system
     async function initializeRag() {
-        const initBtn = document.getElementById('initRagBtn');
-        const originalText = initBtn.innerHTML;
-        
-        // Show loading state
-        initBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Инициализация...';
-        initBtn.disabled = true;
-        
+        const btn = document.getElementById('initRagBtn');
+        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Загрузка...';
+        btn.disabled = true;
         showRagLoading();
-        
-        // Simulate progress
-        const progressBar = document.getElementById('ragProgressBar');
-        const loadingText = document.getElementById('ragLoadingText');
-        
-        const progressSteps = [
-            { progress: 20, text: 'Загрузка модели embeddings...' },
-            { progress: 40, text: 'Инициализация DocumentProcessor...' },
-            { progress: 60, text: 'Инициализация DocumentRetriever...' },
-            { progress: 80, text: 'Загрузка кэша документов...' },
-            { progress: 100, text: 'Завершение инициализации...' }
+
+        const bar = document.getElementById('ragProgressBar');
+        const text = document.getElementById('ragLoadingText');
+        const steps = [
+            {p: 20, t: 'Загрузка модели...'}, {p: 50, t: 'Инициализация поиска...'},
+            {p: 80, t: 'Загрузка документов...'}, {p: 100, t: 'Завершение...'}
         ];
-        
-        let currentStep = 0;
-        const stepInterval = setInterval(() => {
-            if (currentStep < progressSteps.length) {
-                const step = progressSteps[currentStep];
-                progressBar.style.width = step.progress + '%';
-                loadingText.textContent = step.text;
-                currentStep++;
-            } else {
-                clearInterval(stepInterval);
-            }
+        let step = 0;
+        const iv = setInterval(() => {
+            if (step < steps.length) { bar.style.width = steps[step].p+'%'; text.textContent = steps[step].t; step++; }
+            else clearInterval(iv);
         }, 800);
-        
+
         try {
-            const response = await fetch('/api/rag/initialize', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showRagReady();
-                ragInitialized = true;
-            } else {
-                throw new Error(data.message || 'Ошибка инициализации');
-            }
-        } catch (error) {
-            console.error('Ошибка инициализации RAG:', error);
+            const r = await fetch('/api/rag/initialize', { method: 'POST', headers: {'Content-Type':'application/json'} });
+            const d = await r.json();
+            if (d.success) { showRagReady(); ragInitialized = true; }
+            else throw new Error(d.message || 'Ошибка');
+        } catch(e) {
             showRagInit();
-            alert('Ошибка инициализации RAG системы: ' + error.message);
+            alert('Ошибка инициализации: ' + e.message);
         } finally {
-            initBtn.innerHTML = originalText;
-            initBtn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play me-1"></i>Инициализировать';
+            btn.disabled = false;
         }
     }
 
-    // RAG initialization button
     document.getElementById('initRagBtn').addEventListener('click', initializeRag);
-
-    // Check RAG status on page load
     checkRagStatus();
-
-    // Focus on input
     document.getElementById('userInput').focus();
 });
 </script>
-
-<style>
-/* Improved message styles */
-.message-card {
-    transition: all 0.3s ease;
-}
-
-.message-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Typing animation */
-.typing-animation {
-    display: flex;
-    align-items: center;
-    padding: 10px 0;
-}
-
-.typing-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--primary-color);
-    margin: 0 2px;
-    animation: typing 1.4s infinite ease-in-out both;
-}
-
-.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dot:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typing {
-    0%, 80%, 100% {
-        transform: scale(0.8);
-        opacity: 0.5;
-    }
-    40% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.typing-text {
-    color: var(--secondary-color);
-    font-style: italic;
-}
-
-/* Error message styles */
-.error-message .card {
-    background-color: #fef2f2 !important;
-    border-left: 4px solid #dc2626;
-}
-
-.error-message .card-body {
-    color: #991b1b;
-}
-
-.error-message .card-body a {
-    color: #2563eb;
-    text-decoration: underline;
-    font-weight: 500;
-}
-
-.error-message .card-body a:hover {
-    color: #1d4ed8;
-}
-
-.error-message .card-body code,
-.error-message .card-body pre {
-    background-color: #fee2e2;
-    color: #991b1b;
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-/* Source reference badges */
-.source-ref-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-    color: #1976d2;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 1px solid #90caf9;
-    margin: 0 2px;
-}
-
-.source-ref-badge:hover {
-    background: linear-gradient(135deg, #bbdefb, #90caf9);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
-}
-
-/* Sources section */
-.sources-section {
-    border-top: 1px solid var(--border-color);
-    padding-top: 15px;
-}
-
-.sources-toggle {
-    transition: all 0.3s ease;
-}
-
-.sources-toggle:hover {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-}
-
-.sources-content {
-    transition: all 0.3s ease;
-    display: none !important;
-    visibility: visible;
-    opacity: 1;
-    max-height: none;
-    overflow: visible;
-}
-
-.sources-content[style*="display: block"],
-.sources-content.sources-slide-in {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    max-height: none !important;
-    overflow: visible !important;
-}
-
-.sources-slide-in {
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Source items */
-.source-item {
-    background: #f8f9fa;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 10px;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.source-item:hover {
-    background: #e9ecef;
-    border-color: var(--primary-color);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.source-highlight {
-    background: linear-gradient(135deg, #fff3e0, #ffe0b2) !important;
-    border-color: #ff9800 !important;
-    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2);
-    animation: highlight-pulse 1s ease-in-out;
-}
-
-@keyframes highlight-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-}
-
-.source-number {
-    font-weight: 600;
-    color: var(--primary-color);
-    font-size: 0.9rem;
-}
-
-.source-title {
-    margin: 5px 0;
-    font-size: 0.95rem;
-}
-
-.source-position {
-    margin-bottom: 8px;
-}
-
-.score-badge {
-    background: linear-gradient(135deg, var(--success-color), #059669);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.source-preview {
-    background: white;
-    border-radius: 8px;
-    padding: 10px;
-    border-left: 3px solid var(--primary-color);
-    font-style: italic;
-}
-
-/* Confidence indicators */
-.confidence-indicator {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.confidence-high { color: var(--success-color); }
-.confidence-medium { color: var(--warning-color); }
-.confidence-low { color: var(--danger-color); }
-
-/* Enhanced animations */
-.fade-in {
-    animation: messageSlideIn 0.4s ease-out;
-}
-
-@keyframes messageSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* Message content styling */
-.message-content {
-    line-height: 1.6;
-    color: var(--dark-color);
-}
-
-.message-content p {
-    margin-bottom: 1rem;
-}
-
-.message-content strong {
-    color: var(--primary-color);
-}
-
-/* Markdown таблицы в сообщениях */
-.message-content.markdown-content table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1.5em 0;
-    font-size: 0.95em;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: white;
-}
-
-.message-content.markdown-content table thead {
-    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
-    color: white;
-}
-
-.message-content.markdown-content table th {
-    padding: 1em;
-    text-align: left;
-    font-weight: 600;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.message-content.markdown-content table td {
-    padding: 0.875em 1em;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.message-content.markdown-content table tbody tr {
-    transition: background-color 0.2s ease;
-}
-
-.message-content.markdown-content table tbody tr:hover {
-    background-color: #f8fafc;
-}
-
-.message-content.markdown-content table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.message-content.markdown-content table tbody tr:nth-child(even) {
-    background-color: #f8f9fa;
-}
-
-.message-content.markdown-content table tbody tr:nth-child(even):hover {
-    background-color: #f1f5f9;
-}
-
-/* Адаптивность таблиц на мобильных */
-@media (max-width: 768px) {
-    .message-content.markdown-content table {
-        font-size: 0.85em;
-    }
-    
-    .message-content.markdown-content table th,
-    .message-content.markdown-content table td {
-        padding: 0.5em 0.75em;
-    }
-}
-
-</style>
-{% endblock %} 
+{% endblock %}
