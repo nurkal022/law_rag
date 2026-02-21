@@ -57,6 +57,7 @@ class LawProjectData:
     social_consequences: str = ""
     new_terms: Dict[str, str] = None
     implementation_timeline: str = ""
+    use_foreign_experience: bool = True
     
     def __post_init__(self):
         if self.goals is None:
