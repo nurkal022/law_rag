@@ -85,14 +85,16 @@ class DocumentChunk(db.Model):
 class ChatHistory(db.Model):
     """Модель истории чата"""
     __tablename__ = 'chat_history'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(255), nullable=False, index=True)
     user_query = db.Column(db.Text, nullable=False)
     ai_response = db.Column(db.Text, nullable=False)
     sources = db.Column(db.Text)  # JSON массив источников
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
+    feedback = db.relationship('ChatFeedback', backref='chat_entry', lazy='dynamic', cascade='all, delete-orphan')
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -102,6 +104,40 @@ class ChatHistory(db.Model):
             'sources': json.loads(self.sources) if self.sources else [],
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class ChatFeedback(db.Model):
+    """Оценка ответов для улучшения модели (fine-tuning)"""
+    __tablename__ = 'chat_feedback'
+
+    id = db.Column(db.Integer, primary_key=True)
+    chat_history_id = db.Column(db.Integer, db.ForeignKey('chat_history.id'), nullable=False, index=True)
+    session_id = db.Column(db.String(255), nullable=False, index=True)
+    rating = db.Column(db.Integer, nullable=False)  # 1 (плохо) или 5 (хорошо)
+    comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'chat_history_id': self.chat_history_id,
+            'rating': self.rating,
+            'comment': self.comment,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class PageVisit(db.Model):
+    """Журнал посещений страниц"""
+    __tablename__ = 'page_visits'
+
+    id = db.Column(db.Integer, primary_key=True)
+    path = db.Column(db.String(500), nullable=False, index=True)
+    ip_hash = db.Column(db.String(64), index=True)
+    user_agent = db.Column(db.String(500))
+    referer = db.Column(db.String(500))
+    device = db.Column(db.String(20))   # 'mobile', 'tablet', 'desktop'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
 
 class LawProject(db.Model):
     """Модель законопроекта"""
@@ -441,9 +477,9 @@ class DatabaseManager:
         
         return chunk.to_dict() if chunk else None
     
-    def save_chat_history(self, session_id: str, user_query: str, 
-                         ai_response: str, sources: List[Dict] = None):
-        """Сохранение истории чата"""
+    def save_chat_history(self, session_id: str, user_query: str,
+                         ai_response: str, sources: List[Dict] = None) -> Optional[int]:
+        """Сохранение истории чата. Возвращает ID записи."""
         try:
             chat_entry = ChatHistory(
                 session_id=session_id,
@@ -451,13 +487,65 @@ class DatabaseManager:
                 ai_response=ai_response,
                 sources=json.dumps(sources, ensure_ascii=False) if sources else None
             )
-            
+
             db.session.add(chat_entry)
             db.session.commit()
-            
+            return chat_entry.id
+
         except Exception as e:
             db.session.rollback()
             print(f"Ошибка сохранения истории чата: {e}")
+            return None
+
+    def save_feedback(self, chat_history_id: int, session_id: str, rating: int, comment: str = None) -> bool:
+        """Сохранение оценки ответа"""
+        try:
+            feedback = ChatFeedback(
+                chat_history_id=chat_history_id,
+                session_id=session_id,
+                rating=rating,
+                comment=comment
+            )
+            db.session.add(feedback)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Ошибка сохранения оценки: {e}")
+            return False
+
+    def get_finetune_data(self, min_rating: int = 4, limit: int = 10000) -> List[Dict]:
+        """Экспорт данных для fine-tuning (только хорошо оценённые)"""
+        results = (
+            db.session.query(ChatHistory, ChatFeedback)
+            .join(ChatFeedback, ChatHistory.id == ChatFeedback.chat_history_id)
+            .filter(ChatFeedback.rating >= min_rating)
+            .order_by(ChatHistory.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        data = []
+        for chat, fb in results:
+            sources = json.loads(chat.sources) if chat.sources else []
+            context = '\n'.join([s.get('preview', '') for s in sources[:3] if s.get('preview')]) if sources else ''
+            system_prompt = (
+                'Ты — юридический ИИ-ассистент LawAI, специализирующийся на законодательстве '
+                'Республики Казахстан. Отвечай точно, ссылаясь на нормативные акты.'
+            )
+            if context:
+                system_prompt += f'\n\nКонтекст из документов:\n{context}'
+
+            data.append({
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': chat.user_query},
+                    {'role': 'assistant', 'content': chat.ai_response}
+                ],
+                'rating': fb.rating,
+                'created_at': chat.created_at.isoformat() if chat.created_at else None
+            })
+        return data
     
     def get_chat_history(self, session_id: str, limit: int = 10) -> List[Dict]:
         """Получение истории чата для сессии"""
@@ -585,8 +673,88 @@ class DatabaseManager:
         recent_projects = LawProject.query.filter(
             LawProject.generation_date >= datetime.utcnow().replace(day=1)
         ).count()
-        
+
         return {
             'total_projects': total_projects,
             'recent_projects': recent_projects
-        } 
+        }
+
+    def record_visit(self, path: str, ip_hash: str, user_agent: str,
+                     referer: str = None, device: str = 'desktop'):
+        """Запись посещения страницы"""
+        try:
+            visit = PageVisit(
+                path=path,
+                ip_hash=ip_hash,
+                user_agent=user_agent[:500] if user_agent else None,
+                referer=referer[:500] if referer else None,
+                device=device
+            )
+            db.session.add(visit)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+
+    def get_visits_stats(self) -> Dict:
+        """Статистика посещений для админки"""
+        from sqlalchemy import func, text
+        now = datetime.utcnow()
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_ago = datetime(now.year, now.month, now.day) - __import__('datetime').timedelta(days=7)
+        month_ago = datetime(now.year, now.month, now.day) - __import__('datetime').timedelta(days=30)
+
+        total = PageVisit.query.count()
+        today_count = PageVisit.query.filter(PageVisit.created_at >= today).count()
+        week_count = PageVisit.query.filter(PageVisit.created_at >= week_ago).count()
+        month_count = PageVisit.query.filter(PageVisit.created_at >= month_ago).count()
+
+        unique_today = db.session.query(func.count(func.distinct(PageVisit.ip_hash))).filter(
+            PageVisit.created_at >= today).scalar() or 0
+        unique_week = db.session.query(func.count(func.distinct(PageVisit.ip_hash))).filter(
+            PageVisit.created_at >= week_ago).scalar() or 0
+
+        # Топ страниц за 30 дней
+        top_pages_raw = db.session.query(
+            PageVisit.path,
+            func.count(PageVisit.id).label('cnt')
+        ).filter(PageVisit.created_at >= month_ago).group_by(PageVisit.path)\
+         .order_by(func.count(PageVisit.id).desc()).limit(10).all()
+        top_pages = [{'path': r.path, 'count': r.cnt} for r in top_pages_raw]
+
+        # Посещения по дням (последние 30 дней)
+        daily_raw = db.session.query(
+            func.date(PageVisit.created_at).label('day'),
+            func.count(PageVisit.id).label('cnt')
+        ).filter(PageVisit.created_at >= month_ago)\
+         .group_by(func.date(PageVisit.created_at))\
+         .order_by(func.date(PageVisit.created_at)).all()
+        daily = [{'date': str(r.day), 'count': r.cnt} for r in daily_raw]
+
+        # Устройства
+        device_raw = db.session.query(
+            PageVisit.device,
+            func.count(PageVisit.id).label('cnt')
+        ).filter(PageVisit.created_at >= month_ago).group_by(PageVisit.device).all()
+        devices = {r.device: r.cnt for r in device_raw}
+
+        # Чаты всего
+        total_chats = ChatHistory.query.count()
+        # Оценки
+        from database.models import ChatFeedback
+        good = ChatFeedback.query.filter(ChatFeedback.rating >= 4).count()
+        bad = ChatFeedback.query.filter(ChatFeedback.rating < 4).count()
+
+        return {
+            'total': total,
+            'today': today_count,
+            'week': week_count,
+            'month': month_count,
+            'unique_today': unique_today,
+            'unique_week': unique_week,
+            'top_pages': top_pages,
+            'daily': daily,
+            'devices': devices,
+            'total_chats': total_chats,
+            'feedback_good': good,
+            'feedback_bad': bad,
+        }

@@ -105,6 +105,10 @@ class Config:
     # Flask настройки
     SECRET_KEY = os.getenv('SECRET_KEY', 'lawai-secret-key')
     DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+
+    # Администратор
+    ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'changeme')
     
     # Директории
     DOCUMENTS_DIR = 'current'

@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}История вопросов — LawVision Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-breadcrumb {
+        display: flex; align-items: center; gap: 0.5rem;
+        font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1.25rem;
+    }
+    .admin-breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    .admin-breadcrumb .sep { color: var(--text-light); }
+
+    .page-head {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;
+    }
+    .page-head h1 { font-size: 1.375rem; font-weight: 700; margin: 0; }
+
+    .stats-row { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .stat-chip {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: 10px; padding: 0.625rem 1.125rem;
+        display: flex; align-items: center; gap: 0.625rem;
+        font-size: 0.8125rem; color: var(--text-secondary);
+    }
+    .stat-chip .num { font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1; }
+    .stat-chip .num.good { color: #059669; }
+    .stat-chip .num.bad  { color: #dc2626; }
+
+    .filter-bar {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); padding: 0.875rem 1.125rem;
+        margin-bottom: 1rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+    }
+    .search-wrap { flex: 1; min-width: 200px; position: relative; }
+    .search-wrap input {
+        width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+        padding: 0.45rem 0.875rem 0.45rem 2.25rem;
+        font-size: 0.875rem; font-family: inherit; outline: none; background: var(--bg);
+    }
+    .search-wrap input:focus { border-color: var(--primary); }
+    .search-icon { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 0.8rem; }
+
+    .filter-pills { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+    .fpill {
+        padding: 0.3rem 0.875rem; border-radius: 20px; font-size: 0.8125rem;
+        font-weight: 500; border: 1.5px solid var(--border); background: var(--bg-card);
+        color: var(--text-secondary); text-decoration: none; transition: all 0.15s; white-space: nowrap;
+    }
+    .fpill:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-lighter); }
+    .fpill.active { border-color: var(--primary); color: var(--primary); background: var(--primary-lighter); font-weight: 600; }
+    .btn-filter-search {
+        background: var(--primary); color: #fff; border: none;
+        border-radius: 8px; padding: 0.45rem 1rem; font-size: 0.875rem;
+        font-family: inherit; cursor: pointer; white-space: nowrap; transition: filter 0.15s;
+    }
+    .btn-filter-search:hover { filter: brightness(1.1); }
+
+    /* Table */
+    .table-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+    th {
+        padding: 0.65rem 1rem; font-size: 0.6875rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-light);
+        text-align: left; white-space: nowrap;
+    }
+
+    /* Summary row */
+    tr.q-row {
+        border-bottom: 1px solid #f1f5f9; cursor: pointer;
+        transition: background 0.1s;
+    }
+    tr.q-row:hover { background: #fafbff; }
+    tr.q-row.open { background: var(--primary-lighter); border-bottom: none; }
+    tr.q-row td { padding: 0.65rem 1rem; font-size: 0.875rem; vertical-align: middle; }
+
+    .chevron {
+        color: var(--text-light); font-size: 0.7rem; transition: transform 0.2s; display: inline-block;
+    }
+    tr.q-row.open .chevron { transform: rotate(90deg); color: var(--primary); }
+
+    .text-clamp2 {
+        display: -webkit-box; -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;
+    }
+    .badge-good { background: rgba(5,150,105,0.1); color: #059669; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .badge-bad  { background: rgba(220,38,38,0.08); color: #dc2626;  border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .badge-none { background: var(--bg-subtle); color: var(--text-light); border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; white-space: nowrap; }
+
+    /* Detail row */
+    tr.q-detail { display: none; }
+    tr.q-detail.open { display: table-row; }
+    tr.q-detail td {
+        padding: 0 1rem 1rem; background: #fafbff;
+        border-bottom: 2px solid rgba(79,110,247,0.12);
+    }
+
+    .detail-inner {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 0.875rem;
+        padding-top: 0.75rem;
+    }
+    @media (max-width: 768px) { .detail-inner { grid-template-columns: 1fr; } }
+
+    .detail-block {}
+    .detail-block-label {
+        font-size: 0.6875rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.05em; color: var(--text-light); margin-bottom: 0.375rem;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .copy-btn {
+        background: none; border: 1px solid var(--border); border-radius: 5px;
+        padding: 1px 7px; font-size: 0.6875rem; color: var(--text-secondary);
+        cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .copy-btn.ok { border-color: #059669; color: #059669; }
+
+    .q-text {
+        background: var(--primary-lighter); border: 1px solid rgba(79,110,247,0.15);
+        border-radius: 8px; padding: 0.75rem 1rem;
+        font-size: 0.875rem; line-height: 1.65; color: var(--text);
+        font-weight: 500; white-space: pre-wrap; word-break: break-word;
+    }
+    .a-text {
+        background: var(--bg-subtle); border: 1px solid var(--border);
+        border-radius: 8px; padding: 0.75rem 1rem;
+        font-size: 0.875rem; line-height: 1.7; color: var(--text);
+        word-break: break-word;
+    }
+    .a-text h1,.a-text h2,.a-text h3 { font-weight:600; margin:.8em 0 .35em; }
+    .a-text h2 { font-size:.9375rem; }
+    .a-text h3 { font-size:.875rem; }
+    .a-text p  { margin-bottom:.5em; }
+    .a-text ul,.a-text ol { padding-left:1.4em; margin-bottom:.5em; }
+    .a-text li { margin-bottom:.15em; }
+    .a-text strong { font-weight:600; }
+    .a-text blockquote { border-left:3px solid var(--primary); padding:.4em .75em; background:var(--primary-lighter); border-radius:0 6px 6px 0; margin:.6em 0; }
+    .a-text code { background:#f1f5f9; padding:.1em .3em; border-radius:4px; font-size:.8125em; color:var(--primary); }
+
+    .comment-chip {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        background: rgba(212,149,43,0.08); border: 1px solid rgba(212,149,43,0.2);
+        border-radius: 8px; padding: 0.45rem 0.75rem;
+        font-size: 0.8125rem; color: var(--text); margin-top: 0.625rem;
+        grid-column: 1 / -1;
+    }
+
+    /* Pagination */
+    .pager {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.75rem 1rem; border-top: 1px solid var(--border);
+        background: var(--bg-subtle); font-size: 0.8125rem; color: var(--text-secondary);
+        flex-wrap: wrap; gap: 0.5rem;
+    }
+    .pager-links { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    .plink {
+        padding: 0.3rem 0.7rem; border-radius: 6px; border: 1.5px solid var(--border);
+        background: var(--bg-card); color: var(--text-secondary);
+        text-decoration: none; font-size: 0.8125rem; transition: all 0.15s;
+    }
+    .plink:hover { border-color: var(--primary); color: var(--primary); }
+    .plink.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .plink.disabled { opacity: 0.35; pointer-events: none; }
+
+    .empty-state { text-align: center; padding: 3.5rem 2rem; color: var(--text-secondary); }
+    .empty-state i { font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.25; display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-breadcrumb">
+    <a href="/admin"><i class="fas fa-shield-halved me-1"></i>Администрирование</a>
+    <span class="sep">/</span>
+    <span>История вопросов</span>
+</div>
+
+<div class="page-head">
+    <h1>История вопросов</h1>
+    <div class="d-flex gap-2">
+        <a href="/api/admin/export/finetune?min_rating=4" class="btn btn-primary btn-sm">
+            <i class="fas fa-download me-1"></i>Экспорт JSONL
+        </a>
+        <a href="/admin" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Назад
+        </a>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="stat-chip">
+        <i class="fas fa-comments" style="color:var(--primary);"></i>
+        <div><div class="num">{{ total }}</div><div>всего вопросов</div></div>
+    </div>
+    <div class="stat-chip">
+        <span style="font-size:1.1rem;">👍</span>
+        <div><div class="num good" id="sq-good">—</div><div>хороших</div></div>
+    </div>
+    <div class="stat-chip">
+        <span style="font-size:1.1rem;">👎</span>
+        <div><div class="num bad" id="sq-bad">—</div><div>плохих</div></div>
+    </div>
+    {% if q %}
+    <div class="stat-chip">
+        <i class="fas fa-search" style="color:var(--primary);"></i>
+        <div><div class="num">{{ pagination.total }}</div><div>по запросу «{{ q }}»</div></div>
+    </div>
+    {% endif %}
+</div>
+
+<form class="filter-bar" method="get">
+    <div class="search-wrap">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="Поиск по тексту вопроса...">
+    </div>
+    <div class="filter-pills">
+        <a href="?q={{ q }}&rating=all" class="fpill {% if rating_filter == 'all' %}active{% endif %}">Все</a>
+        <a href="?q={{ q }}&rating=good" class="fpill {% if rating_filter == 'good' %}active{% endif %}">👍 Хорошие</a>
+        <a href="?q={{ q }}&rating=bad" class="fpill {% if rating_filter == 'bad' %}active{% endif %}">👎 Плохие</a>
+        <a href="?q={{ q }}&rating=none" class="fpill {% if rating_filter == 'none' %}active{% endif %}">— Без оценки</a>
+    </div>
+    <button type="submit" class="btn-filter-search"><i class="fas fa-search me-1"></i>Найти</button>
+</form>
+
+<div class="table-card">
+    {% if items %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width:28px;"></th>
+                <th style="width:50px;">#</th>
+                <th style="width:110px;">Дата</th>
+                <th style="width:80px;text-align:center;">Оценка</th>
+                <th>Вопрос</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            {% set h = item.history %}
+            {% set fb = item.feedback %}
+            {% set rid = 'row-' ~ h.id %}
+
+            <!-- Summary row -->
+            <tr class="q-row" onclick="toggle('{{ rid }}')">
+                <td style="padding-left:0.75rem;">
+                    <i class="fas fa-chevron-right chevron"></i>
+                </td>
+                <td style="color:var(--text-light);font-size:0.75rem;">{{ h.id }}</td>
+                <td style="color:var(--text-secondary);font-size:0.75rem;white-space:nowrap;">
+                    {{ h.created_at.strftime('%d.%m.%Y') if h.created_at else '—' }}<br>
+                    <span style="color:var(--text-light);">{{ h.created_at.strftime('%H:%M') if h.created_at else '' }}</span>
+                </td>
+                <td style="text-align:center;">
+                    {% if fb %}
+                        {% if fb.rating >= 4 %}<span class="badge-good">👍</span>
+                        {% else %}<span class="badge-bad">👎</span>{% endif %}
+                    {% else %}<span class="badge-none">—</span>{% endif %}
+                </td>
+                <td>
+                    <div class="text-clamp2">{{ h.user_query }}</div>
+                </td>
+            </tr>
+
+            <!-- Detail row -->
+            <tr class="q-detail" id="{{ rid }}">
+                <td colspan="5">
+                    <div class="detail-inner">
+                        <div class="detail-block">
+                            <div class="detail-block-label">
+                                <span><i class="fas fa-user me-1"></i>Вопрос</span>
+                                <button class="copy-btn" onclick="cp(this, 'q-{{ h.id }}')"><i class="fas fa-copy me-1"></i>Копировать</button>
+                            </div>
+                            <div class="q-text" id="q-{{ h.id }}">{{ h.user_query }}</div>
+                        </div>
+                        <div class="detail-block">
+                            <div class="detail-block-label">
+                                <span><i class="fas fa-scale-balanced me-1" style="color:var(--primary)"></i>Ответ AI</span>
+                                <button class="copy-btn" onclick="cp(this, 'ar-{{ h.id }}')"><i class="fas fa-copy me-1"></i>Копировать</button>
+                            </div>
+                            <div class="a-text" id="a-{{ h.id }}"></div>
+                            <div id="ar-{{ h.id }}" style="display:none">{{ h.ai_response }}</div>
+                        </div>
+                        {% if fb and fb.comment %}
+                        <div class="comment-chip">
+                            <i class="fas fa-comment" style="color:#d4952b;"></i>
+                            <span style="color:var(--text-secondary);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Комментарий:</span>
+                            {{ fb.comment }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if pagination.pages > 1 %}
+    <div class="pager">
+        <span>Страница {{ pagination.page }} из {{ pagination.pages }} · {{ pagination.total }} записей</span>
+        <div class="pager-links">
+            <a href="?q={{ q }}&rating={{ rating_filter }}&page={{ pagination.prev_num }}"
+               class="plink {% if not pagination.has_prev %}disabled{% endif %}"><i class="fas fa-chevron-left"></i></a>
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                    <a href="?q={{ q }}&rating={{ rating_filter }}&page={{ p }}"
+                       class="plink {% if p == pagination.page %}active{% endif %}">{{ p }}</a>
+                {% else %}
+                    <span class="plink disabled">…</span>
+                {% endif %}
+            {% endfor %}
+            <a href="?q={{ q }}&rating={{ rating_filter }}&page={{ pagination.next_num }}"
+               class="plink {% if not pagination.has_next %}disabled{% endif %}"><i class="fas fa-chevron-right"></i></a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-comments"></i>
+        <div style="font-weight:600;margin-bottom:0.375rem;">Ничего не найдено</div>
+        <div style="font-size:0.8125rem;">
+            {% if q or rating_filter != 'all' %}
+                <a href="/admin/questions" style="color:var(--primary);">Сбросить фильтры</a>
+            {% else %}Пока никто не задавал вопросов{% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/api/admin/questions/recent').then(r=>r.json()).then(d=>{
+    const g=document.getElementById('sq-good');
+    const b=document.getElementById('sq-bad');
+    if(g) g.textContent=d.good??'—';
+    if(b) b.textContent=d.bad??'—';
+}).catch(()=>{});
+
+let openRow = null;
+
+function toggle(id) {
+    const detailRow = document.getElementById(id);
+    if (!detailRow) return;
+    const summaryRow = detailRow.previousElementSibling;
+    const rowId = id.replace('row-', '');
+
+    // Render markdown into answer div (only once)
+    const aEl = document.getElementById('a-' + rowId);
+    if (aEl && !aEl.dataset.rendered) {
+        const raw = document.getElementById('ar-' + rowId);
+        const answer = raw ? raw.textContent : '';
+        try {
+            marked.setOptions({ breaks: true, gfm: true });
+            aEl.innerHTML = marked.parse(answer);
+        } catch(e) { aEl.textContent = answer; }
+        aEl.dataset.rendered = '1';
+    }
+
+    const isOpen = detailRow.classList.contains('open');
+
+    // Close previously open row
+    if (openRow && openRow !== id) {
+        const prev = document.getElementById(openRow);
+        if (prev) {
+            prev.classList.remove('open');
+            prev.previousElementSibling.classList.remove('open');
+        }
+    }
+
+    if (isOpen) {
+        detailRow.classList.remove('open');
+        summaryRow.classList.remove('open');
+        openRow = null;
+    } else {
+        detailRow.classList.add('open');
+        summaryRow.classList.add('open');
+        openRow = id;
+        // Scroll row into view smoothly
+        setTimeout(() => summaryRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    }
+}
+
+function cp(btn, sourceId) {
+    event.stopPropagation();
+    const el = document.getElementById(sourceId);
+    const text = el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('ok');
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Скопировано';
+        setTimeout(() => {
+            btn.classList.remove('ok');
+            btn.innerHTML = '<i class="fas fa-copy me-1"></i>Копировать';
+        }, 2000);
+    }).catch(() => {});
+}
+</script>
+{% endblock %}

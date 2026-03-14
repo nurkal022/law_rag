@@ -1,8 +1,12 @@
-from flask import Flask, render_template, request, jsonify, session, send_file
+from flask import Flask, render_template, request, jsonify, session, send_file, redirect, url_for
 import uuid
 import os
 import sqlite3
+import json as _json
+import io
+import hashlib
 from datetime import datetime
+from functools import wraps
 from config import Config
 from database.models import DatabaseManager, db
 from embeddings.processor import DocumentProcessor
@@ -61,6 +65,69 @@ document_exporter = DocumentExporter()
 legal_analyzer = LegalCommentAnalyzer()
 analytics_dashboard = AnalyticsDashboard()
 data_loader = DataLoader()
+
+def require_admin(f):
+    """Декоратор: только для авторизованных администраторов"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Требуется авторизация администратора'}), 401
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+_PAGE_PATHS = {'/', '/chat', '/chat-simple', '/tools', '/about', '/law-generator', '/legal-analytics'}
+
+@app.before_request
+def track_visit():
+    """Запись посещений публичных страниц"""
+    if request.method != 'GET':
+        return
+    if request.path not in _PAGE_PATHS:
+        return
+    try:
+        ip = request.headers.get('CF-Connecting-IP') or \
+             request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        ip_hash = hashlib.sha256(ip.encode()).hexdigest()
+        ua = request.headers.get('User-Agent', '')
+        referer = request.headers.get('Referer', '')
+        # Определяем тип устройства
+        ua_lower = ua.lower()
+        if any(k in ua_lower for k in ('mobile', 'android', 'iphone')):
+            device = 'mobile'
+        elif any(k in ua_lower for k in ('tablet', 'ipad')):
+            device = 'tablet'
+        else:
+            device = 'desktop'
+        db_manager.record_visit(request.path, ip_hash, ua, referer or None, device)
+    except Exception:
+        pass
+
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Страница входа в панель администратора"""
+    if session.get('admin_logged_in'):
+        return redirect(url_for('admin_panel'))
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        if username == Config.ADMIN_USERNAME and password == Config.ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            session.permanent = False
+            return redirect(url_for('admin_panel'))
+        error = 'Неверный логин или пароль'
+    return render_template('admin_login.html', error=error)
+
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('index'))
+
 
 def initialize_rag_system():
     """Инициализация системы поиска по документам по требованию"""
@@ -253,17 +320,18 @@ ollama pull gpt-oss:20b
             }), 500
         
         # Сохраняем в историю только если нет критической ошибки
+        chat_history_id = None
         if not response_data.get('error_type') == 'api_error':
             try:
-                db_manager.save_chat_history(
-                    session_id, 
-                    user_query, 
+                chat_history_id = db_manager.save_chat_history(
+                    session_id,
+                    user_query,
                     response_data['answer'],
                     response_data['sources']
                 )
             except Exception as e:
                 print(f"Ошибка сохранения истории: {e}")
-        
+
         return jsonify({
             'answer': response_data['answer'],
             'sources': response_data['sources'],
@@ -271,6 +339,7 @@ ollama pull gpt-oss:20b
             'query_validation': generator.validate_legal_query(user_query) if generator else None,
             'search_results_count': len(formatted_results),
             'session_id': session_id,
+            'chat_history_id': chat_history_id,
             'error': response_data.get('error'),
             'error_type': response_data.get('error_type'),
             'model_type': response_data.get('model_type', 'default')
@@ -422,6 +491,7 @@ def rag_status():
     })
 
 @app.route('/api/admin/stats')
+@require_admin
 def get_admin_stats():
     """Получение статистики для админ панели и дашборда"""
     try:
@@ -437,12 +507,57 @@ def get_admin_stats():
         return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
 
 @app.route('/admin')
+@require_admin
 def admin_panel():
     """Панель администратора"""
     stats = db_manager.get_documents_stats()
     return render_template('admin.html', stats=stats)
 
+
+@app.route('/admin/questions')
+@require_admin
+def admin_questions():
+    """История вопросов пользователей"""
+    from database.models import ChatHistory, ChatFeedback
+    page = request.args.get('page', 1, type=int)
+    q = request.args.get('q', '').strip()
+    rating_filter = request.args.get('rating', 'all')
+    per_page = 25
+
+    query = ChatHistory.query
+
+    if q:
+        query = query.filter(ChatHistory.user_query.ilike(f'%{q}%'))
+
+    if rating_filter == 'good':
+        query = query.join(ChatFeedback, ChatHistory.id == ChatFeedback.chat_history_id)\
+                     .filter(ChatFeedback.rating >= 4)
+    elif rating_filter == 'bad':
+        query = query.join(ChatFeedback, ChatHistory.id == ChatFeedback.chat_history_id)\
+                     .filter(ChatFeedback.rating < 4)
+    elif rating_filter == 'none':
+        query = query.outerjoin(ChatFeedback, ChatHistory.id == ChatFeedback.chat_history_id)\
+                     .filter(ChatFeedback.id.is_(None))
+
+    query = query.order_by(ChatHistory.created_at.desc())
+    total_all = ChatHistory.query.count()
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    items = []
+    for ch in pagination.items:
+        fb = ChatFeedback.query.filter_by(chat_history_id=ch.id).first()
+        items.append({'history': ch, 'feedback': fb})
+
+    return render_template('admin_questions.html',
+                           items=items,
+                           pagination=pagination,
+                           q=q,
+                           rating_filter=rating_filter,
+                           total=total_all)
+
+
 @app.route('/api/admin/load_documents', methods=['POST'])
+@require_admin
 def load_documents():
     """Загрузка недостающих документов из директории"""
     try:
@@ -466,6 +581,7 @@ def load_documents():
         }), 500
 
 @app.route('/api/admin/process_documents', methods=['POST'])
+@require_admin
 def process_documents():
     """Обработка документов (создание embeddings)"""
     try:
@@ -521,6 +637,7 @@ def process_documents():
         }), 500
 
 @app.route('/api/admin/update_embeddings', methods=['POST'])
+@require_admin
 def update_embeddings():
     """Обновление embeddings для документов без них"""
     try:
@@ -549,6 +666,7 @@ def update_embeddings():
         }), 500
 
 @app.route('/api/admin/clear_history', methods=['POST'])
+@require_admin
 def clear_chat_history():
     """Очистка истории чатов"""
     try:
@@ -570,6 +688,7 @@ def clear_chat_history():
         }), 500
 
 @app.route('/api/admin/auto_setup', methods=['POST'])
+@require_admin
 def auto_setup():
     """Автоматическая настройка системы"""
     try:
@@ -1036,6 +1155,116 @@ def get_demo_analytics():
             'error': f'Ошибка загрузки демо-данных: {str(e)}'
         }), 500
 
+@app.route('/api/admin/visits')
+@require_admin
+def get_visits():
+    """Статистика посещений"""
+    try:
+        stats = db_manager.get_visits_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/admin/online')
+@require_admin
+def get_online_stats():
+    """Активность прямо сейчас"""
+    from database.models import PageVisit, ChatHistory
+    from datetime import timedelta
+    now = datetime.utcnow()
+    since_5  = now - timedelta(minutes=5)
+    since_15 = now - timedelta(minutes=15)
+    since_1h = now - timedelta(hours=1)
+
+    online_5  = db.session.query(PageVisit.ip_hash).filter(
+        PageVisit.created_at >= since_5).distinct().count()
+    online_15 = db.session.query(PageVisit.ip_hash).filter(
+        PageVisit.created_at >= since_15).distinct().count()
+    chats_1h  = ChatHistory.query.filter(ChatHistory.created_at >= since_1h).count()
+
+    last_chat = ChatHistory.query.order_by(ChatHistory.created_at.desc()).first()
+    last_chat_ago = None
+    if last_chat and last_chat.created_at:
+        diff = now - last_chat.created_at
+        mins = int(diff.total_seconds() // 60)
+        if mins < 1:
+            last_chat_ago = 'только что'
+        elif mins < 60:
+            last_chat_ago = f'{mins} мин. назад'
+        elif mins < 1440:
+            last_chat_ago = f'{mins // 60} ч. назад'
+        else:
+            last_chat_ago = f'{mins // 1440} дн. назад'
+
+    return jsonify({
+        'online_5': online_5,
+        'online_15': online_15,
+        'chats_1h': chats_1h,
+        'last_chat_ago': last_chat_ago,
+    })
+
+
+@app.route('/api/admin/questions/recent')
+@require_admin
+def get_recent_questions():
+    """Последние вопросы для дашборда"""
+    from database.models import ChatHistory, ChatFeedback
+    total = ChatHistory.query.count()
+    good = ChatFeedback.query.filter(ChatFeedback.rating >= 4).count()
+    bad  = ChatFeedback.query.filter(ChatFeedback.rating < 4).count()
+    recent = ChatHistory.query.order_by(ChatHistory.created_at.desc()).limit(5).all()
+    items = []
+    for ch in recent:
+        fb = ChatFeedback.query.filter_by(chat_history_id=ch.id).first()
+        items.append({
+            'id': ch.id,
+            'query': ch.user_query[:120] + ('…' if len(ch.user_query) > 120 else ''),
+            'answer': ch.ai_response[:100] + ('…' if len(ch.ai_response) > 100 else ''),
+            'created_at': ch.created_at.strftime('%d.%m.%Y %H:%M') if ch.created_at else '',
+            'rating': fb.rating if fb else None,
+            'comment': fb.comment if fb else None,
+        })
+    return jsonify({'total': total, 'good': good, 'bad': bad, 'items': items})
+
+
+@app.route('/api/feedback', methods=['POST'])
+def save_feedback():
+    """Сохранение оценки ответа от пользователя"""
+    try:
+        data = request.get_json()
+        chat_history_id = data.get('chat_history_id')
+        rating = data.get('rating')  # 1 или 5
+        comment = data.get('comment', '')
+        session_id = session.get('session_id', 'unknown')
+
+        if not chat_history_id or rating not in (1, 5):
+            return jsonify({'error': 'Неверные параметры'}), 400
+
+        ok = db_manager.save_feedback(chat_history_id, session_id, rating, comment or None)
+        return jsonify({'success': ok})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/admin/export/finetune')
+@require_admin
+def export_finetune():
+    """Экспорт данных для fine-tuning в формате JSONL"""
+    try:
+        min_rating = int(request.args.get('min_rating', 4))
+        data = db_manager.get_finetune_data(min_rating=min_rating)
+        output = io.StringIO()
+        for item in data:
+            output.write(_json.dumps(item, ensure_ascii=False) + '\n')
+        buf = io.BytesIO(output.getvalue().encode('utf-8'))
+        buf.seek(0)
+        filename = f"finetune_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
+        return send_file(buf, mimetype='application/jsonl', as_attachment=True, download_name=filename)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/legal-analytics/export/<format_type>')
 def export_analytics_report(format_type):
     """Экспорт отчета аналитики"""
@@ -1192,6 +1421,7 @@ def get_ml_insights():
 # API endpoints для управления моделями
 
 @app.route('/api/settings/llm', methods=['GET'])
+@require_admin
 def get_llm_settings():
     """Получение текущих настроек LLM"""
     try:
@@ -1223,6 +1453,7 @@ def get_llm_settings():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/settings/llm/providers', methods=['GET'])
+@require_admin
 def get_llm_providers_status():
     """Статус всех доступных провайдеров"""
     try:
@@ -1258,6 +1489,7 @@ def get_llm_providers_status():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/settings/llm', methods=['POST'])
+@require_admin
 def update_llm_settings():
     """Обновление настроек LLM с сохранением в .env"""
     try:
@@ -1342,6 +1574,7 @@ def update_llm_settings():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/settings/llm/test', methods=['POST'])
+@require_admin
 def test_llm_provider():
     """Тестирование LLM провайдера"""
     try:
