@@ -1656,19 +1656,16 @@ def initialize_app():
             print("\n🔄 Обработка документов и инициализация ИИ системы...")
             initialize_rag_system()
             if doc_processor:
-                # Process unprocessed documents
-                unprocessed = db_manager.get_unprocessed_documents()
-                for doc_data in unprocessed:
-                    try:
-                        doc_processor.process_document_by_id(doc_data['id'])
-                    except Exception as e:
-                        print(f"  ❌ Ошибка обработки документа {doc_data.get('filename', 'unknown')}: {e}")
+                result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
+                if result.get('processed', 0) > 0:
+                    print(f"✅ Обработано {result['processed']} документов")
 
-        if stats['chunks_with_embeddings'] == 0 and stats['documents_count'] > 0:
-            print("\n⚠️  ВНИМАНИЕ: Embeddings не созданы!")
-            print("   Автоматическая обработка будет выполнена после создания чанков")
-        elif stats['embedding_progress'] > 0:
-            print(f"\n✅ База данных готова (embeddings: {stats['embedding_progress']:.1f}%)")
+        # Обновляем stats после возможной обработки
+        stats = db_manager.get_documents_stats()
+        if stats['chunks_with_embeddings'] > 0:
+            print(f"\n✅ База данных готова: {stats['documents_count']} документов, {stats['chunks_with_embeddings']} чанков с embeddings")
+        elif stats['documents_count'] > 0:
+            print("\n⚠️  Embeddings не созданы. Перейдите в /admin для обработки")
     
     # Проверяем статус LLM провайдера
     try:
