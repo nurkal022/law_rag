@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Администрирование{% endblock %} — LawVision</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        :root {
+            --sidebar-w: 230px;
+            --sidebar-bg: #0f172a;
+            --sidebar-border: rgba(255,255,255,0.06);
+            --nav-hover: rgba(255,255,255,0.06);
+            --nav-active-bg: rgba(79,110,247,0.18);
+            --nav-active-color: #818cf8;
+            --content-bg: #f1f5f9;
+            --card-bg: #fff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --primary: #4f6ef7;
+            --primary-lighter: rgba(79,110,247,0.08);
+            --success: #059669;
+            --danger: #dc2626;
+            --radius: 10px;
+            --radius-lg: 14px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+        }
+
+        html, body { height: 100%; margin: 0; font-family: 'Inter', sans-serif; }
+
+        /* ── Layout ── */
+        .admin-wrap {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .admin-sidebar {
+            width: var(--sidebar-w);
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 100;
+            border-right: 1px solid var(--sidebar-border);
+        }
+
+        .sidebar-logo {
+            padding: 1.25rem 1.25rem 1rem;
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+        .sidebar-logo .logo-mark {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px; border-radius: 9px;
+            background: linear-gradient(135deg, #4f6ef7, #7b5bf5);
+            margin-right: 0.625rem; flex-shrink: 0;
+        }
+        .sidebar-logo .logo-text {
+            font-size: 0.9375rem; font-weight: 700;
+            color: #fff; letter-spacing: -0.01em;
+        }
+        .sidebar-logo .logo-badge {
+            font-size: 0.6rem; font-weight: 600;
+            color: #64748b; text-transform: uppercase;
+            letter-spacing: 0.06em; margin-top: 1px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 0.75rem 0.625rem;
+            overflow-y: auto;
+        }
+        .nav-section-label {
+            font-size: 0.625rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: #475569; padding: 0.5rem 0.625rem 0.25rem;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.5rem 0.75rem; border-radius: 8px;
+            color: #94a3b8; font-size: 0.8125rem; font-weight: 500;
+            text-decoration: none; transition: all 0.15s; margin-bottom: 2px;
+            cursor: pointer;
+        }
+        .nav-item:hover { background: var(--nav-hover); color: #cbd5e1; }
+        .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-color); font-weight: 600; }
+        .nav-item .nav-icon {
+            width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; flex-shrink: 0;
+        }
+        .nav-divider {
+            height: 1px; background: var(--sidebar-border);
+            margin: 0.5rem 0.625rem;
+        }
+        .nav-item.danger:hover { background: rgba(220,38,38,0.1); color: #f87171; }
+
+        .sidebar-footer {
+            padding: 0.75rem 0.625rem;
+            border-top: 1px solid var(--sidebar-border);
+        }
+
+        /* ── Main area ── */
+        .admin-main {
+            margin-left: var(--sidebar-w);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: var(--content-bg);
+        }
+
+        .admin-topbar {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 0 1.5rem;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 0.5rem; }
+        .breadcrumb-sep { color: var(--text-light); font-size: 0.875rem; }
+        .topbar-title { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+        .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+
+        .admin-content {
+            padding: 1.5rem;
+            flex: 1;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+        .card-header {
+            padding: 0.875rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.875rem; font-weight: 600; color: var(--text);
+            background: none; border-radius: 0;
+        }
+        .card-header .header-icon {
+            width: 28px; height: 28px; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem;
+        }
+        .card-body { padding: 1.25rem; }
+
+        /* ── Stat cells ── */
+        .stat-cell {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow);
+        }
+        .stat-cell .label {
+            font-size: 0.6875rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            color: var(--text-light); margin-bottom: 0.25rem;
+        }
+        .stat-cell .value {
+            font-size: 1.625rem; font-weight: 700;
+            color: var(--text); line-height: 1;
+        }
+        .stat-cell .sub {
+            font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;
+        }
+
+        /* ── Buttons ── */
+        .btn { font-family: inherit; font-size: 0.8125rem; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); }
+        .btn-primary:hover { filter: brightness(1.1); background: var(--primary); border-color: var(--primary); }
+
+        /* ── Online pulse ── */
+        .pulse-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #059669; flex-shrink: 0;
+            box-shadow: 0 0 0 0 rgba(5,150,105,0.4);
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0%   { box-shadow: 0 0 0 0 rgba(5,150,105,0.4); }
+            70%  { box-shadow: 0 0 0 6px rgba(5,150,105,0); }
+            100% { box-shadow: 0 0 0 0 rgba(5,150,105,0); }
+        }
+
+        /* ── Status dot ── */
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .status-dot.ok     { background: #059669; }
+        .status-dot.error  { background: #dc2626; }
+        .status-dot.muted  { background: #94a3b8; }
+
+        /* ── Mobile toggle ── */
+        .sidebar-toggle {
+            display: none; background: none; border: none;
+            color: var(--text); font-size: 1.25rem; cursor: pointer; padding: 0;
+        }
+
+        @media (max-width: 900px) {
+            .admin-sidebar { transform: translateX(-100%); transition: transform 0.25s ease; }
+            .admin-sidebar.open { transform: translateX(0); }
+            .admin-main { margin-left: 0; }
+            .sidebar-toggle { display: block; }
+            .sidebar-overlay {
+                display: none; position: fixed; inset: 0;
+                background: rgba(0,0,0,0.4); z-index: 99;
+            }
+            .sidebar-overlay.open { display: block; }
+        }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<div class="admin-wrap">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+        <div class="sidebar-logo d-flex align-items-center">
+            <div class="logo-mark">
+                <svg width="18" height="18" fill="white" viewBox="0 0 16 16">
+                    <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm1 2h10v10H3V3zm2 2v6h2V5H5zm4 0v6h2V5H9z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="logo-text">LawVision</div>
+                <div class="logo-badge">Admin Panel</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Основное</div>
+
+            <a href="/admin" class="nav-item {% if active == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon"><i class="fas fa-gauge"></i></span>
+                Обзор
+            </a>
+            <a href="/admin/documents" class="nav-item {% if active == 'documents' %}active{% endif %}">
+                <span class="nav-icon"><i class="fas fa-file-lines"></i></span>
+                Документы
+            </a>
+            <a href="/admin/settings" class="nav-item {% if active == 'settings' %}active{% endif %}">
+                <span class="nav-icon"><i class="fas fa-brain"></i></span>
+                Настройки AI
+            </a>
+            <a href="/admin/questions" class="nav-item {% if active == 'questions' %}active{% endif %}">
+                <span class="nav-icon"><i class="fas fa-comments"></i></span>
+                Вопросы
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/" class="nav-item">
+                <span class="nav-icon"><i class="fas fa-arrow-left"></i></span>
+                На сайт
+            </a>
+            <a href="/admin/logout" class="nav-item danger">
+                <span class="nav-icon"><i class="fas fa-sign-out-alt"></i></span>
+                Выйти
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <div class="topbar-left">
+                <button class="sidebar-toggle" onclick="openSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <span style="color:var(--text-light);font-size:0.8125rem;">Admin</span>
+                <span class="breadcrumb-sep">/</span>
+                <span class="topbar-title">{% block page_title %}{% endblock %}</span>
+            </div>
+            <div class="topbar-right">
+                <div id="ragStatus" class="d-flex align-items-center gap-2" style="font-size:0.75rem;color:var(--text-light);">
+                    <div class="spinner-border spinner-border-sm" style="width:10px;height:10px;"></div>
+                    RAG...
+                </div>
+            </div>
+        </header>
+
+        <main class="admin-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script>
+    function openSidebar() {
+        document.getElementById('adminSidebar').classList.add('open');
+        document.getElementById('sidebarOverlay').classList.add('open');
+    }
+    function closeSidebar() {
+        document.getElementById('adminSidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('open');
+    }
+
+    // RAG status in topbar
+    fetch('/api/rag/status').then(r => r.json()).then(d => {
+        const el = document.getElementById('ragStatus');
+        if (d.ready) {
+            el.innerHTML = '<div class="status-dot ok"></div> RAG готов';
+        } else {
+            el.innerHTML = '<div class="status-dot error"></div> RAG не готов';
+        }
+    }).catch(() => {
+        document.getElementById('ragStatus').innerHTML =
+            '<div class="status-dot muted"></div> RAG неизвестно';
+    });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

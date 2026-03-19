@@ -1,0 +1,272 @@
+{% extends "admin/layout.html" %}
+{% block title %}Документы{% endblock %}
+{% block page_title %}Документы{% endblock %}
+
+{% block extra_css %}
+.docs-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+@media (max-width: 700px) { .docs-stats { grid-template-columns: 1fr; } }
+
+.action-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    background: var(--card-bg);
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+.action-card:hover:not(:disabled) {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,110,247,0.08);
+}
+.action-card:disabled { opacity: .55; cursor: default; }
+.action-card .ac-icon {
+    width: 42px; height: 42px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+}
+.action-card .ac-title { font-size: 0.875rem; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.action-card .ac-desc  { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; }
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.875rem;
+    margin-bottom: 1.25rem;
+}
+@media (max-width: 800px) { .actions-grid { grid-template-columns: 1fr; } }
+
+#progressLog {
+    height: 180px;
+    overflow-y: auto;
+    background: #0f172a;
+    border-radius: var(--radius);
+    padding: 0.875rem 1rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    line-height: 1.7;
+}
+#progressLog .log-success { color: #34d399; }
+#progressLog .log-error   { color: #f87171; }
+#progressLog .log-info    { color: #94a3b8; }
+#progressLog .log-time    { color: #475569; margin-right: 0.5rem; }
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="docs-stats">
+    <div class="stat-cell">
+        <div class="label">Документов</div>
+        <div class="value">{{ stats.documents_count }}</div>
+        <div class="sub">PDF файлов</div>
+    </div>
+    <div class="stat-cell">
+        <div class="label">Чанков</div>
+        <div class="value">{{ stats.chunks_count }}</div>
+        <div class="sub">{{ stats.embedded_chunks }} с эмбеддингами</div>
+    </div>
+    <div class="stat-cell">
+        <div class="label">Готовность</div>
+        <div class="value">{{ "%.0f"|format(stats.embedding_progress) }}%</div>
+        <div class="progress mt-2" style="height:6px;">
+            <div class="progress-bar {% if stats.embedding_progress >= 100 %}bg-success{% endif %}"
+                 style="width: {{ stats.embedding_progress }}%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="actions-grid">
+    <button class="action-card" id="autoSetupBtn">
+        <div class="ac-icon" style="background:rgba(79,110,247,0.1);color:var(--primary);">
+            <i class="fas fa-wand-magic-sparkles"></i>
+        </div>
+        <div>
+            <div class="ac-title">Авто-настройка</div>
+            <div class="ac-desc">Загрузить документы из <code>docs/</code> и пересчитать эмбеддинги</div>
+        </div>
+    </button>
+
+    <button class="action-card" id="processDocsBtn">
+        <div class="ac-icon" style="background:rgba(168,85,247,0.08);color:#a855f7;">
+            <i class="fas fa-gears"></i>
+        </div>
+        <div>
+            <div class="ac-title">Обработать документы</div>
+            <div class="ac-desc">Разбить на чанки и создать эмбеддинги для новых файлов</div>
+        </div>
+    </button>
+
+    <button class="action-card" id="updateEmbeddingsBtn">
+        <div class="ac-icon" style="background:rgba(5,150,105,0.08);color:#059669;">
+            <i class="fas fa-rotate"></i>
+        </div>
+        <div>
+            <div class="ac-title">Обновить эмбеддинги</div>
+            <div class="ac-desc">Пересчитать векторы для чанков без эмбеддингов</div>
+        </div>
+    </button>
+</div>
+
+<!-- Progress log -->
+<div class="card" id="progressCard" style="display:none;margin-bottom:1.25rem;">
+    <div class="card-header" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+            <div class="header-icon" style="background:rgba(79,110,247,0.08);">
+                <i class="fas fa-terminal" style="color:var(--primary);"></i>
+            </div>
+            Лог выполнения
+        </div>
+        <div id="progressBadge" class="d-flex align-items-center gap-2" style="font-size:.75rem;color:var(--text-secondary);">
+            <div class="spinner-border spinner-border-sm" style="width:12px;height:12px;"></div>
+            Выполняется...
+        </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div class="progress" style="height:3px;border-radius:0;">
+            <div id="progressBar" class="progress-bar" style="width:0%;transition:width .3s;"></div>
+        </div>
+        <div id="progressLog" style="border-radius:0 0 var(--radius-lg) var(--radius-lg);"></div>
+    </div>
+</div>
+
+<!-- Danger zone -->
+<div class="card">
+    <div class="card-header">
+        <div class="header-icon" style="background:rgba(220,38,38,0.08);">
+            <i class="fas fa-triangle-exclamation" style="color:#dc2626;font-size:.7rem;"></i>
+        </div>
+        Управление
+    </div>
+    <div class="card-body d-flex gap-2 flex-wrap">
+        <button id="clearHistoryBtn" class="btn btn-outline-danger btn-sm">
+            <i class="fas fa-trash me-1"></i>Очистить историю чатов
+        </button>
+        <button id="refreshStatsBtn" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-rotate me-1"></i>Обновить статистику
+        </button>
+    </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Подтверждение</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage" style="font-size:.875rem;margin:0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" id="confirmBtn" class="btn btn-sm btn-danger">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showProgress() {
+    document.getElementById('progressCard').style.display = 'block';
+    document.getElementById('progressLog').innerHTML = '';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressBadge').innerHTML =
+        '<div class="spinner-border spinner-border-sm" style="width:12px;height:12px;"></div> Выполняется...';
+    document.getElementById('progressCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function addLog(msg, type = 'info') {
+    const log = document.getElementById('progressLog');
+    const t = new Date().toLocaleTimeString();
+    log.innerHTML += `<div><span class="log-time">[${t}]</span><span class="log-${type}">${msg}</span></div>`;
+    log.scrollTop = log.scrollHeight;
+}
+
+function setProgress(p, done = false) {
+    document.getElementById('progressBar').style.width = p + '%';
+    if (done) {
+        document.getElementById('progressBadge').innerHTML =
+            '<div class="status-dot ok"></div> Готово';
+    }
+}
+
+// Auto setup
+document.getElementById('autoSetupBtn').addEventListener('click', function() {
+    if (this.disabled) return;
+    this.disabled = true;
+    showProgress();
+    addLog('Запуск авто-настройки...');
+    fetch('/api/admin/auto_setup', { method: 'POST' }).then(r => r.json()).then(d => {
+        if (d.steps) d.steps.forEach(s =>
+            addLog(`${s.step}: ${s.message}`, s.status === 'completed' ? 'success' : s.status === 'skipped' ? 'info' : 'error')
+        );
+        if (d.success) { addLog('Авто-настройка завершена', 'success'); setProgress(100, true); setTimeout(() => location.reload(), 1500); }
+        else { addLog('Завершено с ошибками', 'error'); setProgress(100); }
+    }).catch(e => addLog(`Ошибка: ${e.message}`, 'error')).finally(() => this.disabled = false);
+});
+
+// Process docs
+document.getElementById('processDocsBtn').addEventListener('click', function() {
+    if (this.disabled) return;
+    this.disabled = true;
+    showProgress();
+    addLog('Обработка документов...');
+    fetch('/api/admin/process_documents', { method: 'POST' }).then(r => r.json()).then(d => {
+        if (d.success) {
+            addLog(d.message, 'success');
+            setProgress(100, true);
+            setTimeout(() => location.reload(), 1500);
+        } else { addLog(`Ошибка: ${d.error}`, 'error'); setProgress(100); }
+    }).catch(e => addLog(`Ошибка: ${e.message}`, 'error')).finally(() => this.disabled = false);
+});
+
+// Update embeddings
+document.getElementById('updateEmbeddingsBtn').addEventListener('click', function() {
+    if (this.disabled) return;
+    this.disabled = true;
+    showProgress();
+    addLog('Обновление эмбеддингов...');
+    fetch('/api/admin/update_embeddings', { method: 'POST' }).then(r => r.json()).then(d => {
+        if (d.success) {
+            addLog('Эмбеддинги обновлены', 'success');
+            setProgress(100, true);
+            setTimeout(() => location.reload(), 1500);
+        } else { addLog(`Ошибка: ${d.error || 'Неизвестная'}`, 'error'); setProgress(100); }
+    }).catch(e => addLog(`Ошибка: ${e.message}`, 'error')).finally(() => this.disabled = false);
+});
+
+// Clear history
+document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+    document.getElementById('confirmMessage').textContent = 'Очистить всю историю чатов? Это действие необратимо.';
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+    document.getElementById('confirmBtn').onclick = function() {
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        fetch('/api/admin/clear_history', { method: 'POST' }).then(r => r.json()).then(d => {
+            if (d.success) addLog('История чатов очищена', 'success');
+            else addLog(`Ошибка: ${d.error}`, 'error');
+            document.getElementById('progressCard').style.display = 'block';
+        });
+    };
+});
+
+// Refresh
+document.getElementById('refreshStatsBtn').addEventListener('click', function() {
+    this.disabled = true;
+    location.reload();
+});
+</script>
+{% endblock %}

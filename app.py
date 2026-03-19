@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, send_file, redirect, url_for
 import uuid
 import os
-import sqlite3
 import json as _json
 import io
 import hashlib
@@ -79,18 +78,6 @@ legal_analyzer = LegalCommentAnalyzer()
 analytics_dashboard = AnalyticsDashboard()
 data_loader = DataLoader()
 
-def require_admin(f):
-    """Декоратор: только для авторизованных администраторов"""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not session.get('admin_logged_in'):
-            if request.path.startswith('/api/'):
-                return jsonify({'error': 'Требуется авторизация администратора'}), 401
-            return redirect(url_for('admin_login'))
-        return f(*args, **kwargs)
-    return decorated
-
-
 _PAGE_PATHS = {'/', '/chat', '/chat-simple', '/tools', '/about', '/law-generator', '/legal-analytics'}
 
 @app.before_request
@@ -119,29 +106,6 @@ def track_visit():
         pass
 
 
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
-    """Страница входа в панель администратора"""
-    if session.get('admin_logged_in'):
-        return redirect(url_for('admin_panel'))
-    error = None
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-        if username == Config.ADMIN_USERNAME and password == Config.ADMIN_PASSWORD:
-            session['admin_logged_in'] = True
-            session.permanent = False
-            return redirect(url_for('admin_panel'))
-        error = 'Неверный логин или пароль'
-    return render_template('admin_login.html', error=error)
-
-
-@app.route('/admin/logout')
-def admin_logout():
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('index'))
-
-
 def initialize_rag_system():
     """Инициализация системы поиска по документам по требованию"""
     global doc_processor, retriever, rag_initialized, rag_initializing
@@ -159,9 +123,12 @@ def initialize_rag_system():
         
         rag_initialized = True
         rag_initializing = False
+        # Expose to blueprint via app context
+        app.doc_processor = doc_processor
+        app.retriever = retriever
         print("✅ ИИ система успешно инициализирована")
         return True
-        
+
     except Exception as e:
         rag_initializing = False
         print(f"❌ Ошибка инициализации ИИ системы: {e}")
@@ -172,6 +139,19 @@ def ensure_rag_initialized():
     if not rag_initialized:
         return initialize_rag_system()
     return True
+
+
+# Регистрация admin blueprint (после определения всех shared функций)
+from blueprints.admin import admin_bp
+app.register_blueprint(admin_bp)
+
+# Expose shared objects to blueprint via current_app
+app.db_manager = db_manager
+app.doc_processor = doc_processor  # None until RAG initialized; updated in initialize_rag_system
+app.retriever = retriever           # None until RAG initialized; updated in initialize_rag_system
+app.generator = generator
+app.ensure_rag_initialized = ensure_rag_initialized
+
 
 @app.route('/')
 def index():
@@ -502,279 +482,6 @@ def rag_status():
         'initializing': rag_initializing,
         'ready': rag_initialized and not rag_initializing
     })
-
-@app.route('/api/admin/stats')
-@require_admin
-def get_admin_stats():
-    """Получение статистики для админ панели и дашборда"""
-    try:
-        stats = db_manager.get_documents_stats()
-        return jsonify({
-            'documents': stats['documents_count'],
-            'chunks': stats['chunks_count'],
-            'embeddings_ready': stats['embedding_progress']
-        })
-        
-    except Exception as e:
-        print(f"Ошибка получения статистики: {e}")
-        return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
-
-@app.route('/admin')
-@require_admin
-def admin_panel():
-    """Панель администратора"""
-    stats = db_manager.get_documents_stats()
-    return render_template('admin.html', stats=stats)
-
-
-@app.route('/admin/questions')
-@require_admin
-def admin_questions():
-    """История вопросов пользователей"""
-    from database.models import ChatHistory, ChatFeedback
-    page = request.args.get('page', 1, type=int)
-    q = request.args.get('q', '').strip()
-    rating_filter = request.args.get('rating', 'all')
-    per_page = 25
-
-    query = ChatHistory.query
-
-    if q:
-        query = query.filter(ChatHistory.user_query.ilike(f'%{q}%'))
-
-    if rating_filter == 'good':
-        query = query.join(ChatFeedback, ChatHistory.id == ChatFeedback.chat_history_id)\
-                     .filter(ChatFeedback.rating >= 4)
-    elif rating_filter == 'bad':
-        query = query.join(ChatFeedback, ChatHistory.id == ChatFeedback.chat_history_id)\
-                     .filter(ChatFeedback.rating < 4)
-    elif rating_filter == 'none':
-        query = query.outerjoin(ChatFeedback, ChatHistory.id == ChatFeedback.chat_history_id)\
-                     .filter(ChatFeedback.id.is_(None))
-
-    query = query.order_by(ChatHistory.created_at.desc())
-    total_all = ChatHistory.query.count()
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-
-    items = []
-    for ch in pagination.items:
-        fb = ChatFeedback.query.filter_by(chat_history_id=ch.id).first()
-        items.append({'history': ch, 'feedback': fb})
-
-    return render_template('admin_questions.html',
-                           items=items,
-                           pagination=pagination,
-                           q=q,
-                           rating_filter=rating_filter,
-                           total=total_all)
-
-
-@app.route('/api/admin/load_documents', methods=['POST'])
-@require_admin
-def load_documents():
-    """Загрузка недостающих документов из директории"""
-    try:
-        result = db_manager.bulk_load_documents_from_directory(Config.DOCUMENTS_DIR)
-        
-        return jsonify({
-            'success': True,
-            'result': result,
-            'message': f"Загружено {result['loaded']} новых документов, пропущено {result.get('skipped', 0)} (уже в базе)"
-        })
-        
-    except Exception as e:
-        import traceback
-        error_msg = str(e)
-        traceback.print_exc()
-        print(f"Ошибка загрузки документов: {error_msg}")
-        return jsonify({
-            'success': False,
-            'error': f'Произошла ошибка: {error_msg}',
-            'traceback': traceback.format_exc() if Config.DEBUG else None
-        }), 500
-
-@app.route('/api/admin/process_documents', methods=['POST'])
-@require_admin
-def process_documents():
-    """Обработка документов (создание embeddings)"""
-    try:
-        # Проверяем существование директории
-        if not os.path.exists(Config.DOCUMENTS_DIR):
-            # Пытаемся создать директорию
-            os.makedirs(Config.DOCUMENTS_DIR, exist_ok=True)
-            print(f"📁 Создана директория {Config.DOCUMENTS_DIR}")
-            
-            # Проверяем наличие примеров документов
-            examples_dir = os.path.join(Config.DOCUMENTS_DIR, 'examples')
-            if os.path.exists(examples_dir):
-                print(f"📚 Найдена директория примеров: {examples_dir}")
-                # Можно скопировать примеры в основную директорию
-                import shutil
-                example_files = [f for f in os.listdir(examples_dir) if f.endswith('.txt')]
-                if example_files:
-                    print(f"📄 Найдено {len(example_files)} примеров документов")
-                    for file in example_files[:10]:  # Копируем первые 10 для начала
-                        shutil.copy2(os.path.join(examples_dir, file), Config.DOCUMENTS_DIR)
-                    print(f"✅ Скопировано {min(10, len(example_files))} документов из examples")
-        
-        # Инициализируем систему поиска если нужно
-        if not ensure_rag_initialized():
-            return jsonify({
-                'success': False,
-                'error': 'Не удалось инициализировать ИИ систему'
-            }), 500
-        
-        result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
-        
-        # Обновляем кэш retriever после обработки
-        retriever.refresh_cache()
-        
-        # Безопасная проверка наличия ключа 'total'
-        total = result.get('total', result.get('processed', 0) + result.get('failed', 0))
-        
-        return jsonify({
-            'success': True,
-            'result': result,
-            'message': f"Обработано {result.get('processed', 0)} документов из {total}"
-        })
-        
-    except Exception as e:
-        import traceback
-        error_msg = str(e)
-        traceback.print_exc()
-        print(f"Ошибка обработки документов: {error_msg}")
-        return jsonify({
-            'success': False,
-            'error': f'Произошла ошибка: {error_msg}',
-            'traceback': traceback.format_exc() if Config.DEBUG else None
-        }), 500
-
-@app.route('/api/admin/update_embeddings', methods=['POST'])
-@require_admin
-def update_embeddings():
-    """Обновление embeddings для документов без них"""
-    try:
-        # Инициализируем систему поиска если нужно
-        if not ensure_rag_initialized():
-            return jsonify({
-                'success': False,
-                'error': 'Не удалось инициализировать ИИ систему'
-            }), 500
-        
-        result = doc_processor.update_embeddings()
-        
-        # Обновляем кэш retriever
-        retriever.refresh_cache()
-        
-        return jsonify({
-            'success': result,
-            'message': 'Embeddings успешно обновлены' if result else 'Ошибка при обновлении embeddings'
-        })
-        
-    except Exception as e:
-        print(f"Ошибка обновления embeddings: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Произошла ошибка: {str(e)}'
-        }), 500
-
-@app.route('/api/admin/clear_history', methods=['POST'])
-@require_admin
-def clear_chat_history():
-    """Очистка истории чатов"""
-    try:
-        with sqlite3.connect(db_manager.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM chat_history')
-            conn.commit()
-            
-        return jsonify({
-            'success': True,
-            'message': 'История чатов очищена'
-        })
-        
-    except Exception as e:
-        print(f"Ошибка очистки истории: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Произошла ошибка: {str(e)}'
-        }), 500
-
-@app.route('/api/admin/auto_setup', methods=['POST'])
-@require_admin
-def auto_setup():
-    """Автоматическая настройка системы"""
-    try:
-        print("\n🚀 Запуск автоматической настройки системы...")
-        
-        # Проверяем статистику
-        stats = db_manager.get_documents_stats()
-        
-        result = {
-            'steps': [],
-            'success': True,
-            'final_stats': stats
-        }
-        
-        # Шаг 1: Загрузка документов (всегда проверяем и загружаем недостающие)
-        print("📚 Проверяем и загружаем документы...")
-        load_result = db_manager.bulk_load_documents_from_directory(Config.DOCUMENTS_DIR)
-        result['steps'].append({
-            'step': 'document_loading',
-            'status': 'completed' if load_result['loaded'] > 0 or load_result.get('skipped', 0) > 0 else 'failed',
-            'message': f"Загружено {load_result['loaded']} новых документов, пропущено {load_result.get('skipped', 0)} (уже в базе)",
-            'details': load_result
-        })
-        
-        # Обновляем статистику
-        stats = db_manager.get_documents_stats()
-        
-        # Шаг 2: Обработка документов
-        if stats['embedded_chunks'] < stats['chunks_count'] or stats['chunks_count'] == 0:
-            print("🔄 Обрабатываем документы...")
-            # Инициализируем систему поиска для обработки
-            if not ensure_rag_initialized():
-                result['steps'].append({
-                    'step': 'document_processing',
-                    'status': 'failed',
-                    'message': 'Не удалось инициализировать ИИ систему'
-                })
-                result['success'] = False
-            else:
-                process_result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
-                result['steps'].append({
-                    'step': 'document_processing',
-                    'status': 'completed' if process_result['processed'] > 0 else 'failed',
-                    'message': f"Обработано {process_result['processed']} документов",
-                    'details': process_result
-                })
-                
-                if process_result['processed'] == 0:
-                    result['success'] = False
-                
-                # Обновляем кэш retriever
-                retriever.refresh_cache()
-        else:
-            result['steps'].append({
-                'step': 'document_processing',
-                'status': 'skipped',
-                'message': 'Документы уже обработаны'
-            })
-        
-        # Финальная статистика
-        result['final_stats'] = db_manager.get_documents_stats()
-        
-        print("✅ Автоматическая настройка завершена")
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        print(f"❌ Ошибка автоматической настройки: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Произошла ошибка: {str(e)}',
-            'steps': []
-        }), 500
 
 # Маршруты для генерации законопроектов
 
@@ -1168,116 +875,6 @@ def get_demo_analytics():
             'error': f'Ошибка загрузки демо-данных: {str(e)}'
         }), 500
 
-@app.route('/api/admin/visits')
-@require_admin
-def get_visits():
-    """Статистика посещений"""
-    try:
-        stats = db_manager.get_visits_stats()
-        return jsonify(stats)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/admin/online')
-@require_admin
-def get_online_stats():
-    """Активность прямо сейчас"""
-    from database.models import PageVisit, ChatHistory
-    from datetime import timedelta
-    now = datetime.utcnow()
-    since_5  = now - timedelta(minutes=5)
-    since_15 = now - timedelta(minutes=15)
-    since_1h = now - timedelta(hours=1)
-
-    online_5  = db.session.query(PageVisit.ip_hash).filter(
-        PageVisit.created_at >= since_5).distinct().count()
-    online_15 = db.session.query(PageVisit.ip_hash).filter(
-        PageVisit.created_at >= since_15).distinct().count()
-    chats_1h  = ChatHistory.query.filter(ChatHistory.created_at >= since_1h).count()
-
-    last_chat = ChatHistory.query.order_by(ChatHistory.created_at.desc()).first()
-    last_chat_ago = None
-    if last_chat and last_chat.created_at:
-        diff = now - last_chat.created_at
-        mins = int(diff.total_seconds() // 60)
-        if mins < 1:
-            last_chat_ago = 'только что'
-        elif mins < 60:
-            last_chat_ago = f'{mins} мин. назад'
-        elif mins < 1440:
-            last_chat_ago = f'{mins // 60} ч. назад'
-        else:
-            last_chat_ago = f'{mins // 1440} дн. назад'
-
-    return jsonify({
-        'online_5': online_5,
-        'online_15': online_15,
-        'chats_1h': chats_1h,
-        'last_chat_ago': last_chat_ago,
-    })
-
-
-@app.route('/api/admin/questions/recent')
-@require_admin
-def get_recent_questions():
-    """Последние вопросы для дашборда"""
-    from database.models import ChatHistory, ChatFeedback
-    total = ChatHistory.query.count()
-    good = ChatFeedback.query.filter(ChatFeedback.rating >= 4).count()
-    bad  = ChatFeedback.query.filter(ChatFeedback.rating < 4).count()
-    recent = ChatHistory.query.order_by(ChatHistory.created_at.desc()).limit(5).all()
-    items = []
-    for ch in recent:
-        fb = ChatFeedback.query.filter_by(chat_history_id=ch.id).first()
-        items.append({
-            'id': ch.id,
-            'query': ch.user_query[:120] + ('…' if len(ch.user_query) > 120 else ''),
-            'answer': ch.ai_response[:100] + ('…' if len(ch.ai_response) > 100 else ''),
-            'created_at': ch.created_at.strftime('%d.%m.%Y %H:%M') if ch.created_at else '',
-            'rating': fb.rating if fb else None,
-            'comment': fb.comment if fb else None,
-        })
-    return jsonify({'total': total, 'good': good, 'bad': bad, 'items': items})
-
-
-@app.route('/api/feedback', methods=['POST'])
-def save_feedback():
-    """Сохранение оценки ответа от пользователя"""
-    try:
-        data = request.get_json()
-        chat_history_id = data.get('chat_history_id')
-        rating = data.get('rating')  # 1 или 5
-        comment = data.get('comment', '')
-        session_id = session.get('session_id', 'unknown')
-
-        if not chat_history_id or rating not in (1, 5):
-            return jsonify({'error': 'Неверные параметры'}), 400
-
-        ok = db_manager.save_feedback(chat_history_id, session_id, rating, comment or None)
-        return jsonify({'success': ok})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/admin/export/finetune')
-@require_admin
-def export_finetune():
-    """Экспорт данных для fine-tuning в формате JSONL"""
-    try:
-        min_rating = int(request.args.get('min_rating', 4))
-        data = db_manager.get_finetune_data(min_rating=min_rating)
-        output = io.StringIO()
-        for item in data:
-            output.write(_json.dumps(item, ensure_ascii=False) + '\n')
-        buf = io.BytesIO(output.getvalue().encode('utf-8'))
-        buf.seek(0)
-        filename = f"finetune_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
-        return send_file(buf, mimetype='application/jsonl', as_attachment=True, download_name=filename)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 @app.route('/api/legal-analytics/export/<format_type>')
 def export_analytics_report(format_type):
     """Экспорт отчета аналитики"""
@@ -1430,209 +1027,6 @@ def get_ml_insights():
             'success': False,
             'error': str(e)
         }), 500
-
-# API endpoints для управления моделями
-
-@app.route('/api/settings/llm', methods=['GET'])
-@require_admin
-def get_llm_settings():
-    """Получение текущих настроек LLM"""
-    try:
-        from llm_providers.factory import LLMProviderFactory
-        provider = LLMProviderFactory.get_current_provider()
-
-        settings = {
-            'provider_type': Config.LLM_PROVIDER_TYPE,
-            'model': Config.LLM_MODEL,
-            'available': provider.is_available() if provider else False,
-            'ollama_base_url': Config.OLLAMA_BASE_URL,
-            'finetuned_api_url': Config.FINETUNED_API_URL,
-            'has_openai_key': bool(Config.OPENAI_API_KEY and Config.OPENAI_API_KEY.startswith('sk-')),
-            'temperature': Config.TEMPERATURE,
-            'max_tokens': Config.MAX_TOKENS,
-            'top_k_results': Config.TOP_K_RESULTS,
-        }
-
-        if provider:
-            try:
-                settings['available_models'] = provider.get_available_models()
-            except:
-                settings['available_models'] = []
-        else:
-            settings['available_models'] = []
-
-        return jsonify({'success': True, 'settings': settings})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/settings/llm/providers', methods=['GET'])
-@require_admin
-def get_llm_providers_status():
-    """Статус всех доступных провайдеров"""
-    try:
-        from llm_providers.factory import LLMProviderFactory
-        from llm_providers.ollama_provider import OllamaProvider
-        from llm_providers.finetuned_provider import FineTunedModelProvider
-
-        result = {}
-
-        # Ollama
-        try:
-            ollama = OllamaProvider(base_url=Config.OLLAMA_BASE_URL)
-            ollama_available = ollama.is_available()
-            ollama_models = ollama.get_available_models() if ollama_available else []
-            result['ollama'] = {'available': ollama_available, 'url': Config.OLLAMA_BASE_URL, 'models': ollama_models}
-        except:
-            result['ollama'] = {'available': False, 'url': Config.OLLAMA_BASE_URL, 'models': []}
-
-        # Fine-tuned
-        try:
-            ft = FineTunedModelProvider(base_url=Config.FINETUNED_API_URL)
-            ft_available = ft.is_available()
-            result['finetuned'] = {'available': ft_available, 'url': Config.FINETUNED_API_URL, 'models': ['gemma-3n-4b-kazakh-law']}
-        except:
-            result['finetuned'] = {'available': False, 'url': Config.FINETUNED_API_URL, 'models': []}
-
-        # OpenAI
-        has_key = bool(Config.OPENAI_API_KEY and Config.OPENAI_API_KEY.startswith('sk-'))
-        result['openai'] = {'available': has_key, 'has_key': has_key}
-
-        return jsonify({'success': True, 'providers': result})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/settings/llm', methods=['POST'])
-@require_admin
-def update_llm_settings():
-    """Обновление настроек LLM с сохранением в .env"""
-    try:
-        data = request.get_json()
-        provider_type = data.get('provider_type', Config.LLM_PROVIDER_TYPE)
-        model = data.get('model')
-        ollama_base_url = data.get('ollama_base_url')
-        finetuned_api_url = data.get('finetuned_api_url')
-        openai_api_key = data.get('openai_api_key')
-        temperature = data.get('temperature')
-        max_tokens = data.get('max_tokens')
-        top_k_results = data.get('top_k_results')
-
-        # Валидация типа провайдера
-        if provider_type not in ('ollama', 'finetuned', 'openai'):
-            return jsonify({'success': False, 'error': f'Неизвестный провайдер: {provider_type}'}), 400
-
-        # Собираем настройки для сохранения
-        env_settings = {'LLM_PROVIDER_TYPE': provider_type}
-
-        if model:
-            env_settings['LLM_MODEL'] = model
-        if ollama_base_url:
-            env_settings['OLLAMA_BASE_URL'] = ollama_base_url
-        if finetuned_api_url:
-            env_settings['FINETUNED_API_URL'] = finetuned_api_url
-        if openai_api_key is not None:
-            env_settings['OPENAI_API_KEY'] = openai_api_key
-        if temperature is not None:
-            env_settings['TEMPERATURE'] = str(temperature)
-        if max_tokens is not None:
-            env_settings['MAX_TOKENS'] = str(int(max_tokens))
-        if top_k_results is not None:
-            env_settings['TOP_K_RESULTS'] = str(int(top_k_results))
-
-        # Сохраняем в .env и обновляем runtime
-        Config.save_to_env(env_settings)
-
-        # Пересоздаём провайдер
-        from llm_providers.factory import LLMProviderFactory
-        global generator, law_generator
-
-        kwargs = {'model': model or Config.LLM_MODEL}
-        if provider_type == 'ollama':
-            kwargs['base_url'] = ollama_base_url or Config.OLLAMA_BASE_URL
-        elif provider_type == 'finetuned':
-            kwargs['base_url'] = finetuned_api_url or Config.FINETUNED_API_URL
-        elif provider_type == 'openai':
-            kwargs['api_key'] = openai_api_key or Config.OPENAI_API_KEY
-
-        try:
-            provider = LLMProviderFactory.create_provider(provider_type=provider_type, **kwargs)
-
-            if provider and provider.is_available():
-                generator = ResponseGenerator(provider=provider)
-                law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
-
-                return jsonify({
-                    'success': True,
-                    'message': f'Настройки сохранены. Провайдер: {provider_type}, модель: {model or Config.LLM_MODEL}',
-                    'settings': {
-                        'provider_type': provider_type,
-                        'model': model or Config.LLM_MODEL,
-                        'available': True
-                    }
-                })
-            else:
-                # Сохраняем настройки даже если провайдер сейчас недоступен
-                return jsonify({
-                    'success': True,
-                    'message': f'Настройки сохранены в .env, но провайдер {provider_type} сейчас недоступен',
-                    'settings': {
-                        'provider_type': provider_type,
-                        'model': model or Config.LLM_MODEL,
-                        'available': False
-                    }
-                })
-        except Exception as e:
-            return jsonify({'success': False, 'error': f'Ошибка создания провайдера: {str(e)}'}), 500
-
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/settings/llm/test', methods=['POST'])
-@require_admin
-def test_llm_provider():
-    """Тестирование LLM провайдера"""
-    try:
-        data = request.get_json()
-        provider_type = data.get('provider_type', Config.LLM_PROVIDER_TYPE)
-        model = data.get('model', Config.LLM_MODEL)
-        ollama_base_url = data.get('ollama_base_url', Config.OLLAMA_BASE_URL)
-        finetuned_api_url = data.get('finetuned_api_url', Config.FINETUNED_API_URL)
-        openai_api_key = data.get('openai_api_key', Config.OPENAI_API_KEY)
-
-        from llm_providers.factory import LLMProviderFactory
-
-        kwargs = {'model': model}
-        if provider_type == 'ollama':
-            kwargs['base_url'] = ollama_base_url
-        elif provider_type == 'finetuned':
-            kwargs['base_url'] = finetuned_api_url
-        elif provider_type == 'openai':
-            kwargs['api_key'] = openai_api_key
-
-        provider = LLMProviderFactory.create_provider(provider_type=provider_type, **kwargs)
-
-        if not provider:
-            return jsonify({'success': False, 'error': 'Не удалось создать провайдер'}), 400
-
-        if not provider.is_available():
-            return jsonify({'success': False, 'error': f'Провайдер {provider_type} недоступен'}), 400
-
-        # Тестовый запрос
-        test_response = provider.chat_completion(
-            messages=[{"role": "user", "content": "Привет! Ответь одним предложением: как тебя зовут и работаешь ли ты?"}],
-            model=model,
-            temperature=0.1,
-            max_tokens=50
-        )
-
-        return jsonify({
-            'success': True,
-            'message': 'Провайдер работает',
-            'test_response': test_response.get('content', '')[:100],
-            'model_used': test_response.get('model', model)
-        })
-
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== Договоры ====================
 
