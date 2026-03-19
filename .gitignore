@@ -220,11 +220,7 @@ transformers_cache/
 
 # Document directories (содержат конфиденциальные данные)
 # Игнорируем всю директорию current, кроме examples
-current/*
-!current/examples
-current/examples/*
-!current/examples/*.txt
-!current/examples/README.md
+current/
 documents/
 data/
 uploads/
