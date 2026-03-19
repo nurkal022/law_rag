@@ -76,7 +76,6 @@ class Config:
                     setattr(Config, attr, str(val))
 
     # База данных (PostgreSQL)
-    DATABASE_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database', 'law_database.db')
     DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://lawai:lawai_dev_2026@localhost:5432/lawai')
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False

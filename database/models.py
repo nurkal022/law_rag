@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import json
 import numpy as np
+from pgvector.sqlalchemy import Vector
 from typing import List, Dict, Optional, Tuple
 import os
 import glob
@@ -48,7 +49,7 @@ class DocumentChunk(db.Model):
     start_position = db.Column(db.Integer, nullable=False)
     end_position = db.Column(db.Integer, nullable=False)
     chunk_size = db.Column(db.Integer, nullable=False)
-    embedding = db.Column(db.LargeBinary)  # Для хранения numpy array как BLOB
+    embedding = db.Column(Vector(384))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Уникальность по документу и индексу чанка
@@ -71,14 +72,14 @@ class DocumentChunk(db.Model):
     
     def get_embedding(self) -> Optional[np.ndarray]:
         """Получение embedding как numpy array"""
-        if self.embedding:
-            return np.frombuffer(self.embedding, dtype=np.float32)
+        if self.embedding is not None:
+            return np.array(self.embedding, dtype=np.float32)
         return None
-    
+
     def set_embedding(self, embedding: np.ndarray):
         """Установка embedding из numpy array"""
         if embedding is not None:
-            self.embedding = embedding.astype(np.float32).tobytes()
+            self.embedding = embedding.tolist()
         else:
             self.embedding = None
 
@@ -249,8 +250,9 @@ class DatabaseManager:
         """Создание базы данных если её нет"""
         if not hasattr(self, '_database_initialized'):
             with self.app.app_context():
-                # Создаем директорию если её нет
-                os.makedirs(os.path.dirname(Config.DATABASE_PATH), exist_ok=True)
+                from sqlalchemy import text
+                db.session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                db.session.commit()
                 db.create_all()
                 self._database_initialized = True
                 # Проверяем нужно ли загружать документы
@@ -263,11 +265,11 @@ class DatabaseManager:
             documents_count = Document.query.count()
             if documents_count == 0:
                 print("📝 База данных пустая, начинаем автоматическую загрузку документов...")
-                self.bulk_load_documents_from_directory('current')
+                self.bulk_load_documents_from_directory(Config.DOCUMENTS_DIR)
         except Exception as e:
             print(f"Не удалось проверить количество документов: {e}")
             # Попробуем загрузить документы в любом случае
-            self.bulk_load_documents_from_directory('current')
+            self.bulk_load_documents_from_directory(Config.DOCUMENTS_DIR)
     
     def bulk_load_documents_from_directory(self, directory: str, limit: int = None):
         """Массовая загрузка документов из директории"""
@@ -276,35 +278,42 @@ class DatabaseManager:
             return {'loaded': 0, 'errors': [], 'skipped': 0}
         
         txt_files = glob.glob(os.path.join(directory, '*.txt'))
-        
+        pdf_files = glob.glob(os.path.join(directory, '*.pdf'))
+        all_files = txt_files + pdf_files
+
         if limit:
-            txt_files = txt_files[:limit]
-        
-        if not txt_files:
-            print(f"📁 В директории {directory} нет .txt файлов")
+            all_files = all_files[:limit]
+
+        if not all_files:
+            print(f"📁 В директории {directory} нет .txt/.pdf файлов")
             return {'loaded': 0, 'errors': [], 'skipped': 0}
-        
-        print(f"📚 Найдено {len(txt_files)} документов в директории")
-        
+
+        print(f"📚 Найдено {len(all_files)} документов в директории")
+
         # Получаем список уже загруженных документов для быстрой проверки
         existing_filenames = {doc.filename for doc in Document.query.all()}
-        
+
         loaded = 0
         skipped = 0
         errors = []
-        
-        for i, file_path in enumerate(txt_files):
+
+        for i, file_path in enumerate(all_files):
             try:
                 filename = os.path.basename(file_path)
-                
+
                 # Проверяем существование документа
                 if filename in existing_filenames:
                     skipped += 1
                     continue  # Документ уже существует
-                
+
                 # Читаем файл
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read().strip()
+                if filename.lower().endswith('.pdf'):
+                    import pdfplumber
+                    with pdfplumber.open(file_path) as pdf:
+                        content = '\n'.join(page.extract_text() or '' for page in pdf.pages).strip()
+                else:
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read().strip()
                 
                 if not content:
                     skipped += 1
@@ -326,7 +335,7 @@ class DatabaseManager:
                 loaded += 1
                 
                 if (i + 1) % 100 == 0:
-                    print(f"  📄 Обработано {i + 1}/{len(txt_files)} документов (загружено: {loaded}, пропущено: {skipped})...")
+                    print(f"  📄 Обработано {i + 1}/{len(all_files)} документов (загружено: {loaded}, пропущено: {skipped})...")
                     db.session.commit()  # Промежуточный commit
                 
             except Exception as e:
