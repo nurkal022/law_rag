@@ -75,13 +75,15 @@ class Config:
                 else:
                     setattr(Config, attr, str(val))
 
-    # База данных
+    # База данных (PostgreSQL)
     DATABASE_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database', 'law_database.db')
-    SQLALCHEMY_DATABASE_URI = f'sqlite:///{DATABASE_PATH}'
+    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://lawai:lawai_dev_2026@localhost:5432/lawai')
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_timeout': 20,
-        'pool_recycle': -1,
+        'pool_size': 10,
+        'pool_timeout': 30,
+        'pool_recycle': 1800,
         'pool_pre_ping': True
     }
     
@@ -111,6 +113,6 @@ class Config:
     ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'changeme')
     
     # Директории
-    DOCUMENTS_DIR = 'current'
+    DOCUMENTS_DIR = 'docs'
     STATIC_DIR = 'static'
     TEMPLATES_DIR = 'templates' 

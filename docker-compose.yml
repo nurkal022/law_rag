@@ -1,19 +1,18 @@
-services:
-  app:
-    image: llm_rag:v1.0
-    container_name: llm_app
-    restart: unless-stopped
-    volumes:
-      - .:/app
-      - /home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222:/home/kaznu2025/PycharmProjects/llm-law/fine_tune_llm_2222
-    command: ["/bin/bash", "./start_system_in_docker.sh"]
+version: '3.8'
 
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [ "gpu" ]
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: lawai-postgres
+    restart: unless-stopped
     environment:
-      NVIDIA_VISIBLE_DEVICES: "all"   # or "0", "1", etc.
-      NVIDIA_DRIVER_CAPABILITIES: "all"
-    runtime: nvidia
+      POSTGRES_DB: lawai
+      POSTGRES_USER: lawai
+      POSTGRES_PASSWORD: lawai_dev_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

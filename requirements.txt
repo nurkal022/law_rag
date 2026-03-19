@@ -93,3 +93,6 @@ psutil>=5.9.0
 timm>=0.9.0
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
+psycopg2-binary>=2.9.9
+pdfplumber>=0.11.0
+pgvector>=0.3.0
