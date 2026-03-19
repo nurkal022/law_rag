@@ -222,11 +222,11 @@ class DocumentRetriever:
             print("⚠️  Используем только поиск по ключевым словам")
             return self.search_by_keywords(query, top_k)
         
-        # Семантический поиск
-        semantic_results = self.search_similar_chunks(query, top_k * 2)
-        
+        # Семантический поиск (берём больше для дедупликации)
+        semantic_results = self.search_similar_chunks(query, top_k * 3)
+
         # Поиск по ключевым словам
-        keyword_results = self.search_by_keywords(query, top_k)
+        keyword_results = self.search_by_keywords(query, top_k * 2)
         
         # Объединяем результаты и удаляем дубликаты
         combined_results = {}
@@ -252,8 +252,34 @@ class DocumentRetriever:
         # Сортируем по финальной оценке
         final_results = list(combined_results.values())
         final_results = sorted(final_results, key=lambda x: x['final_score'], reverse=True)
-        
-        return final_results[:top_k]
+
+        # Дедупликация: убираем перекрывающиеся чанки из одного документа
+        deduplicated = []
+        for result in final_results:
+            is_duplicate = False
+            doc_key = result.get('filename', '') or result.get('title', '')
+            r_start = result.get('start_position', 0)
+            r_end = result.get('end_position', 0)
+
+            for kept in deduplicated:
+                kept_key = kept.get('filename', '') or kept.get('title', '')
+                if doc_key != kept_key:
+                    continue
+                k_start = kept.get('start_position', 0)
+                k_end = kept.get('end_position', 0)
+                # Проверяем перекрытие позиций (>50% overlap)
+                overlap_start = max(r_start, k_start)
+                overlap_end = min(r_end, k_end)
+                overlap_len = max(0, overlap_end - overlap_start)
+                min_chunk_len = min(r_end - r_start, k_end - k_start) or 1
+                if overlap_len / min_chunk_len > 0.5:
+                    is_duplicate = True
+                    break
+
+            if not is_duplicate:
+                deduplicated.append(result)
+
+        return deduplicated[:top_k]
     
     def get_document_context(self, chunk_id: int, context_size: int = 2) -> Dict:
         """Получение контекста вокруг найденного чанка (соседние чанки)"""

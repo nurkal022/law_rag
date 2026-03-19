@@ -140,12 +140,12 @@ class DocumentProcessor:
                 })
                 chunk_index += 1
             
+            # Если достигли конца текста — последний чанк уже создан
+            if end >= len(cleaned_text):
+                break
+
             # Следующий чанк начинается с учетом overlap
             start = max(end - overlap, start + 1)
-            
-            # Защита от бесконечного цикла
-            if start >= end:
-                break
         
         return chunks
     
