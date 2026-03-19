@@ -1648,20 +1648,27 @@ def initialize_app():
         print(f"🗄️  База данных: {stats['documents_count']} документов, {stats['chunks_count']} чанков")
         print(f"🧠 Embeddings: {stats['chunks_with_embeddings']} чанков ({stats['embedding_progress']:.1f}%)")
         
-        # Проверяем нужна ли автоматическая обработка (но не запускаем систему поиска)
-        if stats['documents_count'] > 0 and stats['embedding_progress'] == 0:
-            unprocessed = db_manager.get_unprocessed_documents()
-            print(f"\n⚠️  Найдено {len(unprocessed)} необработанных документов")
-            print("   ИИ система будет инициализирована при первом обращении")
-            print("   Перейдите в /admin для обработки всех документов")
-        
+        # Автоматическая инициализация RAG системы
+        if stats['chunks_with_embeddings'] > 0:
+            print("\n🔄 Автоматическая инициализация ИИ системы...")
+            initialize_rag_system()
+        elif stats['documents_count'] > 0 and stats['chunks_count'] == 0:
+            print("\n🔄 Обработка документов и инициализация ИИ системы...")
+            initialize_rag_system()
+            if doc_processor:
+                # Process unprocessed documents
+                unprocessed = db_manager.get_unprocessed_documents()
+                for doc_data in unprocessed:
+                    try:
+                        doc_processor.process_document_by_id(doc_data['id'])
+                    except Exception as e:
+                        print(f"  ❌ Ошибка обработки документа {doc_data.get('filename', 'unknown')}: {e}")
+
         if stats['chunks_with_embeddings'] == 0 and stats['documents_count'] > 0:
             print("\n⚠️  ВНИМАНИЕ: Embeddings не созданы!")
-            print("   Перейдите в /admin для обработки документов")
-            print("   Или используйте автоматическую настройку")
+            print("   Автоматическая обработка будет выполнена после создания чанков")
         elif stats['embedding_progress'] > 0:
             print(f"\n✅ База данных готова (embeddings: {stats['embedding_progress']:.1f}%)")
-            print("   ИИ система будет инициализирована при первом обращении")
     
     # Проверяем статус LLM провайдера
     try:
