@@ -37,7 +37,7 @@
     /* ─── Tools grid ─── */
     .tools-grid { padding: 3rem 0 4rem; }
     .tools-row {
-        display: grid; grid-template-columns: repeat(3, 1fr);
+        display: grid; grid-template-columns: repeat(4, 1fr);
         gap: 1.5rem;
     }
     @media (max-width: 1200px) { .tools-row { grid-template-columns: repeat(2, 1fr); } }
@@ -148,7 +148,7 @@
     <div class="container">
         <div class="tools-hero-content">
             <div class="tools-hero-pill"><i class="fas fa-tools"></i> <span data-i18n="nav.tools">Инструменты</span></div>
-            <h1 data-i18n="tools.title">Три ИИ-инструмента</h1>
+            <h1 data-i18n="tools.title">Четыре ИИ-инструмента</h1>
             <p data-i18n="tools.subtitle">Комплексный набор для работы с законодательством Казахстана</p>
         </div>
     </div>
@@ -199,6 +199,20 @@
                     <span class="tc-tag" data-i18n="tools.tag_export">Экспорт</span>
                 </div>
                 <a href="/legal-analytics" class="tc-link tc-link-blue"><span data-i18n="common.open">Открыть</span> <i class="fas fa-arrow-right"></i></a>
+            </div>
+
+            <div class="tool-card">
+                <div class="tc-icon" style="background: rgba(99,102,241,0.08); color: #6366f1;">
+                    <i class="fas fa-file-contract"></i>
+                </div>
+                <h3 data-i18n="tools.contracts_title">Договоры</h3>
+                <p class="tc-desc" data-i18n="tools.contracts_desc">Генерация и анализ договоров по законодательству РК</p>
+                <div class="tc-tags">
+                    <span class="tc-tag" data-i18n="tools.tag_generation">Генерация</span>
+                    <span class="tc-tag" data-i18n="tools.tag_analysis">Анализ</span>
+                    <span class="tc-tag">9 типов</span>
+                </div>
+                <a href="/contracts" class="tc-link" style="background: #6366f1; color: white; box-shadow: 0 2px 8px rgba(99,102,241,0.2);"><span data-i18n="common.open">Открыть</span> <i class="fas fa-arrow-right"></i></a>
             </div>
 
         </div>
