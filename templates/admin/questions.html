@@ -110,6 +110,41 @@ tr.q-detail td { padding: 0 1rem 1rem; background: #fafbff; border-bottom: 2px s
 
 .empty-state { text-align: center; padding: 3.5rem 2rem; color: var(--text-secondary); }
 .empty-state i { font-size: 2rem; margin-bottom: 0.75rem; opacity: .25; display: block; }
+
+/* Topics */
+.topics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 800px) { .topics-grid { grid-template-columns: 1fr; } }
+
+.topic-row {
+    display: flex; align-items: center; gap: 0.625rem;
+    padding: 0.45rem 0; border-bottom: 1px solid #f1f5f9;
+    font-size: 0.8125rem;
+}
+.topic-row:last-child { border-bottom: none; }
+.topic-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; }
+.topic-bar { height: 4px; background: var(--primary); border-radius: 2px; min-width: 4px; }
+.topic-count { min-width: 26px; text-align: right; font-size: 0.75rem; font-weight: 600; color: var(--primary); }
+
+.keyword-cloud { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.kw-tag {
+    padding: 0.25rem 0.625rem; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 500;
+    border: 1.5px solid; cursor: default;
+}
+
+.suggestion-badge {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.25rem 0.625rem; border-radius: 20px;
+    background: rgba(212,149,43,0.08); border: 1px solid rgba(212,149,43,0.2);
+    color: #92400e; font-size: 0.6875rem; font-weight: 500;
+}
+
+.toggle-switch {
+    display: flex; align-items: center; gap: 0.5rem;
+    cursor: pointer; font-size: 0.8125rem; color: var(--text-secondary);
+    user-select: none;
+}
+.toggle-switch input[type="checkbox"] { accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer; }
 {% endblock %}
 
 {% block content %}
@@ -132,6 +167,33 @@ tr.q-detail td { padding: 0 1rem 1rem; background: #fafbff; border-bottom: 2px s
     <a href="/api/admin/export/finetune?min_rating=4" class="btn btn-primary btn-sm">
         <i class="fas fa-download me-1"></i>Экспорт JSONL
     </a>
+</div>
+
+<!-- Topics analytics -->
+<div class="card mb-3" id="topicsCard">
+    <div class="card-header" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+            <div class="header-icon" style="background:rgba(79,110,247,0.08);">
+                <i class="fas fa-fire" style="color:var(--primary);font-size:.7rem;"></i>
+            </div>
+            Топ тем
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <label class="toggle-switch" id="excludeToggle">
+                <input type="checkbox" id="excludeSuggestionsCheck" checked>
+                Исключить шаблонные подсказки
+            </label>
+            <span id="suggestionBadge" style="display:none;" class="suggestion-badge">
+                <i class="fas fa-magic" style="font-size:.6rem;"></i>
+                <span id="suggestionCount">0</span> подсказок скрыто
+            </span>
+        </div>
+    </div>
+    <div class="card-body" id="topicsBody">
+        <div class="d-flex align-items-center gap-2" style="color:var(--text-secondary);font-size:.8125rem;">
+            <div class="spinner-border spinner-border-sm"></div> Загрузка аналитики...
+        </div>
+    </div>
 </div>
 
 <!-- Filter bar -->
@@ -259,6 +321,102 @@ fetch('/api/admin/questions/recent').then(r => r.json()).then(d => {
     if (g) g.textContent = d.good ?? '—';
     if (b) b.textContent = d.bad ?? '—';
 }).catch(() => {});
+
+// ── Topics analytics ─────────────────────────────────────────────────────────
+let excludeSuggestions = true;
+
+function loadTopics() {
+    document.getElementById('topicsBody').innerHTML =
+        '<div class="d-flex align-items-center gap-2" style="color:var(--text-secondary);font-size:.8125rem;"><div class="spinner-border spinner-border-sm"></div> Загрузка...</div>';
+
+    fetch(`/api/admin/questions/topics?exclude_suggestions=${excludeSuggestions}`)
+        .then(r => r.json())
+        .then(d => {
+            // Badge
+            const badge = document.getElementById('suggestionBadge');
+            const countEl = document.getElementById('suggestionCount');
+            if (d.suggestion_count > 0 && excludeSuggestions) {
+                countEl.textContent = d.suggestion_count;
+                badge.style.display = 'inline-flex';
+            } else {
+                badge.style.display = 'none';
+            }
+
+            if (!d.filtered) {
+                document.getElementById('topicsBody').innerHTML =
+                    '<p style="font-size:.8125rem;color:var(--text-secondary);margin:0;">Вопросов пока нет</p>';
+                return;
+            }
+
+            const maxQ = (d.top_queries[0] || {}).count || 1;
+            const maxK = (d.top_keywords[0] || {}).count || 1;
+
+            // Keyword colors palette
+            const colors = [
+                ['#4f6ef7', 'rgba(79,110,247,0.08)'],
+                ['#7b5bf5', 'rgba(123,91,245,0.08)'],
+                ['#059669', 'rgba(5,150,105,0.08)'],
+                ['#d4952b', 'rgba(212,149,43,0.08)'],
+                ['#dc2626', 'rgba(220,38,38,0.08)'],
+            ];
+
+            document.getElementById('topicsBody').innerHTML = `
+                <div class="topics-grid">
+                    <div>
+                        <div style="font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:.625rem;">
+                            Повторяющиеся вопросы
+                        </div>
+                        ${d.top_queries.map(q => `
+                            <div class="topic-row">
+                                <div style="flex:1;min-width:0;font-size:.8125rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                                     title="${q.original}">${q.original}</div>
+                                <div class="topic-bar-wrap">
+                                    <div class="topic-bar" style="width:${Math.max(8, Math.round(q.count/maxQ*100))}%"></div>
+                                </div>
+                                <div class="topic-count">${q.count}</div>
+                            </div>`).join('')}
+                    </div>
+                    <div>
+                        <div style="font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:.625rem;">
+                            Ключевые слова
+                        </div>
+                        <div class="keyword-cloud">
+                            ${d.top_keywords.map((kw, i) => {
+                                const [border, bg] = colors[i % colors.length];
+                                const size = Math.max(0.6875, Math.min(1, 0.6875 + kw.count / maxK * 0.3125));
+                                return `<span class="kw-tag" style="border-color:${border};background:${bg};color:${border};font-size:${size}rem;">
+                                    ${kw.word} <span style="opacity:.6;">${kw.count}</span>
+                                </span>`;
+                            }).join('')}
+                        </div>
+                        ${excludeSuggestions && d.suggestion_queries && d.suggestion_queries.length ? `
+                        <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border);">
+                            <div style="font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:.375rem;">
+                                Исключённые подсказки интерфейса
+                            </div>
+                            ${d.suggestion_queries.map(q => `
+                                <div style="font-size:.75rem;color:var(--text-secondary);padding:2px 0;display:flex;align-items:center;gap:.375rem;">
+                                    <i class="fas fa-ban" style="color:#94a3b8;font-size:.6rem;flex-shrink:0;"></i>${q}
+                                </div>`).join('')}
+                        </div>` : ''}
+                    </div>
+                </div>
+                <div style="margin-top:.75rem;font-size:.75rem;color:var(--text-light);">
+                    Анализ по ${d.filtered} из ${d.total} вопросов
+                    ${d.suggestion_count > 0 ? `(${d.suggestion_count} шаблонных ${excludeSuggestions ? 'исключено' : 'включено'})` : ''}
+                </div>`;
+        }).catch(() => {
+            document.getElementById('topicsBody').innerHTML =
+                '<p style="font-size:.8125rem;color:var(--danger);margin:0;">Ошибка загрузки</p>';
+        });
+}
+
+document.getElementById('excludeSuggestionsCheck').addEventListener('change', function() {
+    excludeSuggestions = this.checked;
+    loadTopics();
+});
+
+loadTopics();
 
 let openRow = null;
 function toggle(id) {

@@ -179,6 +179,26 @@
     </div>
 </div>
 
+<!-- Top topics mini -->
+<div class="card mb-3">
+    <div class="card-header" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+            <div class="header-icon" style="background:rgba(79,110,247,0.08);">
+                <i class="fas fa-fire" style="color:var(--primary);font-size:.7rem;"></i>
+            </div>
+            Топ тем
+        </div>
+        <a href="/admin/questions" style="font-size:.8125rem;font-weight:500;color:var(--primary);text-decoration:none;">
+            Подробнее <i class="fas fa-arrow-right" style="font-size:.6rem;"></i>
+        </a>
+    </div>
+    <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;" id="dashTopics">
+        <div class="d-flex align-items-center gap-2" style="color:var(--text-secondary);font-size:.8125rem;grid-column:1/-1;">
+            <div class="spinner-border spinner-border-sm"></div> Загрузка...
+        </div>
+    </div>
+</div>
+
 <!-- Recent questions -->
 <div class="card">
     <div class="card-header" style="justify-content:space-between;">
@@ -347,5 +367,43 @@ async function loadQuestions() {
     }
 }
 loadQuestions();
+
+// Top topics mini widget
+fetch('/api/admin/questions/topics?exclude_suggestions=true')
+    .then(r => r.json())
+    .then(d => {
+        const el = document.getElementById('dashTopics');
+        if (!d.filtered) {
+            el.innerHTML = '<p style="font-size:.8125rem;color:var(--text-secondary);margin:0;grid-column:1/-1;">Вопросов пока нет</p>';
+            return;
+        }
+        const maxQ = (d.top_queries[0] || {}).count || 1;
+        const maxK = (d.top_keywords[0] || {}).count || 1;
+        const colors = ['#4f6ef7','#7b5bf5','#059669','#d4952b','#dc2626'];
+        el.innerHTML = `
+            <div>
+                <div style="font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:.5rem;">Топ вопросы</div>
+                ${d.top_queries.slice(0,5).map(q => `
+                    <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f1f5f9;font-size:.75rem;">
+                        <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);" title="${q.original}">${q.original}</div>
+                        <div style="flex-shrink:0;font-weight:700;color:var(--primary);min-width:18px;text-align:right;">${q.count}</div>
+                    </div>`).join('')}
+            </div>
+            <div>
+                <div style="font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:.5rem;">Ключевые слова</div>
+                <div style="display:flex;flex-wrap:wrap;gap:.3rem;">
+                    ${d.top_keywords.slice(0,12).map((kw,i) => `
+                        <span style="padding:.2rem .5rem;border-radius:20px;border:1.5px solid ${colors[i%5]}22;background:${colors[i%5]}11;color:${colors[i%5]};font-size:.6875rem;font-weight:500;">
+                            ${kw.word} <span style="opacity:.6;">${kw.count}</span>
+                        </span>`).join('')}
+                </div>
+                ${d.suggestion_count > 0 ? `<div style="margin-top:.625rem;font-size:.6875rem;color:var(--text-light);">
+                    <i class="fas fa-ban" style="font-size:.55rem;"></i> ${d.suggestion_count} шаблонных подсказок исключено
+                </div>` : ''}
+            </div>`;
+    }).catch(() => {
+        document.getElementById('dashTopics').innerHTML =
+            '<p style="font-size:.8125rem;color:var(--danger);margin:0;grid-column:1/-1;">Ошибка загрузки</p>';
+    });
 </script>
 {% endblock %}

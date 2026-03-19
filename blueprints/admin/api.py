@@ -194,6 +194,79 @@ def api_questions_recent():
     return jsonify({'total': total, 'good': good, 'bad': bad, 'items': items})
 
 
+@admin_bp.route('/api/admin/questions/topics')
+@require_admin
+def api_questions_topics():
+    """Топ тем вопросов с возможностью исключения шаблонных подсказок"""
+    from database.models import ChatHistory
+    import re
+    from collections import Counter
+
+    # Список suggestion-вопросов из интерфейса чата
+    SUGGESTION_QUERIES = {
+        'Какие права имеют граждане Казахстана согласно Конституции?',
+        'Как подать жалобу на действия государственных органов?',
+        'Ответственность за нарушение трудового законодательства',
+        'Какие документы нужны для регистрации брака в Казахстане?',
+    }
+
+    exclude_suggestions = request.args.get('exclude_suggestions', 'true').lower() == 'true'
+
+    all_queries = [ch.user_query for ch in ChatHistory.query.with_entities(ChatHistory.user_query).all()]
+
+    # Фильтруем suggestion-вопросы
+    filtered = [q for q in all_queries if not (exclude_suggestions and q.strip() in SUGGESTION_QUERIES)]
+    suggestion_count = len(all_queries) - len(filtered)
+
+    # ── Группировка одинаковых/похожих вопросов ──────────────────────────────
+    # Нормализация: нижний регистр, убираем пунктуацию
+    def normalize(q):
+        return re.sub(r'[^\w\s]', '', q.lower().strip())
+
+    norm_map = {}
+    for q in filtered:
+        n = normalize(q)
+        norm_map.setdefault(n, {'original': q, 'count': 0})
+        norm_map[n]['count'] += 1
+
+    top_queries = sorted(norm_map.values(), key=lambda x: x['count'], reverse=True)[:15]
+
+    # ── Топ слов / ключевых тем ───────────────────────────────────────────────
+    STOP_WORDS = {
+        # RU
+        'как', 'что', 'это', 'и', 'в', 'на', 'с', 'по', 'для', 'из', 'к', 'о',
+        'от', 'при', 'за', 'до', 'или', 'не', 'да', 'но', 'а', 'то', 'же',
+        'бы', 'ли', 'ни', 'уже', 'еще', 'ещё', 'так', 'он', 'она', 'они',
+        'мы', 'вы', 'я', 'его', 'её', 'их', 'им', 'мне', 'что', 'кто',
+        'все', 'этот', 'этого', 'этой', 'которые', 'который', 'нужны', 'нужно',
+        'является', 'могут', 'могут', 'такие', 'также', 'если', 'когда',
+        # EN
+        'the', 'a', 'an', 'and', 'or', 'of', 'in', 'is', 'are', 'what',
+        'how', 'to', 'for', 'with', 'that', 'this', 'it', 'be', 'by', 'at',
+        # KZ
+        'қалай', 'не', 'бұл', 'үшін', 'және', 'де', 'да', 'болып', 'болады',
+    }
+
+    word_counter = Counter()
+    for q in filtered:
+        words = re.findall(r'\b\w{3,}\b', q.lower())
+        for w in words:
+            if w not in STOP_WORDS and not w.isdigit():
+                word_counter[w] += 1
+
+    top_keywords = [{'word': w, 'count': c} for w, c in word_counter.most_common(20)]
+
+    return jsonify({
+        'total': len(all_queries),
+        'filtered': len(filtered),
+        'suggestion_count': suggestion_count,
+        'exclude_suggestions': exclude_suggestions,
+        'suggestion_queries': sorted(SUGGESTION_QUERIES),
+        'top_queries': top_queries,
+        'top_keywords': top_keywords,
+    })
+
+
 @admin_bp.route('/api/admin/export/finetune')
 @require_admin
 def api_export_finetune():
