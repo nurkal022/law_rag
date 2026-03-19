@@ -125,11 +125,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 style="font-size: 1.375rem; font-weight: 700; margin: 0;">Генератор законопроектов</h1>
-        <small class="text-muted">Создание документов по стандартам РК</small>
+        <h1 style="font-size: 1.375rem; font-weight: 700; margin: 0;" data-i18n="gen.title">Генератор законопроектов</h1>
+        <small class="text-muted" data-i18n="gen.subtitle">Создание документов по стандартам РК</small>
     </div>
     <div class="d-flex gap-2 align-items-center">
-        <small class="text-muted">Проектов: <strong>{{ law_stats.total_projects }}</strong></small>
+        <small class="text-muted"><span data-i18n="gen.projects">Проектов</span>: <strong>{{ law_stats.total_projects }}</strong></small>
     </div>
 </div>
 
@@ -139,7 +139,7 @@
         <div class="card">
             <div class="progress-section">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="label">Заполнение</span>
+                    <span class="label" data-i18n="gen.completion">Заполнение</span>
                     <span style="font-size: 0.75rem; font-weight: 600; color: var(--text);"><span id="progress-percentage">0</span>%</span>
                 </div>
                 <div class="progress">
@@ -164,16 +164,16 @@
             <div class="foreign-exp-toggle">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="foreign-experience-toggle">
-                    <label class="form-check-label" for="foreign-experience-toggle">
+                    <label class="form-check-label" for="foreign-experience-toggle" data-i18n="gen.foreign_exp">
                         Учёт зарубежного опыта
                     </label>
                 </div>
-                <div class="form-text mt-1">Анализ международных практик при генерации</div>
+                <div class="form-text mt-1" data-i18n="gen.foreign_exp_desc">Анализ международных практик при генерации</div>
             </div>
 
             <div class="sidebar-controls">
                 <div class="mb-2">
-                    <label for="generation-language" class="form-label" style="font-size:0.6875rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); margin-bottom:0.25rem;">Язык</label>
+                    <label for="generation-language" class="form-label" style="font-size:0.6875rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); margin-bottom:0.25rem;" data-i18n="gen.language">Язык</label>
                     <select id="generation-language" class="form-select form-select-sm" style="font-size:0.8125rem;">
                         <option value="ru">Русский</option>
                         <option value="kz">Казахский</option>
@@ -181,10 +181,10 @@
                     </select>
                 </div>
                 <div class="d-grid gap-1">
-                    <button id="fill-test-data-btn" class="btn btn-outline-secondary btn-sm">Тестовые данные</button>
-                    <button id="validate-btn" class="btn btn-outline-primary btn-sm" disabled>Проверить</button>
-                    <button id="generate-btn" class="btn btn-primary btn-sm" disabled>Сгенерировать</button>
-                    <button id="history-btn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#historyModal">История</button>
+                    <button id="fill-test-data-btn" class="btn btn-outline-secondary btn-sm" data-i18n="gen.test_data">Тестовые данные</button>
+                    <button id="validate-btn" class="btn btn-outline-primary btn-sm" disabled data-i18n="gen.validate">Проверить</button>
+                    <button id="generate-btn" class="btn btn-primary btn-sm" disabled data-i18n="gen.generate">Сгенерировать</button>
+                    <button id="history-btn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#historyModal" data-i18n="gen.history">История</button>
                 </div>
             </div>
         </div>
@@ -195,8 +195,8 @@
         <div class="card">
             <div class="card-header">
                 <div>
-                    <h5 id="current-section-title">Основная информация</h5>
-                    <small class="text-muted" id="current-section-description">Заполните данные</small>
+                    <h5 id="current-section-title" data-i18n="gen.basic_info">Основная информация</h5>
+                    <small class="text-muted" id="current-section-description" data-i18n="gen.fill_data">Заполните данные</small>
                 </div>
                 <div class="btn-group">
                     <button id="prev-section" class="btn btn-outline-secondary btn-sm" disabled>
@@ -237,7 +237,7 @@
                                 <select class="form-select form-select-sm"
                                         id="{{ question.field }}" name="{{ question.field }}"
                                         data-required="{{ question.required|lower }}">
-                                    <option value="">Выберите...</option>
+                                    <option value="" data-i18n="gen.select">Выберите...</option>
                                     {% for option in question.options %}
                                     <option value="{{ option }}">{{ option }}</option>
                                     {% endfor %}
@@ -258,7 +258,7 @@
         <!-- Validation results -->
         <div id="validation-results" class="d-none">
             <div class="card">
-                <div class="card-header"><h6 class="mb-0" style="font-size:0.875rem;">Результаты проверки</h6></div>
+                <div class="card-header"><h6 class="mb-0" style="font-size:0.875rem;" data-i18n="gen.validation_results">Результаты проверки</h6></div>
                 <div class="card-body" id="validation-content"></div>
             </div>
         </div>
@@ -266,7 +266,7 @@
         <!-- Generation results -->
         <div id="generation-results" class="d-none">
             <div class="card">
-                <div class="card-header" style="background:var(--primary);color:white;"><h6 class="mb-0" style="font-size:0.875rem;">Документ</h6></div>
+                <div class="card-header" style="background:var(--primary);color:white;"><h6 class="mb-0" style="font-size:0.875rem;" data-i18n="gen.document">Документ</h6></div>
                 <div class="card-body" id="generation-content"></div>
             </div>
         </div>
@@ -276,7 +276,7 @@
 <!-- Help Modal -->
 <div class="modal fade" id="helpModal" tabindex="-1">
     <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header"><h6 class="modal-title">Справка</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header"><h6 class="modal-title" data-i18n="gen.help">Справка</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body" id="help-content"></div>
     </div></div>
 </div>
@@ -286,8 +286,8 @@
     <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content">
         <div class="modal-body text-center py-4">
             <div class="spinner-border text-primary mb-3"></div>
-            <h6 id="loading-message" style="font-size:0.875rem;">Генерация...</h6>
-            <p id="loading-description" class="text-muted mb-0" style="font-size:0.75rem;">Подождите...</p>
+            <h6 id="loading-message" style="font-size:0.875rem;" data-i18n="gen.generating">Генерация...</h6>
+            <p id="loading-description" class="text-muted mb-0" style="font-size:0.75rem;" data-i18n="gen.please_wait">Подождите...</p>
         </div>
     </div></div>
 </div>
@@ -295,7 +295,7 @@
 <!-- History Modal -->
 <div class="modal fade" id="historyModal" tabindex="-1">
     <div class="modal-dialog modal-lg"><div class="modal-content">
-        <div class="modal-header"><h6 class="modal-title">История проектов</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header"><h6 class="modal-title" data-i18n="gen.project_history">История проектов</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body" id="history-content">
             <div class="text-center text-muted py-4"><div class="spinner-border"></div></div>
         </div>
