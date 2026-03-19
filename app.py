@@ -16,6 +16,7 @@ from law_generator import LawProjectGenerator, DataValidator
 from law_generator.generator import LawProjectData
 from law_generator.export import DocumentExporter
 from legal_analytics import LegalCommentAnalyzer, AnalyticsDashboard, DataLoader
+from contracts import ContractGenerator, ContractAnalyzer, ContractTemplates
 
 # Инициализация Flask приложения
 app = Flask(__name__)
@@ -56,6 +57,18 @@ try:
 except Exception as e:
     print(f"⚠️  Ошибка инициализации LLM провайдера: {e}")
     print("   Проверьте настройки в config.py или переменные окружения")
+
+# Инициализация модуля договоров
+contract_templates = ContractTemplates()
+contract_generator = None
+contract_analyzer = None
+try:
+    if provider:
+        contract_generator = ContractGenerator(provider=provider)
+        contract_analyzer = ContractAnalyzer(provider=provider)
+        print("✅ Модуль договоров инициализирован")
+except Exception as e:
+    print(f"⚠️  Ошибка инициализации модуля договоров: {e}")
 
 # Инициализация валидатора данных и экспортера
 data_validator = DataValidator()
@@ -1620,6 +1633,67 @@ def test_llm_provider():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== Договоры ====================
+
+@app.route('/contracts')
+def contracts_page():
+    """Страница анализа и генерации договоров"""
+    types = contract_templates.get_all_types()
+    return render_template('contracts.html', contract_types=types)
+
+@app.route('/api/contracts/types')
+def get_contract_types():
+    """Список типов договоров"""
+    return jsonify({'success': True, 'types': contract_templates.get_all_types()})
+
+@app.route('/api/contracts/fields/<contract_type>')
+def get_contract_fields(contract_type):
+    """Поля формы для типа договора"""
+    fields = contract_templates.get_fields(contract_type)
+    if not fields:
+        return jsonify({'success': False, 'error': 'Неизвестный тип договора'}), 404
+    sections = contract_templates.get_sections(contract_type)
+    type_info = contract_templates.get_type_info(contract_type)
+    return jsonify({'success': True, 'fields': fields, 'sections': sections, 'type_info': type_info})
+
+@app.route('/api/contracts/generate', methods=['POST'])
+def generate_contract():
+    """Генерация договора"""
+    if not contract_generator:
+        return jsonify({'success': False, 'error': 'Генератор договоров не инициализирован'}), 503
+    data = request.get_json()
+    contract_type = data.pop('contract_type', None)
+    language = data.pop('language', 'ru')
+    if not contract_type:
+        return jsonify({'success': False, 'error': 'Не указан тип договора'}), 400
+    if rag_initialized and retriever:
+        contract_generator.retriever = retriever
+    result = contract_generator.generate(contract_type, data, language)
+    return jsonify(result)
+
+@app.route('/api/contracts/analyze', methods=['POST'])
+def analyze_contract():
+    """Анализ договора"""
+    if not contract_analyzer:
+        return jsonify({'success': False, 'error': 'Анализатор договоров не инициализирован'}), 503
+    text = ''
+    contract_type = None
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename:
+            text = contract_analyzer.extract_text_from_file(file)
+            contract_type = request.form.get('contract_type')
+    else:
+        data = request.get_json() or {}
+        text = data.get('text', '')
+        contract_type = data.get('contract_type')
+    if not text or len(text.strip()) < 50:
+        return jsonify({'success': False, 'error': 'Текст договора слишком короткий или не удалось извлечь текст из файла'}), 400
+    if rag_initialized and retriever:
+        contract_analyzer.retriever = retriever
+    result = contract_analyzer.analyze(text, contract_type)
+    return jsonify(result)
 
 @app.errorhandler(404)
 def not_found(error):
