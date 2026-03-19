@@ -527,6 +527,36 @@
         text-align: center; font-size: 0.6875rem;
         color: rgba(255,255,255,0.2); margin-top: 0.5rem;
     }
+    .btn-attach {
+        background: none; border: none;
+        color: rgba(255,255,255,0.35);
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: color 0.15s;
+        flex-shrink: 0; border-radius: 8px;
+        font-size: 0.9rem;
+    }
+    .btn-attach:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.08); }
+    .btn-attach.has-file { color: #4f6ef7; }
+    .file-chip-wrap {
+        padding: 0.35rem 0.75rem 0;
+    }
+    .file-chip {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        background: rgba(79,110,247,0.15); border: 1px solid rgba(79,110,247,0.3);
+        border-radius: 8px; padding: 0.25rem 0.5rem 0.25rem 0.6rem;
+        font-size: 0.75rem; color: rgba(255,255,255,0.8);
+        max-width: 100%; overflow: hidden;
+    }
+    .file-chip i { color: #4f6ef7; flex-shrink: 0; }
+    .file-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+    .file-chip-remove {
+        background: none; border: none; cursor: pointer;
+        color: rgba(255,255,255,0.4); padding: 0; line-height: 1;
+        font-size: 0.7rem; flex-shrink: 0;
+    }
+    .file-chip-remove:hover { color: rgba(255,255,255,0.8); }
+    .file-uploading { opacity: 0.6; }
 
     /* ════════════════ MOBILE ════════════════ */
     @media (max-width: 768px) {
@@ -660,7 +690,18 @@
         <!-- Input -->
         <div class="chat-input-wrap">
             <div class="chat-input-box">
+                <div id="fileChipWrap" class="file-chip-wrap" style="display:none;">
+                    <div class="file-chip" id="fileChip">
+                        <i class="fas fa-file-lines"></i>
+                        <span class="file-chip-name" id="fileChipName"></span>
+                        <button class="file-chip-remove" id="fileChipRemove" title="Удалить файл"><i class="fas fa-xmark"></i></button>
+                    </div>
+                </div>
                 <div class="input-inner">
+                    <button class="btn-attach" id="attachBtn" title="Прикрепить PDF или Word документ">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <input type="file" id="fileInput" accept=".pdf,.docx" style="display:none;">
                     <textarea id="userInput" placeholder="Задайте вопрос о законодательстве..." rows="1" data-i18n-placeholder="chat.placeholder"></textarea>
                     <button class="btn-send" id="sendBtn" disabled>
                         <i class="fas fa-arrow-up"></i>
@@ -683,6 +724,8 @@ $(document).ready(function () {
     let msgCounter = 0;
     let ragReady = false;
     let currentChatId = null;
+    let attachedDocText = null;   // extracted text from uploaded file
+    let attachedDocName = null;   // filename for display
 
     const STORAGE_KEY = 'lv_chats';
     const MAX_CHATS = 30;
@@ -924,8 +967,23 @@ $(document).ready(function () {
 
         if (!currentChatId) startNewChat();
 
-        appendUserBubble(query);
-        currentMessages.push({ role: 'user', content: query });
+        // Build display text — show file name as a prefix in the bubble if attached
+        let displayQuery = query;
+        if (attachedDocName) {
+            displayQuery = `📎 ${attachedDocName}\n\n${query}`;
+        }
+
+        appendUserBubble(displayQuery);
+        currentMessages.push({ role: 'user', content: displayQuery });
+
+        // Build actual query sent to backend — inject document text as context
+        let backendQuery = query;
+        if (attachedDocText) {
+            backendQuery = `[Прикреплённый документ: ${attachedDocName}]\n\n${attachedDocText}\n\n---\n\nВопрос пользователя: ${query}`;
+        }
+
+        // Clear attachment
+        clearAttachment();
 
         showTyping();
         isLoading = true;
@@ -935,7 +993,7 @@ $(document).ready(function () {
             const resp = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query, use_rag: true })
+                body: JSON.stringify({ query: backendQuery, use_rag: true })
             });
             const data = await resp.json();
             removeTyping();
@@ -967,14 +1025,83 @@ $(document).ready(function () {
         }
     }
 
+    /* ════════════ FILE ATTACHMENT ════════════ */
+    function clearAttachment() {
+        attachedDocText = null;
+        attachedDocName = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('fileChipWrap').style.display = 'none';
+        document.getElementById('attachBtn').classList.remove('has-file');
+    }
+
+    document.getElementById('attachBtn').addEventListener('click', function() {
+        if (attachedDocText) {
+            clearAttachment();
+        } else {
+            document.getElementById('fileInput').click();
+        }
+    });
+
+    document.getElementById('fileChipRemove').addEventListener('click', function(e) {
+        e.stopPropagation();
+        clearAttachment();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', async function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        const chip = document.getElementById('fileChip');
+        const chipWrap = document.getElementById('fileChipWrap');
+        const chipName = document.getElementById('fileChipName');
+        const attachBtn = document.getElementById('attachBtn');
+
+        chipName.textContent = file.name;
+        chipWrap.style.display = 'block';
+        chip.classList.add('file-uploading');
+        chipName.textContent = `${file.name} — загружается...`;
+        attachBtn.classList.add('has-file');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const resp = await fetch('/api/chat/upload', { method: 'POST', body: formData });
+            const data = await resp.json();
+
+            if (!resp.ok || data.error) {
+                chipName.textContent = `Ошибка: ${data.error || 'не удалось загрузить'}`;
+                chip.classList.remove('file-uploading');
+                attachedDocText = null;
+                attachedDocName = null;
+                attachBtn.classList.remove('has-file');
+                return;
+            }
+
+            attachedDocText = data.text;
+            attachedDocName = data.filename;
+            chipName.textContent = `${data.filename} (${(data.length/1000).toFixed(1)}k симв.)`;
+            chip.classList.remove('file-uploading');
+            document.getElementById('userInput').focus();
+
+        } catch(e) {
+            chipName.textContent = `Ошибка загрузки`;
+            chip.classList.remove('file-uploading');
+            attachedDocText = null;
+            attachedDocName = null;
+            attachBtn.classList.remove('has-file');
+        }
+    });
+
     /* ════════════ INPUT ════════════ */
     const textarea = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
 
     function updateSendBtn() {
         const hasText = textarea.value.trim().length > 0;
-        sendBtn.disabled = isLoading || !hasText;
-        sendBtn.classList.toggle('active', hasText && !isLoading);
+        const canSend = hasText || attachedDocText;
+        sendBtn.disabled = isLoading || !canSend;
+        sendBtn.classList.toggle('active', canSend && !isLoading);
     }
 
     textarea.addEventListener('input', function() {
@@ -986,7 +1113,7 @@ $(document).ready(function () {
     textarea.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            const q = this.value.trim();
+            const q = this.value.trim() || (attachedDocText ? 'Проанализируй прикреплённый документ' : '');
             if (q && !isLoading) {
                 this.value = '';
                 this.style.height = 'auto';
@@ -997,7 +1124,7 @@ $(document).ready(function () {
     });
 
     sendBtn.addEventListener('click', function() {
-        const q = textarea.value.trim();
+        const q = textarea.value.trim() || (attachedDocText ? 'Проанализируй прикреплённый документ' : '');
         if (q && !isLoading) {
             textarea.value = '';
             textarea.style.height = 'auto';

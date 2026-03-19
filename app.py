@@ -189,6 +189,71 @@ def about_page():
     """Страница о платформе"""
     return render_template('about.html')
 
+@app.route('/api/chat/upload', methods=['POST'])
+def chat_upload():
+    """Загрузка PDF или DOCX файла для анализа в чате"""
+    if 'file' not in request.files:
+        return jsonify({'error': 'Файл не прикреплён'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'Пустое имя файла'}), 400
+
+    filename = file.filename.lower()
+    extracted_text = ''
+
+    try:
+        if filename.endswith('.pdf'):
+            import pdfplumber
+            import tempfile, os
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+                file.save(tmp.name)
+                tmp_path = tmp.name
+            try:
+                with pdfplumber.open(tmp_path) as pdf:
+                    pages = []
+                    for page in pdf.pages[:30]:  # max 30 страниц
+                        text = page.extract_text()
+                        if text:
+                            pages.append(text)
+                    extracted_text = '\n\n'.join(pages)
+            finally:
+                os.unlink(tmp_path)
+
+        elif filename.endswith('.docx'):
+            from docx import Document
+            import tempfile, os
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp:
+                file.save(tmp.name)
+                tmp_path = tmp.name
+            try:
+                doc = Document(tmp_path)
+                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                extracted_text = '\n'.join(paragraphs)
+            finally:
+                os.unlink(tmp_path)
+
+        else:
+            return jsonify({'error': 'Поддерживаются только PDF и DOCX файлы'}), 400
+
+        if not extracted_text.strip():
+            return jsonify({'error': 'Не удалось извлечь текст из документа'}), 400
+
+        # Ограничиваем длину до ~8000 символов
+        if len(extracted_text) > 8000:
+            extracted_text = extracted_text[:8000] + '\n\n[...текст обрезан, показаны первые 8000 символов]'
+
+        return jsonify({
+            'success': True,
+            'text': extracted_text,
+            'filename': file.filename,
+            'length': len(extracted_text)
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Ошибка при чтении файла: {str(e)}'}), 500
+
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """API для обработки чат-запросов"""
