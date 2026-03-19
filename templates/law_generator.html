@@ -107,6 +107,18 @@
         .gen-layout { grid-template-columns: 1fr; }
         .gen-sidebar .card { position: static; }
     }
+
+    @media (max-width: 768px) {
+        .form-container,
+        .generator-container {
+            padding: 1rem;
+        }
+        .step-nav,
+        .steps-nav {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
 </style>
 {% endblock %}
 

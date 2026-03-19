@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>{% block title %}LawVision — Юридическая платформа{% endblock %}</title>
 
     <!-- Bootstrap CSS -->
@@ -375,6 +375,19 @@
         .lang-option { cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; color: var(--text-secondary); transition: all 0.2s; font-weight: 500; }
         .lang-option:hover { color: var(--primary); background: rgba(79, 110, 247, 0.1); }
         .lang-option.active { color: #fff; background: var(--primary); }
+
+        @media (max-width: 480px) {
+            .lang-switcher {
+                gap: 0.15rem;
+            }
+            .lang-option {
+                padding: 0.2rem 0.35rem;
+                font-size: 0.75rem;
+            }
+            .navbar-brand {
+                font-size: 1.1rem;
+            }
+        }
     </style>
 
     {% block extra_css %}{% endblock %}

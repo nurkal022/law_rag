@@ -545,6 +545,30 @@
         .user-message .msg-bubble { max-width: 88%; }
         .msgs-inner { padding: 0 0.75rem 1.5rem; }
         .chat-input-wrap { padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom)); }
+
+        /* Prevent iOS zoom on input focus */
+        .chat-input-area textarea,
+        .chat-input-area input {
+            font-size: 16px !important;
+        }
+
+        /* Better message bubbles on mobile */
+        .user-message .msg-bubble,
+        .assistant-message .msg-bubble {
+            max-width: 92%;
+            font-size: 0.95rem;
+        }
+
+        /* Compact input area on mobile */
+        .chat-input-area {
+            padding: 0.5rem;
+        }
+
+        /* Sources panel scroll */
+        .sources-panel {
+            max-height: 40vh;
+            overflow-y: auto;
+        }
     }
 
     @media (min-width: 769px) {
