@@ -371,9 +371,18 @@
             font-size: 0.75rem;
             color: rgba(255,255,255,0.35);
         }
+        .lang-switcher { display: flex; gap: 0.25rem; align-items: center; }
+        .lang-option { cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; color: var(--text-secondary); transition: all 0.2s; font-weight: 500; }
+        .lang-option:hover { color: var(--primary); background: rgba(79, 110, 247, 0.1); }
+        .lang-option.active { color: #fff; background: var(--primary); }
     </style>
 
     {% block extra_css %}{% endblock %}
+
+    <script>
+        const lang = localStorage.getItem('lang') || 'ru';
+        if (lang !== 'ru') document.documentElement.style.visibility = 'hidden';
+    </script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg">
@@ -389,9 +398,14 @@
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <div class="navbar-nav ms-auto gap-1">
-                    <a class="nav-link {% block nav_home %}{% endblock %}" href="/">Главная</a>
-                    <a class="nav-link {% block nav_tools %}{% endblock %}" href="/tools">Инструменты</a>
-                    <a class="nav-link {% block nav_about %}{% endblock %}" href="/about">О нас</a>
+                    <a class="nav-link {% block nav_home %}{% endblock %}" href="/" data-i18n="nav.home">Главная</a>
+                    <a class="nav-link {% block nav_tools %}{% endblock %}" href="/tools" data-i18n="nav.tools">Инструменты</a>
+                    <a class="nav-link {% block nav_about %}{% endblock %}" href="/about" data-i18n="nav.about">О нас</a>
+                </div>
+                <div class="lang-switcher ms-3">
+                    <span class="lang-option" data-lang="ru" onclick="I18n.switchLanguage('ru')">RU</span>
+                    <span class="lang-option" data-lang="kz" onclick="I18n.switchLanguage('kz')">QZ</span>
+                    <span class="lang-option" data-lang="en" onclick="I18n.switchLanguage('en')">EN</span>
                 </div>
             </div>
         </div>
@@ -411,26 +425,26 @@
                         <span class="brand-icon"><i class="fas fa-scale-balanced"></i></span>
                         LawVision
                     </div>
-                    <p class="footer-desc">Юридическая платформа на базе искусственного интеллекта для работы с законодательством Республики Казахстан</p>
+                    <p class="footer-desc" data-i18n="footer.description">Юридическая платформа на базе искусственного интеллекта для работы с законодательством Республики Казахстан</p>
                 </div>
                 <div>
-                    <div class="footer-heading">Инструменты</div>
+                    <div class="footer-heading" data-i18n="nav.tools">Инструменты</div>
                     <ul class="footer-links">
-                        <li><a href="/chat">Юридический консультант</a></li>
-                        <li><a href="/law-generator">Генератор законопроектов</a></li>
-                        <li><a href="/legal-analytics">Правовая аналитика</a></li>
+                        <li><a href="/chat" data-i18n="nav.chat">Юридический консультант</a></li>
+                        <li><a href="/law-generator" data-i18n="nav.law_generator">Генератор законопроектов</a></li>
+                        <li><a href="/legal-analytics" data-i18n="nav.legal_analytics">Правовая аналитика</a></li>
                     </ul>
                 </div>
                 <div>
-                    <div class="footer-heading">Платформа</div>
+                    <div class="footer-heading" data-i18n="footer.links">Платформа</div>
                     <ul class="footer-links">
-                        <li><a href="/">Главная</a></li>
-                        <li><a href="/tools">Инструменты</a></li>
-                        <li><a href="/about">О нас</a></li>
+                        <li><a href="/" data-i18n="nav.home">Главная</a></li>
+                        <li><a href="/tools" data-i18n="nav.tools">Инструменты</a></li>
+                        <li><a href="/about" data-i18n="nav.about">О нас</a></li>
                     </ul>
                 </div>
                 <div>
-                    <div class="footer-heading">Правовая информация</div>
+                    <div class="footer-heading" data-i18n="footer.contacts">Правовая информация</div>
                     <ul class="footer-links">
                         <li><a href="#">Информация носит справочный характер</a></li>
                         <li><a href="#">Не является юридической консультацией</a></li>
@@ -438,7 +452,7 @@
                 </div>
             </div>
             <div class="footer-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span>&copy; 2024—2026 LawVision. Все права защищены.</span>
+                <span>&copy; 2024—2026 LawVision. <span data-i18n="footer.rights">Все права защищены</span>.</span>
                 <span>Сделано в Казахстане</span>
             </div>
         </div>
@@ -448,6 +462,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
 
+    <script src="/static/js/i18n.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

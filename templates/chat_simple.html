@@ -180,7 +180,7 @@
         <div class="sc-header">
             <div class="sc-header-left">
                 <div class="sc-header-icon"><i class="fas fa-bolt"></i></div>
-                <h2>Быстрый чат</h2>
+                <h2 data-i18n="tools.simple_chat_title">Быстрый чат</h2>
                 <span class="sc-badge">без поиска</span>
             </div>
             <div class="actions">
@@ -196,8 +196,8 @@
         <div id="chatContainer" class="sc-messages">
             <div id="welcomeMessage" class="sc-welcome">
                 <div class="icon"><i class="fas fa-bolt"></i></div>
-                <h3>Быстрый вопрос — быстрый ответ</h3>
-                <p>Прямое общение с AI без поиска по базе документов. Для ответов со ссылками на НПА — <a href="/chat">Юридический консультант</a></p>
+                <h3 data-i18n="chat.welcome">Быстрый вопрос — быстрый ответ</h3>
+                <p data-i18n="chat.welcome_desc">Прямое общение с AI без поиска по базе документов. Для ответов со ссылками на НПА — <a href="/chat">Юридический консультант</a></p>
                 <div class="sc-examples">
                     <button class="sc-example-btn" data-query="Что такое правоспособность?">Правоспособность</button>
                     <button class="sc-example-btn" data-query="Отличие трудового договора от гражданско-правового">Трудовой vs ГП договор</button>
@@ -211,7 +211,7 @@
             <form id="chatForm">
                 <div class="input-group">
                     <input type="text" id="userInput" class="form-control"
-                           placeholder="Задайте вопрос..." autocomplete="off">
+                           placeholder="Задайте вопрос..." autocomplete="off" data-i18n-placeholder="chat.placeholder">
                     <button type="submit" id="sendBtn" class="btn-send">
                         <i class="fas fa-arrow-up"></i>
                     </button>

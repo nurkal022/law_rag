@@ -574,8 +574,8 @@
         </div>
 
         <div class="sidebar-bottom">
-            <a href="/tools"><i class="fas fa-toolbox"></i> Инструменты</a>
-            <a href="/about"><i class="fas fa-info-circle"></i> О нас</a>
+            <a href="/tools"><i class="fas fa-toolbox"></i> <span data-i18n="nav.tools">Инструменты</span></a>
+            <a href="/about"><i class="fas fa-info-circle"></i> <span data-i18n="nav.about">О нас</span></a>
         </div>
     </aside>
 
@@ -612,8 +612,8 @@
                 <!-- Welcome -->
                 <div class="welcome-screen" id="welcomeScreen">
                     <div class="welcome-icon"><i class="fas fa-scale-balanced"></i></div>
-                    <div class="welcome-title">Чем могу помочь?</div>
-                    <div class="welcome-sub">Задайте вопрос о законодательстве Республики Казахстан</div>
+                    <div class="welcome-title" data-i18n="chat.welcome">Чем могу помочь?</div>
+                    <div class="welcome-sub" data-i18n="chat.welcome_desc">Задайте вопрос о законодательстве Республики Казахстан</div>
                     <div class="suggestions-grid">
                         <div class="suggestion-card" data-query="Какие права имеют граждане Казахстана согласно Конституции?">
                             Права граждан по Конституции
@@ -637,7 +637,7 @@
         <div class="chat-input-wrap">
             <div class="chat-input-box">
                 <div class="input-inner">
-                    <textarea id="userInput" placeholder="Задайте вопрос о законодательстве..." rows="1"></textarea>
+                    <textarea id="userInput" placeholder="Задайте вопрос о законодательстве..." rows="1" data-i18n-placeholder="chat.placeholder"></textarea>
                     <button class="btn-send" id="sendBtn" disabled>
                         <i class="fas fa-arrow-up"></i>
                     </button>
