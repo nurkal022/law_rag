@@ -37,7 +37,7 @@
     /* ─── Tools grid ─── */
     .tools-grid { padding: 3rem 0 4rem; }
     .tools-row {
-        display: grid; grid-template-columns: repeat(4, 1fr);
+        display: grid; grid-template-columns: repeat(3, 1fr);
         gap: 1.5rem;
     }
     @media (max-width: 1200px) { .tools-row { grid-template-columns: repeat(2, 1fr); } }
@@ -147,8 +147,8 @@
 <section class="tools-hero">
     <div class="container">
         <div class="tools-hero-content">
-            <div class="tools-hero-pill"><i class="fas fa-tools"></i> Инструменты</div>
-            <h1 data-i18n="tools.title">Четыре ИИ-инструмента</h1>
+            <div class="tools-hero-pill"><i class="fas fa-tools"></i> <span data-i18n="nav.tools">Инструменты</span></div>
+            <h1 data-i18n="tools.title">Три ИИ-инструмента</h1>
             <p data-i18n="tools.subtitle">Комплексный набор для работы с законодательством Казахстана</p>
         </div>
     </div>
@@ -161,30 +161,16 @@
         <div class="tools-row">
 
             <div class="tool-card">
-                <div class="tc-icon" style="background: rgba(168,85,247,0.08); color: #a855f7;">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                <h3 data-i18n="tools.simple_chat_title">Быстрый чат</h3>
-                <p class="tc-desc" data-i18n="tools.simple_chat_desc">Прямое общение с AI без поиска по документам — быстрый вопрос-ответ</p>
-                <div class="tc-tags">
-                    <span class="tc-tag">Без задержки</span>
-                    <span class="tc-tag">Общие вопросы</span>
-                </div>
-                <a href="/chat-simple" class="tc-link tc-link-purple">Открыть <i class="fas fa-arrow-right"></i></a>
-            </div>
-
-            <div class="tool-card">
                 <div class="tc-icon" style="background: rgba(79,110,247,0.08); color: var(--primary);">
                     <i class="fas fa-comment-dots"></i>
                 </div>
                 <h3 data-i18n="tools.chat_title">Юридический консультант</h3>
                 <p class="tc-desc" data-i18n="tools.chat_desc">Ответы на правовые вопросы со ссылками на статьи и нормативные акты</p>
                 <div class="tc-tags">
-                    <span class="tc-tag">Поиск по базе</span>
-                    <span class="tc-tag">1 300+ НПА</span>
-                    <span class="tc-tag">Ссылки на источники</span>
+                    <span class="tc-tag" data-i18n="tools.tag_search">Поиск по базе</span>
+                    <span class="tc-tag" data-i18n="tools.tag_sources">Ссылки на источники</span>
                 </div>
-                <a href="/chat" class="tc-link tc-link-dark">Открыть <i class="fas fa-arrow-right"></i></a>
+                <a href="/chat" class="tc-link tc-link-dark"><span data-i18n="common.open">Открыть</span> <i class="fas fa-arrow-right"></i></a>
             </div>
 
             <div class="tool-card">
@@ -194,11 +180,11 @@
                 <h3 data-i18n="tools.generator_title">Генератор законопроектов</h3>
                 <p class="tc-desc" data-i18n="tools.generator_desc">Создание законопроектов по стандартам РК с 13 обязательными разделами</p>
                 <div class="tc-tags">
-                    <span class="tc-tag">13 разделов</span>
-                    <span class="tc-tag">Валидация</span>
+                    <span class="tc-tag" data-i18n="tools.tag_sections">13 разделов</span>
+                    <span class="tc-tag" data-i18n="tools.tag_validation">Валидация</span>
                     <span class="tc-tag">KZ / RU</span>
                 </div>
-                <a href="/law-generator" class="tc-link tc-link-amber">Открыть <i class="fas fa-arrow-right"></i></a>
+                <a href="/law-generator" class="tc-link tc-link-amber"><span data-i18n="common.open">Открыть</span> <i class="fas fa-arrow-right"></i></a>
             </div>
 
             <div class="tool-card">
@@ -208,11 +194,11 @@
                 <h3 data-i18n="tools.analytics_title">Правовая аналитика</h3>
                 <p class="tc-desc" data-i18n="tools.analytics_desc">Анализ тональности и тематик комментариев к законопроектам</p>
                 <div class="tc-tags">
-                    <span class="tc-tag">Тональность</span>
-                    <span class="tc-tag">Визуализации</span>
-                    <span class="tc-tag">Экспорт</span>
+                    <span class="tc-tag" data-i18n="tools.tag_sentiment">Тональность</span>
+                    <span class="tc-tag" data-i18n="tools.tag_charts">Визуализации</span>
+                    <span class="tc-tag" data-i18n="tools.tag_export">Экспорт</span>
                 </div>
-                <a href="/legal-analytics" class="tc-link tc-link-blue">Открыть <i class="fas fa-arrow-right"></i></a>
+                <a href="/legal-analytics" class="tc-link tc-link-blue"><span data-i18n="common.open">Открыть</span> <i class="fas fa-arrow-right"></i></a>
             </div>
 
         </div>
@@ -222,9 +208,9 @@
 <section class="tools-cta">
     <div class="container">
         <div class="tools-cta-box">
-            <h2>Не знаете с чего начать?</h2>
-            <p>Попробуйте задать вопрос ИИ-консультанту</p>
-            <a href="/chat" class="btn-cta">Открыть консультант <i class="fas fa-arrow-right"></i></a>
+            <h2 data-i18n="tools.cta_title">Не знаете с чего начать?</h2>
+            <p data-i18n="tools.cta_desc">Попробуйте задать вопрос ИИ-консультанту</p>
+            <a href="/chat" class="btn-cta"><span data-i18n="tools.cta_btn">Открыть консультант</span> <i class="fas fa-arrow-right"></i></a>
         </div>
     </div>
 </section>
