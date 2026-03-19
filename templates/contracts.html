@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}Договоры — LawVision{% endblock %}
+{% block nav_contracts %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Page layout */
+    .contracts-page { max-width: 1200px; margin: 0 auto; }
+
+    /* Tab content area */
+    .contract-tabs .nav-link { font-size: 0.875rem; font-weight: 600; }
+    .contract-tabs .nav-link.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+    /* Type selector - grid of cards */
+    .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .type-card {
+        border: 2px solid var(--border); border-radius: 12px; padding: 1rem;
+        cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .type-card:hover { border-color: var(--primary); background: rgba(79,110,247,0.04); }
+    .type-card.selected { border-color: var(--primary); background: rgba(79,110,247,0.08); }
+    .type-card .type-icon { font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--primary); }
+    .type-card .type-name { font-size: 0.8125rem; font-weight: 600; color: var(--text); }
+    .type-card .type-desc { font-size: 0.6875rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
+    /* Dynamic form */
+    .contract-form .form-label { font-size: 0.8125rem; font-weight: 500; }
+    .contract-form .form-control { font-size: 0.875rem; }
+
+    /* Results */
+    .contract-result { white-space: pre-wrap; font-size: 0.875rem; line-height: 1.7; }
+
+    /* Analysis cards */
+    .risk-card { padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; border-left: 3px solid; }
+    .risk-card.high { border-left-color: #dc2626; background: #fef2f2; }
+    .risk-card.medium { border-left-color: #d97706; background: #fffbeb; }
+    .risk-card.low { border-left-color: #16a34a; background: #f0fdf4; }
+    .risk-title { font-size: 0.8125rem; font-weight: 600; }
+    .risk-desc { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
+    /* Score circle */
+    .score-circle {
+        width: 80px; height: 80px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; font-weight: 700; color: white; margin: 0 auto 1rem;
+    }
+    .score-high { background: #16a34a; }
+    .score-medium { background: #d97706; }
+    .score-low { background: #dc2626; }
+
+    /* Upload zone */
+    .upload-zone {
+        border: 2px dashed var(--border); border-radius: 12px;
+        padding: 2rem; text-align: center; cursor: pointer;
+        transition: all 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: rgba(79,110,247,0.04); }
+    .upload-zone i { font-size: 2rem; color: var(--primary); margin-bottom: 0.75rem; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+        .type-grid { grid-template-columns: repeat(2, 1fr); }
+        .contract-tabs .nav-link { font-size: 0.8125rem; padding: 0.5rem; }
+    }
+    @media (max-width: 480px) {
+        .type-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="contracts-page">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 style="font-size: 1.375rem; font-weight: 700; margin: 0;" data-i18n="contracts.title">Анализ и генерация договоров</h1>
+            <small class="text-muted" data-i18n="contracts.subtitle">Создание и проверка договоров по стандартам РК</small>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs contract-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#generateTab">
+                <i class="fas fa-file-alt"></i> <span data-i18n="contracts.tab_generate">Генерация</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#analyzeTab">
+                <i class="fas fa-search"></i> <span data-i18n="contracts.tab_analyze">Анализ</span>
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- ===== GENERATE TAB ===== -->
+        <div class="tab-pane fade show active" id="generateTab">
+            <!-- Step 1: Select type -->
+            <div id="step-select-type">
+                <h5 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;" data-i18n="contracts.select_type">Выберите тип договора</h5>
+                <div class="type-grid">
+                    {% for t in contract_types %}
+                    <div class="type-card" data-type="{{ t.id }}" onclick="selectContractType('{{ t.id }}')">
+                        <div class="type-icon"><i class="{{ t.icon }}"></i></div>
+                        <div class="type-name">{{ t.name_ru }}</div>
+                        <div class="type-desc">{{ t.description_ru }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Step 2: Fill form (hidden initially) -->
+            <div id="step-fill-form" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 id="selected-type-name" style="font-size: 1rem; font-weight: 600; margin: 0;"></h5>
+                        <small class="text-muted" id="selected-type-legal"></small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="backToTypeSelect()">
+                            <i class="fas fa-arrow-left"></i> <span data-i18n="common.back">Назад</span>
+                        </button>
+                        <select id="contract-language" class="form-select form-select-sm" style="width: auto; font-size: 0.8125rem;">
+                            <option value="ru">Русский</option>
+                            <option value="kz">Қазақша</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <form id="contract-form" class="contract-form">
+                            <div class="row" id="form-fields-container">
+                                <!-- Dynamic fields loaded here -->
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" data-i18n="contracts.additional">Дополнительные условия</label>
+                                <textarea class="form-control" name="additional_terms" rows="3"
+                                    data-i18n-placeholder="contracts.additional_hint" placeholder="Укажите дополнительные условия, если необходимо..."></textarea>
+                            </div>
+                        </form>
+                        <button id="generate-btn" class="btn btn-primary" onclick="generateContract()">
+                            <i class="fas fa-magic"></i> <span data-i18n="contracts.generate_btn">Сгенерировать договор</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result (hidden initially) -->
+            <div id="generate-result" style="display: none;" class="mt-3">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background: var(--primary); color: white;">
+                        <h6 class="mb-0" style="font-size: 0.875rem;" data-i18n="contracts.result_title">Договор</h6>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-light" onclick="copyContract()">
+                                <i class="fas fa-copy"></i> <span data-i18n="contracts.copy">Копировать</span>
+                            </button>
+                            <button class="btn btn-sm btn-light" onclick="downloadContract()">
+                                <i class="fas fa-download"></i> <span data-i18n="contracts.download">Скачать</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="contract-text" class="contract-result"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ANALYZE TAB ===== -->
+        <div class="tab-pane fade" id="analyzeTab">
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Upload zone -->
+                    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                        <i class="fas fa-cloud-upload-alt d-block"></i>
+                        <h6 style="font-size: 0.9375rem; font-weight: 600;" data-i18n="contracts.upload_file">Загрузите файл договора</h6>
+                        <small class="text-muted" data-i18n="contracts.upload_hint">PDF, DOCX или TXT (перетащите или нажмите)</small>
+                        <input type="file" id="file-input" accept=".pdf,.docx,.txt" style="display: none;" onchange="handleFileSelect(this)">
+                    </div>
+                    <div id="file-info" style="display: none;" class="mt-2 p-2 bg-light rounded">
+                        <small><i class="fas fa-file"></i> <span id="file-name"></span></small>
+                    </div>
+
+                    <!-- Or paste text -->
+                    <div class="mt-3">
+                        <label class="form-label" style="font-size: 0.8125rem; font-weight: 500;" data-i18n="contracts.or_paste">Или вставьте текст договора</label>
+                        <textarea id="contract-text-input" class="form-control" rows="8"
+                            data-i18n-placeholder="contracts.paste_hint" placeholder="Вставьте текст договора для анализа..."></textarea>
+                    </div>
+
+                    <button id="analyze-btn" class="btn btn-primary mt-3" onclick="analyzeContract()">
+                        <i class="fas fa-search"></i> <span data-i18n="contracts.analyze_btn">Проанализировать</span>
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 style="font-size: 0.875rem; font-weight: 600;" data-i18n="contracts.select_type_optional">Тип договора (необязательно)</h6>
+                            <select id="analyze-type" class="form-select form-select-sm">
+                                <option value="">Автоопределение</option>
+                                {% for t in contract_types %}
+                                <option value="{{ t.id }}">{{ t.name_ru }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted mt-2 d-block" style="font-size: 0.75rem;" data-i18n="contracts.type_hint">Укажите тип для более точного анализа</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Result (hidden) -->
+            <div id="analysis-result" style="display: none;" class="mt-4">
+                <!-- Score -->
+                <div class="text-center mb-4">
+                    <div id="score-circle" class="score-circle"></div>
+                    <h6 id="score-summary" style="font-size: 0.875rem;"></h6>
+                </div>
+
+                <div class="row">
+                    <!-- Risks -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header"><h6 class="mb-0" style="font-size: 0.875rem;"><i class="fas fa-exclamation-triangle text-danger"></i> <span data-i18n="contracts.risks">Риски</span></h6></div>
+                            <div class="card-body" id="risks-container"></div>
+                        </div>
+                    </div>
+                    <!-- Missing -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header"><h6 class="mb-0" style="font-size: 0.875rem;"><i class="fas fa-exclamation-circle text-warning"></i> <span data-i18n="contracts.missing">Пропущенные пункты</span></h6></div>
+                            <div class="card-body" id="missing-container"></div>
+                        </div>
+                    </div>
+                    <!-- Compliance -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header"><h6 class="mb-0" style="font-size: 0.875rem;"><i class="fas fa-balance-scale text-primary"></i> <span data-i18n="contracts.compliance">Соответствие законодательству</span></h6></div>
+                            <div class="card-body" id="compliance-container"></div>
+                        </div>
+                    </div>
+                    <!-- Recommendations -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header"><h6 class="mb-0" style="font-size: 0.875rem;"><i class="fas fa-lightbulb text-success"></i> <span data-i18n="contracts.recommendations">Рекомендации</span></h6></div>
+                            <div class="card-body" id="recommendations-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="contractLoadingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3"></div>
+                <h6 id="loading-msg" style="font-size: 0.875rem;" data-i18n="gen.generating">Генерация...</h6>
+                <p class="text-muted mb-0" style="font-size: 0.75rem;" data-i18n="gen.please_wait">Подождите...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedType = null;
+let currentFields = [];
+let generatedContract = '';
+
+function selectContractType(typeId) {
+    selectedType = typeId;
+    document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`.type-card[data-type="${typeId}"]`).classList.add('selected');
+
+    // Load fields
+    fetch(`/api/contracts/fields/${typeId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentFields = data.fields;
+                renderFormFields(data.fields);
+                document.getElementById('selected-type-name').textContent = data.type_info.name_ru;
+                document.getElementById('selected-type-legal').textContent = data.type_info.legal_basis || '';
+                document.getElementById('step-select-type').style.display = 'none';
+                document.getElementById('step-fill-form').style.display = 'block';
+                document.getElementById('generate-result').style.display = 'none';
+            }
+        });
+}
+
+function backToTypeSelect() {
+    document.getElementById('step-select-type').style.display = 'block';
+    document.getElementById('step-fill-form').style.display = 'none';
+    document.getElementById('generate-result').style.display = 'none';
+}
+
+function renderFormFields(fields) {
+    const container = document.getElementById('form-fields-container');
+    container.innerHTML = '';
+    fields.forEach(f => {
+        const colClass = f.type === 'textarea' ? 'col-md-12' : 'col-md-6';
+        let input = '';
+        if (f.type === 'textarea') {
+            input = `<textarea class="form-control form-control-sm" name="${f.name}" rows="3" placeholder="${f.label_ru}" ${f.required ? 'required' : ''}></textarea>`;
+        } else if (f.type === 'date') {
+            input = `<input type="date" class="form-control form-control-sm" name="${f.name}" ${f.required ? 'required' : ''}>`;
+        } else if (f.type === 'number') {
+            input = `<input type="number" class="form-control form-control-sm" name="${f.name}" placeholder="${f.label_ru}" ${f.required ? 'required' : ''}>`;
+        } else if (f.type === 'select' && f.options) {
+            input = `<select class="form-select form-select-sm" name="${f.name}" ${f.required ? 'required' : ''}><option value="">Выберите...</option>${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}</select>`;
+        } else {
+            input = `<input type="text" class="form-control form-control-sm" name="${f.name}" placeholder="${f.label_ru}" ${f.required ? 'required' : ''}>`;
+        }
+        container.innerHTML += `<div class="${colClass} mb-3"><label class="form-label">${f.label_ru}${f.required ? ' <span class="text-danger">*</span>' : ''}</label>${input}</div>`;
+    });
+}
+
+function generateContract() {
+    const form = document.getElementById('contract-form');
+    const formData = new FormData(form);
+    const data = { contract_type: selectedType, language: document.getElementById('contract-language').value };
+    for (let [key, value] of formData.entries()) {
+        if (value.trim()) data[key] = value.trim();
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('contractLoadingModal'));
+    document.getElementById('loading-msg').textContent = 'Генерация договора...';
+    modal.show();
+
+    fetch('/api/contracts/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        modal.hide();
+        if (result.success) {
+            generatedContract = result.contract_text;
+            document.getElementById('contract-text').textContent = result.contract_text;
+            document.getElementById('generate-result').style.display = 'block';
+            document.getElementById('generate-result').scrollIntoView({behavior: 'smooth'});
+        } else {
+            alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    })
+    .catch(e => { modal.hide(); alert('Ошибка сети'); });
+}
+
+function copyContract() {
+    navigator.clipboard.writeText(generatedContract).then(() => {
+        const btn = event.target.closest('button');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> OK';
+        setTimeout(() => btn.innerHTML = orig, 1500);
+    });
+}
+
+function downloadContract() {
+    const blob = new Blob([generatedContract], {type: 'text/plain;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `contract_${selectedType}_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+}
+
+// ===== ANALYZE =====
+
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+        document.getElementById('file-input').files = e.dataTransfer.files;
+        handleFileSelect(document.getElementById('file-input'));
+    }
+});
+
+function handleFileSelect(input) {
+    if (input.files.length) {
+        document.getElementById('file-name').textContent = input.files[0].name;
+        document.getElementById('file-info').style.display = 'block';
+    }
+}
+
+function analyzeContract() {
+    const fileInput = document.getElementById('file-input');
+    const textInput = document.getElementById('contract-text-input');
+    const contractType = document.getElementById('analyze-type').value;
+
+    const modal = new bootstrap.Modal(document.getElementById('contractLoadingModal'));
+    document.getElementById('loading-msg').textContent = 'Анализ договора...';
+    modal.show();
+
+    let fetchPromise;
+    if (fileInput.files.length) {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        if (contractType) formData.append('contract_type', contractType);
+        fetchPromise = fetch('/api/contracts/analyze', { method: 'POST', body: formData });
+    } else if (textInput.value.trim()) {
+        fetchPromise = fetch('/api/contracts/analyze', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ text: textInput.value.trim(), contract_type: contractType || null })
+        });
+    } else {
+        modal.hide();
+        alert('Загрузите файл или вставьте текст договора');
+        return;
+    }
+
+    fetchPromise
+        .then(r => r.json())
+        .then(result => {
+            modal.hide();
+            if (result.success) {
+                displayAnalysisResult(result.analysis);
+            } else {
+                alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+            }
+        })
+        .catch(e => { modal.hide(); alert('Ошибка сети'); });
+}
+
+function displayAnalysisResult(analysis) {
+    document.getElementById('analysis-result').style.display = 'block';
+
+    // Score
+    const score = analysis.overall_score || 0;
+    const scoreEl = document.getElementById('score-circle');
+    scoreEl.textContent = score;
+    scoreEl.className = 'score-circle ' + (score >= 70 ? 'score-high' : score >= 40 ? 'score-medium' : 'score-low');
+    document.getElementById('score-summary').textContent = analysis.summary || '';
+
+    // Risks
+    const risksEl = document.getElementById('risks-container');
+    risksEl.innerHTML = '';
+    (analysis.risks || []).forEach(r => {
+        risksEl.innerHTML += `<div class="risk-card ${r.severity}"><div class="risk-title">${r.title}</div><div class="risk-desc">${r.description}</div><small class="text-muted"><i class="fas fa-lightbulb"></i> ${r.recommendation || ''}</small></div>`;
+    });
+    if (!analysis.risks?.length) risksEl.innerHTML = '<p class="text-muted mb-0" style="font-size:0.8125rem">Риски не обнаружены</p>';
+
+    // Missing clauses
+    const missingEl = document.getElementById('missing-container');
+    missingEl.innerHTML = '';
+    (analysis.missing_clauses || []).forEach(m => {
+        const badge = m.importance === 'critical' ? 'bg-danger' : m.importance === 'recommended' ? 'bg-warning' : 'bg-secondary';
+        missingEl.innerHTML += `<div class="mb-2 p-2 border rounded"><div class="d-flex justify-content-between"><strong style="font-size:0.8125rem">${m.clause}</strong><span class="badge ${badge}" style="font-size:0.65rem">${m.importance}</span></div><small class="text-muted">${m.reason || ''}</small></div>`;
+    });
+    if (!analysis.missing_clauses?.length) missingEl.innerHTML = '<p class="text-muted mb-0" style="font-size:0.8125rem">Все обязательные пункты присутствуют</p>';
+
+    // Compliance
+    const compEl = document.getElementById('compliance-container');
+    compEl.innerHTML = '';
+    (analysis.compliance || []).forEach(c => {
+        const icon = c.status === 'compliant' ? 'fa-check-circle text-success' : c.status === 'warning' ? 'fa-exclamation-triangle text-warning' : 'fa-times-circle text-danger';
+        compEl.innerHTML += `<div class="mb-2"><i class="fas ${icon}"></i> <strong style="font-size:0.8125rem">${c.law}</strong><br><small class="text-muted">${c.note || ''}</small></div>`;
+    });
+    if (!analysis.compliance?.length) compEl.innerHTML = '<p class="text-muted mb-0" style="font-size:0.8125rem">Нет данных о соответствии</p>';
+
+    // Recommendations
+    const recEl = document.getElementById('recommendations-container');
+    recEl.innerHTML = '';
+    (analysis.recommendations || []).forEach(r => {
+        const badge = r.priority === 'high' ? 'bg-danger' : r.priority === 'medium' ? 'bg-warning' : 'bg-info';
+        recEl.innerHTML += `<div class="mb-2 p-2 border rounded"><div class="d-flex justify-content-between"><strong style="font-size:0.8125rem">${r.title}</strong><span class="badge ${badge}" style="font-size:0.65rem">${r.priority}</span></div><small class="text-muted">${r.description || ''}</small></div>`;
+    });
+    if (!analysis.recommendations?.length) recEl.innerHTML = '<p class="text-muted mb-0" style="font-size:0.8125rem">Нет рекомендаций</p>';
+
+    document.getElementById('analysis-result').scrollIntoView({behavior: 'smooth'});
+}
+</script>
+{% endblock %}
