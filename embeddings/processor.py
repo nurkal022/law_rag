@@ -75,6 +75,17 @@ class DocumentProcessor:
         else:
             return 'cpu'
         
+    def extract_text_from_pdf(self, filepath: str) -> str:
+        """Extract text from PDF file using pdfplumber"""
+        import pdfplumber
+        text_parts = []
+        with pdfplumber.open(filepath) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+        return '\n'.join(text_parts)
+
     def clean_text(self, text: str) -> str:
         """Очистка и нормализация текста"""
         # Удаляем лишние пробелы и переносы строк
