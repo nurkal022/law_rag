@@ -186,39 +186,39 @@
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="text-center text-white">
             <div class="spinner mb-3"></div>
-            <h5 style="font-size: 1rem; font-weight: 600;">Анализируем данные...</h5>
-            <p style="font-size: 0.8125rem; opacity: 0.8;">Пожалуйста, подождите</p>
+            <h5 style="font-size: 1rem; font-weight: 600;" data-i18n="analytics.analyzing">Анализируем данные...</h5>
+            <p style="font-size: 0.8125rem; opacity: 0.8;" data-i18n="gen.please_wait">Пожалуйста, подождите</p>
         </div>
     </div>
 
     <!-- Page header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0;">Правовая аналитика</h1>
-            <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0.25rem 0 0;">Анализ комментариев к законопроектам</p>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0;" data-i18n="analytics.title">Правовая аналитика</h1>
+            <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0.25rem 0 0;" data-i18n="analytics.subtitle">Анализ комментариев к законопроектам</p>
         </div>
     </div>
 
     <!-- Upload Section -->
     <div class="dashboard-card">
         <div class="card-body">
-            <h5 class="card-title"><i class="fas fa-upload"></i> Загрузка данных</h5>
+            <h5 class="card-title"><i class="fas fa-upload"></i> <span data-i18n="analytics.upload">Загрузка данных</span></h5>
             <div class="upload-section">
                 <form id="uploadForm" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="fileInput" class="form-label" style="font-size: 0.8125rem; font-weight: 500;">Выберите Excel файл с данными</label>
+                        <label for="fileInput" class="form-label" style="font-size: 0.8125rem; font-weight: 500;" data-i18n="analytics.select_file">Выберите Excel файл с данными</label>
                         <input type="file" class="form-control form-control-sm" id="fileInput" name="file" accept=".xlsx,.xls">
                         <div class="form-text">Файл должен содержать колонки: id, title, url, category, status, comments</div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fas fa-upload"></i> Загрузить и проанализировать
+                        <i class="fas fa-upload"></i> <span data-i18n="analytics.upload_analyze">Загрузить и проанализировать</span>
                     </button>
                 </form>
                 <div class="demo-box">
-                    <h6><i class="fas fa-info-circle"></i> Демо-режим</h6>
-                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0.5rem 0;">Для тестирования используйте демо-данные:</p>
+                    <h6><i class="fas fa-info-circle"></i> <span data-i18n="analytics.demo_mode">Демо-режим</span></h6>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0.5rem 0;" data-i18n="analytics.demo_desc">Для тестирования используйте демо-данные:</p>
                     <button id="loadDemoBtn" class="btn btn-accent btn-sm">
-                        <i class="fas fa-play"></i> Загрузить демо-данные
+                        <i class="fas fa-play"></i> <span data-i18n="analytics.load_demo">Загрузить демо-данные</span>
                     </button>
                 </div>
             </div>
@@ -230,10 +230,10 @@
 
         <!-- Interactive Filters -->
         <div class="interactive-filter">
-            <h6 class="mb-3"><i class="fas fa-filter"></i> Интерактивные фильтры</h6>
+            <h6 class="mb-3"><i class="fas fa-filter"></i> <span data-i18n="analytics.filters">Интерактивные фильтры</span></h6>
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label">Категория проекта</label>
+                    <label class="form-label" data-i18n="analytics.category">Категория проекта</label>
                     <select id="categoryFilter" class="form-select form-select-sm">
                         <option value="all">Все категории</option>
                         <option value="digital">Цифровые технологии</option>
@@ -242,7 +242,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Тональность</label>
+                    <label class="form-label" data-i18n="analytics.sentiment">Тональность</label>
                     <select id="sentimentFilter" class="form-select form-select-sm">
                         <option value="all">Все</option>
                         <option value="positive">Позитивные</option>
@@ -251,7 +251,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Уровень спорности</label>
+                    <label class="form-label" data-i18n="analytics.controversy">Уровень спорности</label>
                     <select id="controversyFilter" class="form-select form-select-sm">
                         <option value="all">Все уровни</option>
                         <option value="high">Высокий</option>
@@ -260,7 +260,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Период</label>
+                    <label class="form-label" data-i18n="analytics.period">Период</label>
                     <select id="timeFilter" class="form-select form-select-sm">
                         <option value="all">Все время</option>
                         <option value="week">Последняя неделя</option>
@@ -280,27 +280,27 @@
                 <ul class="nav nav-tabs filter-tabs" id="analyticsTabs" role="tablist">
                     <li class="nav-item">
                         <a class="nav-link active" id="sentiment-tab" data-bs-toggle="tab" href="#sentimentPane" role="tab">
-                            <i class="fas fa-smile"></i> Тональность
+                            <i class="fas fa-smile"></i> <span data-i18n="analytics.tab_sentiment">Тональность</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="emotions-tab" data-bs-toggle="tab" href="#emotionsPane" role="tab">
-                            <i class="fas fa-heart"></i> Эмоции
+                            <i class="fas fa-heart"></i> <span data-i18n="analytics.tab_emotions">Эмоции</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="topics-tab" data-bs-toggle="tab" href="#topicsPane" role="tab">
-                            <i class="fas fa-tags"></i> Темы
+                            <i class="fas fa-tags"></i> <span data-i18n="analytics.tab_topics">Темы</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="temporal-tab" data-bs-toggle="tab" href="#temporalPane" role="tab">
-                            <i class="fas fa-clock"></i> Временные паттерны
+                            <i class="fas fa-clock"></i> <span data-i18n="analytics.tab_temporal">Временные паттерны</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="network-tab" data-bs-toggle="tab" href="#networkPane" role="tab">
-                            <i class="fas fa-project-diagram"></i> Сети
+                            <i class="fas fa-project-diagram"></i> <span data-i18n="analytics.tab_network">Сети</span>
                         </a>
                     </li>
                 </ul>
@@ -373,7 +373,7 @@
         <!-- Engagement -->
         <div class="dashboard-card">
             <div class="card-body">
-                <h5 class="card-title"><i class="fas fa-users"></i> Метрики вовлеченности</h5>
+                <h5 class="card-title"><i class="fas fa-users"></i> <span data-i18n="analytics.engagement">Метрики вовлеченности</span></h5>
                 <div class="row" id="engagementMetrics"></div>
             </div>
         </div>
@@ -384,7 +384,7 @@
                 <div class="dashboard-card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="card-title mb-0"><i class="fas fa-cloud"></i> Облако слов</h5>
+                            <h5 class="card-title mb-0"><i class="fas fa-cloud"></i> <span data-i18n="analytics.word_cloud">Облако слов</span></h5>
                             <div class="btn-group btn-group-sm">
                                 <input type="radio" class="btn-check" name="wordCloudFilter" id="allWords" autocomplete="off" checked>
                                 <label class="btn btn-outline-primary" for="allWords">Все</label>
@@ -404,7 +404,7 @@
             <div class="col-md-4">
                 <div class="dashboard-card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-key"></i> Ключевые фразы</h5>
+                        <h5 class="card-title"><i class="fas fa-key"></i> <span data-i18n="analytics.key_phrases">Ключевые фразы</span></h5>
                         <div id="keyPhrases"></div>
                         <hr>
                         <h6 style="font-size: 0.8125rem; font-weight: 600;" class="mt-3"><i class="fas fa-link text-primary"></i> Биграммы</h6>
@@ -419,7 +419,7 @@
             <div class="col-md-6">
                 <div class="dashboard-card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-star"></i> Качество комментариев</h5>
+                        <h5 class="card-title"><i class="fas fa-star"></i> <span data-i18n="analytics.quality">Качество комментариев</span></h5>
                         <div class="chart-container"><canvas id="qualityChart"></canvas></div>
                         <div class="mt-3" id="qualityMetrics"></div>
                     </div>
@@ -428,7 +428,7 @@
             <div class="col-md-6">
                 <div class="dashboard-card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> Анализ спорности</h5>
+                        <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> <span data-i18n="analytics.controversy_analysis">Анализ спорности</span></h5>
                         <div class="chart-container"><canvas id="controversyChart"></canvas></div>
                         <div class="mt-3" id="controversyInsights"></div>
                     </div>
@@ -441,7 +441,7 @@
             <div class="col-md-6">
                 <div class="dashboard-card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-map-marked-alt"></i> Географическое распределение</h5>
+                        <h5 class="card-title"><i class="fas fa-map-marked-alt"></i> <span data-i18n="analytics.geographic">Географическое распределение</span></h5>
                         <div class="chart-container"><canvas id="geographicChart"></canvas></div>
                     </div>
                 </div>
@@ -449,7 +449,7 @@
             <div class="col-md-6">
                 <div class="dashboard-card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-trophy"></i> Рейтинг проектов</h5>
+                        <h5 class="card-title"><i class="fas fa-trophy"></i> <span data-i18n="analytics.rankings">Рейтинг проектов</span></h5>
                         <div class="table-responsive">
                             <table class="table table-sm project-table" id="advancedRankingsTable">
                                 <thead><tr><th>Проект</th><th>Рейтинг</th><th>Качество</th><th>Спорность</th><th>Экспертность</th></tr></thead>
@@ -464,7 +464,7 @@
         <!-- Predictive -->
         <div class="dashboard-card">
             <div class="card-body">
-                <h5 class="card-title"><i class="fas fa-chart-line"></i> Предиктивная аналитика</h5>
+                <h5 class="card-title"><i class="fas fa-chart-line"></i> <span data-i18n="analytics.predictive">Предиктивная аналитика</span></h5>
                 <div class="row">
                     <div class="col-md-8">
                         <h6 style="font-size: 0.8125rem; font-weight: 600;"><i class="fas fa-chart-line text-primary"></i> Прогнозы трендов</h6>
@@ -483,7 +483,7 @@
             <div class="col-md-8">
                 <div class="dashboard-card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-lightbulb"></i> Рекомендации</h5>
+                        <h5 class="card-title"><i class="fas fa-lightbulb"></i> <span data-i18n="analytics.recommendations">Рекомендации</span></h5>
                         <div class="mb-4">
                             <h6 style="font-size: 0.8125rem; font-weight: 600;"><i class="fas fa-th text-primary"></i> Матрица приоритетов</h6>
                             <div id="priorityMatrix"></div>
@@ -495,7 +495,7 @@
             <div class="col-md-4">
                 <div class="dashboard-card">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-road"></i> Дорожная карта</h5>
+                        <h5 class="card-title"><i class="fas fa-road"></i> <span data-i18n="analytics.roadmap">Дорожная карта</span></h5>
                         <div id="implementationRoadmap"></div>
                     </div>
                 </div>
@@ -505,7 +505,7 @@
         <!-- Export -->
         <div class="dashboard-card export-section">
             <div class="card-body">
-                <h5 class="card-title"><i class="fas fa-download"></i> Экспорт отчета</h5>
+                <h5 class="card-title"><i class="fas fa-download"></i> <span data-i18n="analytics.export">Экспорт отчета</span></h5>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="btn-group w-100">
