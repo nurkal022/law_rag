@@ -284,6 +284,79 @@ def api_export_finetune():
         return jsonify({'error': str(e)}), 500
 
 
+# ─── Opinion polls ───────────────────────────────────────────────────────────
+
+@admin_bp.route('/api/admin/opinion/polls')
+@require_admin
+def api_opinion_polls():
+    from database.models import Poll
+    polls = Poll.query.order_by(Poll.created_at.desc()).all()
+    return jsonify({'success': True, 'polls': [p.to_dict() for p in polls]})
+
+
+@admin_bp.route('/api/admin/opinion/polls', methods=['POST'])
+@require_admin
+def api_opinion_create_poll():
+    from database.models import Poll, db
+    import json as _j
+    data = request.get_json() or {}
+    question = (data.get('question') or '').strip()
+    options = data.get('options', [])
+    category = data.get('category', 'general')
+    if not question or len(options) < 2:
+        return jsonify({'success': False, 'error': 'Нужен вопрос и минимум 2 варианта'}), 400
+    poll = Poll(question=question, options=_j.dumps(options, ensure_ascii=False), category=category)
+    db.session.add(poll)
+    db.session.commit()
+    return jsonify({'success': True, 'poll': poll.to_dict()})
+
+
+@admin_bp.route('/api/admin/opinion/polls/<int:poll_id>/toggle', methods=['POST'])
+@require_admin
+def api_opinion_toggle(poll_id):
+    from database.models import Poll, db
+    poll = Poll.query.get_or_404(poll_id)
+    poll.is_active = not poll.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'is_active': poll.is_active})
+
+
+@admin_bp.route('/api/admin/opinion/polls/<int:poll_id>', methods=['DELETE'])
+@require_admin
+def api_opinion_delete(poll_id):
+    from database.models import Poll, db
+    poll = Poll.query.get_or_404(poll_id)
+    db.session.delete(poll)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/api/admin/opinion/stats')
+@require_admin
+def api_opinion_stats():
+    from database.models import Poll, PollVote
+    from sqlalchemy import func
+    from database.models import db
+    total_polls = Poll.query.count()
+    active_polls = Poll.query.filter_by(is_active=True).count()
+    total_votes = PollVote.query.count()
+
+    # Голоса по дням (последние 30 дней)
+    from datetime import timedelta
+    month_ago = datetime.utcnow() - timedelta(days=30)
+    daily_raw = db.session.query(
+        func.date(PollVote.created_at).label('day'),
+        func.count(PollVote.id).label('cnt')
+    ).filter(PollVote.created_at >= month_ago)\
+     .group_by(func.date(PollVote.created_at))\
+     .order_by(func.date(PollVote.created_at)).all()
+    daily = [{'date': str(r.day), 'count': r.cnt} for r in daily_raw]
+
+    return jsonify({'success': True, 'total_polls': total_polls,
+                    'active_polls': active_polls, 'total_votes': total_votes,
+                    'daily': daily})
+
+
 # ─── LLM settings ────────────────────────────────────────────────────────────
 
 @admin_bp.route('/api/settings/llm', methods=['GET'])

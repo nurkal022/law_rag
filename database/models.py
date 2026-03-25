@@ -233,6 +233,64 @@ class LawGenerationSession(db.Model):
             'status': self.status
         }
 
+class Poll(db.Model):
+    """Опрос общественного мнения"""
+    __tablename__ = 'polls'
+
+    id = db.Column(db.Integer, primary_key=True)
+    question = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(100), default='general')
+    options = db.Column(db.Text, nullable=False)   # JSON list of strings
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    ends_at = db.Column(db.DateTime)
+
+    votes = db.relationship('PollVote', backref='poll', lazy='dynamic',
+                            cascade='all, delete-orphan')
+
+    def get_options(self):
+        return json.loads(self.options)
+
+    def get_results(self):
+        opts = self.get_options()
+        results = []
+        total = self.votes.count()
+        for i, opt in enumerate(opts):
+            cnt = self.votes.filter_by(option_index=i).count()
+            results.append({
+                'index': i,
+                'text': opt,
+                'count': cnt,
+                'pct': round(cnt / total * 100, 1) if total else 0
+            })
+        return results, total
+
+    def to_dict(self):
+        results, total = self.get_results()
+        return {
+            'id': self.id,
+            'question': self.question,
+            'category': self.category,
+            'options': self.get_options(),
+            'results': results,
+            'total_votes': total,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'ends_at': self.ends_at.isoformat() if self.ends_at else None,
+        }
+
+
+class PollVote(db.Model):
+    """Голос в опросе"""
+    __tablename__ = 'poll_votes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey('polls.id'), nullable=False, index=True)
+    option_index = db.Column(db.Integer, nullable=False)
+    ip_hash = db.Column(db.String(64), index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
 class DatabaseManager:
     """Менеджер базы данных с SQLAlchemy ORM"""
     

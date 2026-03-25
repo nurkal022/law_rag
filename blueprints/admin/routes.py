@@ -93,3 +93,17 @@ def questions():
                            rating_filter=rating_filter,
                            total=total_all,
                            active='questions')
+
+
+@admin_bp.route('/admin/opinion')
+@require_admin
+def opinion():
+    from database.models import Poll, PollVote
+    from sqlalchemy import func
+    polls = Poll.query.order_by(Poll.created_at.desc()).all()
+    total_votes = PollVote.query.count()
+    polls_data = [p.to_dict() for p in polls]
+    return render_template('admin/opinion.html',
+                           polls=polls_data,
+                           total_votes=total_votes,
+                           active='opinion')

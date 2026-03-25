@@ -1154,6 +1154,56 @@ def analyze_contract():
     result = contract_analyzer.analyze(text, contract_type)
     return jsonify(result)
 
+# ==================== Общественное мнение ====================
+
+@app.route('/opinion')
+def opinion_page():
+    from database.models import Poll
+    polls = Poll.query.filter_by(is_active=True).order_by(Poll.created_at.desc()).all()
+    return render_template('opinion.html', polls=polls)
+
+
+@app.route('/api/opinion/polls')
+def opinion_polls():
+    from database.models import Poll
+    polls = Poll.query.filter_by(is_active=True).order_by(Poll.created_at.desc()).all()
+    return jsonify({'success': True, 'polls': [p.to_dict() for p in polls]})
+
+
+@app.route('/api/opinion/vote', methods=['POST'])
+def opinion_vote():
+    import hashlib
+    from database.models import Poll, PollVote, db
+    data = request.get_json() or {}
+    poll_id = data.get('poll_id')
+    option_index = data.get('option_index')
+    if poll_id is None or option_index is None:
+        return jsonify({'success': False, 'error': 'poll_id и option_index обязательны'}), 400
+
+    poll = Poll.query.get(poll_id)
+    if not poll or not poll.is_active:
+        return jsonify({'success': False, 'error': 'Опрос не найден или закрыт'}), 404
+
+    opts = poll.get_options()
+    if option_index < 0 or option_index >= len(opts):
+        return jsonify({'success': False, 'error': 'Неверный вариант ответа'}), 400
+
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+    ip_hash = hashlib.sha256(ip.encode()).hexdigest()[:32]
+
+    # один голос на IP на опрос
+    existing = PollVote.query.filter_by(poll_id=poll_id, ip_hash=ip_hash).first()
+    if existing:
+        return jsonify({'success': False, 'error': 'already_voted', 'results': poll.get_results()[0],
+                        'total': poll.get_results()[1]}), 200
+
+    vote = PollVote(poll_id=poll_id, option_index=option_index, ip_hash=ip_hash)
+    db.session.add(vote)
+    db.session.commit()
+    results, total = poll.get_results()
+    return jsonify({'success': True, 'results': results, 'total': total})
+
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
