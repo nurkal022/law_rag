@@ -1,18 +1,72 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: lawai-postgres
+    container_name: lawvision-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: lawai
       POSTGRES_USER: lawai
       POSTGRES_PASSWORD: lawai_dev_2026
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lawai -d lawai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - lawvision
+
+  app:
+    build: .
+    container_name: lawvision-app
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://lawai:lawai_dev_2026@localhost:5433/lawai
+      OLLAMA_BASE_URL: http://localhost:11434
+      LLM_PROVIDER_TYPE: ${LLM_PROVIDER_TYPE:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-gpt-oss:20b}
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DEBUG: "False"
+      APP_HOST: 0.0.0.0
+      APP_PORT: 5003
+      DOCUMENTS_DIR: docs
+      EMBEDDING_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+      EMBEDDING_DIMENSION: 384
+      MAX_TOKENS: 4000
+      TEMPERATURE: 0.1
+      TOP_K_RESULTS: 5
+    volumes:
+      - ./docs:/app/docs
+      - ./exports:/app/exports
+      - ./database/backups:/app/database/backups
+      - hf_cache:/app/.cache
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: lawvision-cloudflared
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      app:
+        condition: service_started
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config-docker.yml run lawvision
+    volumes:
+      - /home/kaznu2025/.cloudflared:/etc/cloudflared:ro
 
 volumes:
   pgdata:
+  hf_cache:
+
+networks:
+  lawvision:
+    driver: bridge

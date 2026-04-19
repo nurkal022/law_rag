@@ -539,7 +539,7 @@ class DatabaseManager:
             sources = json.loads(chat.sources) if chat.sources else []
             context = '\n'.join([s.get('preview', '') for s in sources[:3] if s.get('preview')]) if sources else ''
             system_prompt = (
-                'Ты — юридический ИИ-ассистент LawAI, специализирующийся на законодательстве '
+                'Ты — юридический ИИ-ассистент LawVision, специализирующийся на законодательстве '
                 'Республики Казахстан. Отвечай точно, ссылаясь на нормативные акты.'
             )
             if context:

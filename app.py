@@ -1165,7 +1165,7 @@ def internal_error(error):
 # Инициализация при запуске
 def initialize_app():
     """Инициализация приложения"""
-    print("🚀 Запуск LawAI — юридическая платформа")
+    print("🚀 Запуск LawVision — юридическая платформа")
     print("=" * 60)
     
     # Проверяем наличие документов
@@ -1216,7 +1216,7 @@ def initialize_app():
         print(f"\n⚠️  Ошибка проверки LLM провайдера: {e}")
     
     print("=" * 60)
-    print("🌐 LawAI готов к работе!")
+    print("🌐 LawVision готов к работе!")
     print("   Интерфейс: http://localhost:5003")
     print("   Админ панель: http://localhost:5003/admin")
     print("=" * 60)

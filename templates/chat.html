@@ -51,12 +51,9 @@
         font-size: 0.9rem;
         text-decoration: none;
     }
-    .sidebar-brand .sicon {
+    .sidebar-brand .slogo {
         width: 28px; height: 28px;
-        background: var(--primary-gradient);
-        border-radius: 7px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.75rem; color: white;
+        object-fit: contain;
         flex-shrink: 0;
     }
 
@@ -213,13 +210,12 @@
         text-align: center;
     }
     .welcome-icon {
-        width: 64px; height: 64px;
-        background: var(--primary-gradient);
-        border-radius: 18px;
-        display: flex; align-items: center; justify-content: center;
-        color: white; font-size: 1.75rem;
+        width: 80px; height: 80px;
         margin-bottom: 1.25rem;
-        box-shadow: 0 8px 24px rgba(79,110,247,0.35);
+    }
+    .welcome-icon img {
+        width: 100%; height: 100%;
+        object-fit: contain;
     }
     .welcome-title {
         font-size: 1.5rem; font-weight: 700;
@@ -305,11 +301,11 @@
     .ai-message { display: flex; gap: 0.75rem; align-items: flex-start; }
     .ai-avatar {
         width: 30px; height: 30px;
-        background: var(--primary-gradient);
-        border-radius: 8px;
-        display: flex; align-items: center; justify-content: center;
-        color: white; font-size: 0.7rem;
         flex-shrink: 0; margin-top: 2px;
+    }
+    .ai-avatar img {
+        width: 100%; height: 100%;
+        object-fit: contain;
     }
     .ai-message .msg-body { flex: 1; min-width: 0; }
     .ai-message .msg-name {
@@ -614,7 +610,7 @@
     <aside class="chat-sidebar" id="chatSidebar">
         <div class="sidebar-top">
             <a href="/" class="sidebar-brand">
-                <span class="sicon"><i class="fas fa-scale-balanced"></i></span>
+                <img src="/static/logo-icon.png" alt="LV" class="slogo">
                 LawVision
             </a>
             <button class="btn-new-chat" id="newChatBtn">
@@ -665,7 +661,7 @@
 
                 <!-- Welcome -->
                 <div class="welcome-screen" id="welcomeScreen">
-                    <div class="welcome-icon"><i class="fas fa-scale-balanced"></i></div>
+                    <div class="welcome-icon"><img src="/static/logo.png" alt="LawVision"></div>
                     <div class="welcome-title" data-i18n="chat.welcome">Чем могу помочь?</div>
                     <div class="welcome-sub" data-i18n="chat.welcome_desc">Задайте вопрос о законодательстве Республики Казахстан</div>
                     <div class="suggestions-grid">
@@ -861,7 +857,7 @@ $(document).ready(function () {
         div.id = 'typing-ind';
         div.className = 'message ai-message';
         div.innerHTML = `
-            <div class="ai-avatar"><i class="fas fa-scale-balanced"></i></div>
+            <div class="ai-avatar"><img src="/static/logo.png" alt="LV"></div>
             <div class="msg-body">
                 <div class="typing-dots"><span></span><span></span><span></span></div>
             </div>`;
@@ -949,7 +945,7 @@ $(document).ready(function () {
         div.id = mid;
         div.className = 'message ai-message' + (isError ? ' error-message' : '');
         div.innerHTML = `
-            <div class="ai-avatar"><i class="fas fa-scale-balanced"></i></div>
+            <div class="ai-avatar"><img src="/static/logo.png" alt="LV"></div>
             <div class="msg-body">
                 <div class="msg-name">LawVision ${confHtml}</div>
                 <div class="msg-text">${parsed}</div>
@@ -989,8 +985,21 @@ $(document).ready(function () {
         isLoading = true;
         updateSendBtn();
 
+        async function fetchWithRetry(url, opts, attempts = 3) {
+            let lastErr;
+            for (let i = 0; i < attempts; i++) {
+                try {
+                    return await fetch(url, opts);
+                } catch(err) {
+                    lastErr = err;
+                    if (i < attempts - 1) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+                }
+            }
+            throw lastErr;
+        }
+
         try {
-            const resp = await fetch('/api/chat', {
+            const resp = await fetchWithRetry('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query: backendQuery, use_rag: true })
@@ -1015,7 +1024,10 @@ $(document).ready(function () {
 
         } catch(e) {
             removeTyping();
-            appendAiBubble(`Ошибка подключения: ${e.message}`, null, null, null);
+            const msg = e.message && e.message.includes('Failed to fetch')
+                ? 'Временная проблема с соединением. Попробуйте отправить вопрос ещё раз.'
+                : `Ошибка подключения: ${e.message}`;
+            appendAiBubble(msg, null, null, null);
         } finally {
             isLoading = false;
             updateSendBtn();

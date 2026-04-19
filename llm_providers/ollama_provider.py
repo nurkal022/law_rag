@@ -62,7 +62,12 @@ class OllamaProvider(LLMProvider):
                 } if 'prompt_eval_count' in data else None
             }
         except requests.exceptions.RequestException as e:
-            raise Exception(f"Ошибка Ollama API: {str(e)}")
+            body = ''
+            try:
+                body = e.response.text[:500] if e.response is not None else ''
+            except Exception:
+                pass
+            raise Exception(f"Ошибка Ollama API: {str(e)} | body: {body}")
         except Exception as e:
             raise Exception(f"Ошибка при обработке ответа Ollama: {str(e)}")
     

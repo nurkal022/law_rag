@@ -76,7 +76,7 @@ class Config:
                     setattr(Config, attr, str(val))
 
     # База данных (PostgreSQL)
-    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://lawai:lawai_dev_2026@localhost:5432/lawai')
+    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://lawai:lawai_dev_2026@localhost:5433/lawai')
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
