@@ -830,6 +830,11 @@ def get_field_help(field_name):
 
 # Маршруты для правовой аналитики
 
+@app.route('/analytics-showcase')
+def analytics_showcase():
+    return render_template('analytics_showcase.html')
+
+
 @app.route('/legal-analytics')
 def legal_analytics_page():
     """Страница правовой аналитики"""

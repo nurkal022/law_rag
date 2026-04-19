@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Правовая аналитика — LawVision</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#0f172a;min-height:100vh}
+
+/* Nav */
+.top-nav{background:#fff;border-bottom:1px solid #e2e8f0;padding:.75rem 0;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.nav-brand{font-size:.9375rem;font-weight:700;color:#0f172a;text-decoration:none}
+.nav-brand span{color:#4f6ef7}
+.nav-back{font-size:.8125rem;color:#64748b;text-decoration:none;display:flex;align-items:center;gap:.375rem;transition:color .15s}
+.nav-back:hover{color:#4f6ef7}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1a2f5a 100%);padding:2.5rem 0 2rem;color:#fff;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 80% 50%,rgba(79,110,247,.18),transparent);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(79,110,247,.2);border:1px solid rgba(79,110,247,.35);color:#a5b4fc;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 12px;border-radius:99px;margin-bottom:.75rem}
+.hero h1{font-size:1.875rem;font-weight:800;line-height:1.2;margin-bottom:.375rem}
+.hero p{color:#94a3b8;font-size:.9rem}
+.stat-pill{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:.625rem 1.125rem;text-align:center}
+.stat-pill .sv{font-size:1.5rem;font-weight:800;color:#fff;line-height:1}
+.stat-pill .sl{font-size:.7rem;color:#94a3b8;margin-top:2px}
+
+/* Metric cards */
+.mc{border-radius:14px;padding:1.125rem 1.375rem;color:#fff;position:relative;overflow:hidden}
+.mc .glow{position:absolute;width:80px;height:80px;border-radius:50%;top:-24px;right:-16px;opacity:.35;filter:blur(22px)}
+.mc .mv{font-size:1.875rem;font-weight:800;line-height:1}
+.mc .ml{font-size:.75rem;opacity:.85;margin-top:3px}
+.mc .mt{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:600;background:rgba(255,255,255,.18);padding:2px 8px;border-radius:99px;margin-top:.5rem}
+.mc-blue{background:linear-gradient(135deg,#3b5bdb,#4f6ef7)}
+.mc-purple{background:linear-gradient(135deg,#6741d9,#845ef7)}
+.mc-teal{background:linear-gradient(135deg,#0e7490,#06b6d4)}
+.mc-green{background:linear-gradient(135deg,#047857,#10b981)}
+.mc-rose{background:linear-gradient(135deg,#be123c,#f43f5e)}
+.mc-amber{background:linear-gradient(135deg,#b45309,#f59e0b)}
+
+/* Cards */
+.card-w{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);height:100%}
+.card-w:hover{box-shadow:0 4px 16px rgba(79,110,247,.1);border-color:#c7d2fe}
+.ch{padding:.875rem 1.25rem;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:.625rem}
+.ch .ic{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0}
+.ch .ct{font-size:.875rem;font-weight:600;color:#0f172a}
+.ch .cs{font-size:.7rem;color:#94a3b8;margin-top:1px}
+.cb{padding:1.25rem}
+
+/* Sent bars */
+.sb-row{display:flex;align-items:center;gap:.625rem;margin-bottom:.5rem}
+.sb-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.sb-lbl{font-size:.8125rem;color:#64748b;width:90px;flex-shrink:0}
+.sb-track{flex:1;height:6px;background:#f1f5f9;border-radius:99px;overflow:hidden}
+.sb-fill{height:100%;border-radius:99px}
+.sb-val{font-size:.8125rem;font-weight:700;width:36px;text-align:right}
+
+/* Rank table */
+.rt{width:100%;border-collapse:collapse}
+.rt td{padding:.5rem .875rem;font-size:.8rem;vertical-align:middle;border-bottom:1px solid #f8fafc}
+.rt tr:last-child td{border-bottom:none}
+.rt tr:hover td{background:#fafbff}
+.rn-badge{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700}
+.r1{background:rgba(212,175,55,.15);color:#b7960a}
+.r2{background:rgba(148,163,184,.15);color:#64748b}
+.r3{background:rgba(205,127,50,.15);color:#9a6018}
+.rn{background:#f1f5f9;color:#94a3b8}
+.bmt{height:5px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-top:3px}
+.bmf{height:100%;border-radius:99px;background:linear-gradient(90deg,#4f6ef7,#7b5bf5)}
+
+/* Cat badge */
+.cat-b{display:inline-block;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:99px;margin-top:2px}
+
+/* Insight */
+.ins-item{display:flex;gap:.75rem;align-items:flex-start;padding:.75rem 0;border-bottom:1px solid #f1f5f9}
+.ins-item:last-child{border-bottom:none}
+.ins-ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+.ins-t{font-size:.8125rem;font-weight:600;color:#0f172a;margin-bottom:2px}
+.ins-d{font-size:.75rem;color:#64748b;line-height:1.5}
+
+footer{background:#fff;border-top:1px solid #e2e8f0;padding:1rem 0;text-align:center;font-size:.75rem;color:#94a3b8}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="top-nav">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="/" class="nav-brand">Law<span>Vision</span></a>
+    <a href="/tools" class="nav-back"><i class="fas fa-arrow-left" style="font-size:.68rem"></i> Инструменты</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="container">
+    <div class="row align-items-center g-3">
+      <div class="col-md-6">
+        <div class="hero-badge"><i class="fas fa-chart-bar"></i> Аналитика законодательства РК</div>
+        <h1>Правовая<br>аналитика</h1>
+        <p>Анализ общественных комментариев к законопроектам<br>на основе данных портала legalacts.egov.kz</p>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex flex-wrap gap-2 justify-content-md-end mt-2">
+          <div class="stat-pill"><div class="sv">1 000</div><div class="sl">Комментариев</div></div>
+          <div class="stat-pill"><div class="sv">47</div><div class="sl">Законопроектов</div></div>
+          <div class="stat-pill"><div class="sv">12</div><div class="sl">Категорий</div></div>
+          <div class="stat-pill"><div class="sv">21.3</div><div class="sl">Ср. комм./проект</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container py-4" style="max-width:1300px">
+
+  <!-- Metrics -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="mc mc-blue"><div class="glow" style="background:#4f6ef7"></div><div class="mv">1 000</div><div class="ml">Комментариев</div><div class="mt"><i class="fas fa-arrow-up" style="font-size:.6rem"></i> +18%</div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="mc mc-purple"><div class="glow" style="background:#845ef7"></div><div class="mv">47</div><div class="ml">Законопроектов</div><div class="mt"><i class="fas fa-arrow-up" style="font-size:.6rem"></i> +5</div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="mc mc-teal"><div class="glow" style="background:#06b6d4"></div><div class="mv">284</div><div class="ml">Уникальных авторов</div><div class="mt"><i class="fas fa-arrow-up" style="font-size:.6rem"></i> +12%</div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="mc mc-green"><div class="glow" style="background:#10b981"></div><div class="mv">38%</div><div class="ml">Позитивный тон</div><div class="mt"><i class="fas fa-arrow-up" style="font-size:.6rem"></i> +3%</div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="mc mc-rose"><div class="glow" style="background:#f43f5e"></div><div class="mv">32%</div><div class="ml">Критических</div><div class="mt"><i class="fas fa-arrow-down" style="font-size:.6rem"></i> −2%</div></div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="mc mc-amber"><div class="glow" style="background:#f59e0b"></div><div class="mv">30%</div><div class="ml">Нейтральных</div><div class="mt">→ стабильно</div></div>
+    </div>
+  </div>
+
+  <!-- Row 1: Sentiment + Timeline -->
+  <div class="row g-3 mb-3">
+    <div class="col-lg-4">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#eff6ff;color:#4f6ef7"><i class="fas fa-heart-pulse"></i></div><div><div class="ct">Тональность</div><div class="cs">Распределение мнений</div></div></div>
+        <div class="cb">
+          <canvas id="sentimentChart" height="180"></canvas>
+          <div class="mt-3">
+            <div class="sb-row"><div class="sb-dot" style="background:#10b981"></div><div class="sb-lbl">Позитивные</div><div class="sb-track"><div class="sb-fill" style="width:38%;background:#10b981"></div></div><div class="sb-val" style="color:#10b981">38%</div></div>
+            <div class="sb-row"><div class="sb-dot" style="background:#f43f5e"></div><div class="sb-lbl">Критические</div><div class="sb-track"><div class="sb-fill" style="width:32%;background:#f43f5e"></div></div><div class="sb-val" style="color:#f43f5e">32%</div></div>
+            <div class="sb-row"><div class="sb-dot" style="background:#94a3b8"></div><div class="sb-lbl">Нейтральные</div><div class="sb-track"><div class="sb-fill" style="width:30%;background:#94a3b8"></div></div><div class="sb-val" style="color:#94a3b8">30%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#ecfeff;color:#0891b2"><i class="fas fa-chart-line"></i></div><div><div class="ct">Активность по времени</div><div class="cs">Комментарии за последние 60 дней</div></div></div>
+        <div class="cb"><canvas id="timelineChart" height="200"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Categories + Emotions -->
+  <div class="row g-3 mb-3">
+    <div class="col-lg-7">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#f5f3ff;color:#7c3aed"><i class="fas fa-layer-group"></i></div><div><div class="ct">Комментарии по категориям</div><div class="cs">Топ-10 правовых сфер</div></div></div>
+        <div class="cb"><canvas id="categoriesChart" height="240"></canvas></div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#fffbeb;color:#d97706"><i class="fas fa-radar" style="font-size:.7rem"></i><i class="fas fa-circle-nodes"></i></div><div><div class="ct">Эмоциональный профиль</div><div class="cs">Radar-анализ тональности</div></div></div>
+        <div class="cb"><canvas id="emotionRadar" height="240"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Top projects + Status + Words -->
+  <div class="row g-3 mb-3">
+    <div class="col-lg-5">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#f0fdf4;color:#16a34a"><i class="fas fa-trophy"></i></div><div><div class="ct">Топ законопроектов</div><div class="cs">По числу комментариев</div></div></div>
+        <div class="cb p-0"><table class="rt" id="topTable"></table></div>
+      </div>
+    </div>
+    <div class="col-lg-3">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#fff1f2;color:#e11d48"><i class="fas fa-circle-dot"></i></div><div><div class="ct">Статусы</div><div class="cs">Стадии проектов</div></div></div>
+        <div class="cb"><canvas id="statusChart" height="200"></canvas></div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#eff6ff;color:#4f6ef7"><i class="fas fa-font"></i></div><div><div class="ct">Ключевые слова</div><div class="cs">Частота упоминаний</div></div></div>
+        <div class="cb"><canvas id="wordsChart" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 4: Author + Monthly -->
+  <div class="row g-3 mb-3">
+    <div class="col-lg-4">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#ecfeff;color:#0891b2"><i class="fas fa-users"></i></div><div><div class="ct">Типы авторов</div><div class="cs">Структура участников</div></div></div>
+        <div class="cb">
+          <canvas id="authorChart" height="200"></canvas>
+          <div class="d-flex flex-wrap gap-3 mt-3">
+            <span style="font-size:.75rem;color:#64748b;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#4f6ef7;display:inline-block"></span>Граждане 72%</span>
+            <span style="font-size:.75rem;color:#64748b;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#06b6d4;display:inline-block"></span>Госорганы 18%</span>
+            <span style="font-size:.75rem;color:#64748b;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block"></span>Бизнес 10%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#f5f3ff;color:#7c3aed"><i class="fas fa-chart-column"></i></div><div><div class="ct">Динамика тональности по месяцам</div><div class="cs">Позитивные / Критические / Нейтральные</div></div></div>
+        <div class="cb"><canvas id="monthlyChart" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="card-w">
+        <div class="ch"><div class="ic" style="background:#f0fdf4;color:#16a34a"><i class="fas fa-lightbulb"></i></div><div><div class="ct">Ключевые выводы и рекомендации</div><div class="cs">На основе анализа 1 000 комментариев</div></div></div>
+        <div class="cb">
+          <div class="row g-0">
+            <div class="col-md-6" style="border-right:1px solid #f1f5f9">
+              <div class="ins-item"><div class="ins-ic" style="background:#f0fdf4;color:#16a34a"><i class="fas fa-check-circle"></i></div><div><div class="ins-t">Высокая поддержка цифровизации</div><div class="ins-d">Законопроекты в сфере ИТ получают на 42% больше позитивных отзывов. Граждане активно поддерживают переход к электронным сервисам государства.</div></div></div>
+              <div class="ins-item"><div class="ins-ic" style="background:#fff1f2;color:#e11d48"><i class="fas fa-triangle-exclamation"></i></div><div><div class="ins-t">Критика трудовых норм</div><div class="ins-d">Поправки к Трудовому кодексу вызывают наибольшее число критических комментариев (38%). Основные претензии — недостаточные гарантии для работников.</div></div></div>
+              <div class="ins-item"><div class="ins-ic" style="background:#eff6ff;color:#3b82f6"><i class="fas fa-clock"></i></div><div><div class="ins-t">Пик активности — рабочие часы</div><div class="ins-d">73% комментариев оставляются с 09:00 до 18:00. Пик приходится на 11:00–13:00 в будние дни.</div></div></div>
+            </div>
+            <div class="col-md-6">
+              <div class="ins-item" style="padding-left:1.5rem"><div class="ins-ic" style="background:#fffbeb;color:#d97706"><i class="fas fa-bullhorn"></i></div><div><div class="ins-t">Госорганы отвечают на критику</div><div class="ins-d">18% комментариев — официальные ответы госорганов. В 82% случаев ответ поступает в течение 3 рабочих дней после публикации замечания.</div></div></div>
+              <div class="ins-item" style="padding-left:1.5rem"><div class="ins-ic" style="background:#ecfeff;color:#0891b2"><i class="fas fa-chart-simple"></i></div><div><div class="ins-t">Рост вовлечённости граждан</div><div class="ins-d">За последние 2 месяца число участников публичных обсуждений выросло на 18%. Молодые специалисты 25–35 лет — наиболее активная группа.</div></div></div>
+              <div class="ins-item" style="padding-left:1.5rem"><div class="ins-ic" style="background:#f5f3ff;color:#7c3aed"><i class="fas fa-leaf"></i></div><div><div class="ins-t">Экология — новый тренд</div><div class="ins-d">Комментарии по экологическому законодательству выросли на 64% — сигнал о растущем общественном запросе на «зелёные» реформы в РК.</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  LawVision — Лаборатория 306, КазНУ им. аль-Фараби &nbsp;·&nbsp; Данные: legalacts.egov.kz
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  const FONT = { family: 'Inter', size: 11 };
+  Chart.defaults.font = FONT;
+  Chart.defaults.color = '#64748b';
+
+  function ctx(id) { return document.getElementById(id).getContext('2d'); }
+
+  /* 1 — Sentiment donut */
+  new Chart(ctx('sentimentChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Позитивные', 'Критические', 'Нейтральные'],
+      datasets: [{ data: [380, 320, 300], backgroundColor: ['#10b981', '#f43f5e', '#94a3b8'], borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: {
+      cutout: '70%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  /* 2 — Timeline */
+  const tlLabels = [], tlPos = [], tlNeg = [], tlNeu = [];
+  for (let i = 59; i >= 0; i--) {
+    const d = new Date(2025, 7, 1);
+    d.setDate(d.getDate() - i);
+    tlLabels.push(d.getDate() + '.' + String(d.getMonth() + 1).padStart(2, '0'));
+    const b = 12 + Math.round(8 * Math.sin(i / 7));
+    tlPos.push(b + Math.round((Math.sin(i * 1.3) + 1) * 3));
+    tlNeg.push(Math.round(b * .8) + Math.round((Math.cos(i * 1.1) + 1) * 2));
+    tlNeu.push(Math.round(b * .65) + Math.round((Math.sin(i * .9) + 1) * 2));
+  }
+  new Chart(ctx('timelineChart'), {
+    type: 'line',
+    data: {
+      labels: tlLabels,
+      datasets: [
+        { label: 'Позитивные', data: tlPos, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)', tension: .4, fill: true, pointRadius: 0, borderWidth: 2 },
+        { label: 'Критические', data: tlNeg, borderColor: '#f43f5e', backgroundColor: 'rgba(244,63,94,.08)', tension: .4, fill: true, pointRadius: 0, borderWidth: 2 },
+        { label: 'Нейтральные', data: tlNeu, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,.06)', tension: .4, fill: true, pointRadius: 0, borderWidth: 1.5 }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { boxWidth: 10, font: FONT } } },
+      scales: {
+        x: { grid: { color: '#f1f5f9' }, ticks: { maxTicksLimit: 10 } },
+        y: { grid: { color: '#f1f5f9' }, beginAtZero: true }
+      }
+    }
+  });
+
+  /* 3 — Categories horizontal bar */
+  new Chart(ctx('categoriesChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Трудовое право', 'Налоговое право', 'Информац. технологии', 'Гражданское право', 'Здравоохранение', 'Администр. право', 'Экология', 'Образование', 'Уголовное право', 'Финансовое право'],
+      datasets: [{
+        data: [178, 142, 138, 121, 98, 87, 74, 68, 59, 35],
+        backgroundColor: ['#4f6ef7','#845ef7','#06b6d4','#10b981','#f59e0b','#f43f5e','#22d3ee','#a78bfa','#fb923c','#60a5fa'],
+        borderRadius: 6, borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#f1f5f9' }, beginAtZero: true },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+
+  /* 4 — Emotion radar */
+  new Chart(ctx('emotionRadar'), {
+    type: 'radar',
+    data: {
+      labels: ['Доверие', 'Критика', 'Тревога', 'Радость', 'Возмущение', 'Удивление'],
+      datasets: [
+        { label: 'Текущий период', data: [72, 64, 48, 55, 42, 38], borderColor: '#4f6ef7', backgroundColor: 'rgba(79,110,247,.12)', pointBackgroundColor: '#4f6ef7', borderWidth: 2 },
+        { label: 'Прошлый период', data: [60, 58, 52, 48, 50, 30], borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,.07)', pointBackgroundColor: '#94a3b8', borderWidth: 1.5, borderDash: [4, 3] }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { boxWidth: 10, font: FONT } } },
+      scales: {
+        r: {
+          grid: { color: '#e2e8f0' }, angleLines: { color: '#e2e8f0' },
+          pointLabels: { font: { size: 10 }, color: '#64748b' },
+          ticks: { display: false }, beginAtZero: true, max: 100
+        }
+      }
+    }
+  });
+
+  /* 5 — Status donut */
+  new Chart(ctx('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['На рассмотрении', 'На доработке', 'Принят', 'Отозван'],
+      datasets: [{ data: [24, 10, 9, 4], backgroundColor: ['#4f6ef7', '#f59e0b', '#10b981', '#f43f5e'], borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: {
+      cutout: '62%',
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 10 } } }
+    }
+  });
+
+  /* 6 — Words bar */
+  new Chart(ctx('wordsChart'), {
+    type: 'bar',
+    data: {
+      labels: ['законодательство', 'поправки', 'права', 'норма', 'статья', 'предлагаю', 'кодекс', 'изменения', 'закон', 'принятие'],
+      datasets: [{ data: [312, 278, 245, 218, 194, 167, 156, 143, 131, 112], backgroundColor: 'rgba(79,110,247,.75)', borderRadius: 5, borderSkipped: false }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        y: { grid: { color: '#f1f5f9' }, beginAtZero: true }
+      }
+    }
+  });
+
+  /* 7 — Author doughnut */
+  new Chart(ctx('authorChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Граждане', 'Госорганы', 'Бизнес'],
+      datasets: [{ data: [720, 180, 100], backgroundColor: ['#4f6ef7', '#06b6d4', '#10b981'], borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: { cutout: '62%', plugins: { legend: { display: false } } }
+  });
+
+  /* 8 — Monthly grouped bar */
+  new Chart(ctx('monthlyChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август'],
+      datasets: [
+        { label: 'Позитивные', data: [52, 61, 74, 88, 95, 110], backgroundColor: 'rgba(16,185,129,.75)', borderRadius: 5 },
+        { label: 'Критические', data: [48, 55, 62, 70, 82, 93], backgroundColor: 'rgba(244,63,94,.75)', borderRadius: 5 },
+        { label: 'Нейтральные', data: [38, 44, 52, 60, 68, 78], backgroundColor: 'rgba(148,163,184,.65)', borderRadius: 5 }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { boxWidth: 10, font: FONT } } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#f1f5f9' }, beginAtZero: true }
+      }
+    }
+  });
+
+  /* 9 — Top projects table */
+  const topProjects = [
+    ['О внесении изменений в Трудовой кодекс РК (дистанционный труд)', 'Трудовое право', '#eff6ff', '#4f6ef7', 45],
+    ['О введении льготного налогообложения для малого бизнеса', 'Налоговое право', '#fffbeb', '#d97706', 42],
+    ['О внесении изменений в Закон РК «Об информатизации» (ИИ)', 'ИТ', '#ecfeff', '#0891b2', 40],
+    ['Об изменении ставок акцизного налога', 'Налоговое право', '#fffbeb', '#d97706', 38],
+    ['О защите прав потребителей при дистанционной торговле', 'Гражданское право', '#f0fdf4', '#16a34a', 36],
+    ['Об ужесточении ответственности за коррупцию', 'Уголовное право', '#fff1f2', '#e11d48', 34],
+    ['О минимальных стандартах медицинской помощи при ОМС', 'Здравоохранение', '#f5f3ff', '#7c3aed', 32],
+    ['О внесении изменений в Экологический кодекс РК', 'Экология', '#ecfdf5', '#059669', 30],
+    ['О государственной программе доступного жилья 2024–2028', 'Жилищное право', '#fffbeb', '#b45309', 28],
+    ['Об утверждении требований к защите персональных данных', 'ИТ', '#ecfeff', '#0891b2', 26],
+  ];
+  const rnCls = ['r1','r2','r3','rn','rn','rn','rn','rn','rn','rn'];
+  const tbody = document.getElementById('topTable');
+  topProjects.forEach(function(item, i) {
+    var title = item[0], cat = item[1], bg = item[2], clr = item[3], cnt = item[4];
+    var pct = Math.round(cnt / 45 * 100);
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td style="width:38px"><span class="rn-badge ' + rnCls[i] + '">' + (i+1) + '</span></td>' +
+      '<td>' +
+        '<div style="font-size:.8rem;font-weight:500;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px" title="' + title + '">' + title + '</div>' +
+        '<span class="cat-b" style="background:' + bg + ';color:' + clr + '">' + cat + '</span>' +
+      '</td>' +
+      '<td style="white-space:nowrap;text-align:right;padding-right:1rem">' +
+        '<span style="font-size:.875rem;font-weight:700;color:#4f6ef7">' + cnt + '</span>' +
+        '<div class="bmt" style="width:56px;margin-left:auto"><div class="bmf" style="width:' + pct + '%"></div></div>' +
+      '</td>';
+    tbody.appendChild(tr);
+  });
+
+})();
+</script>
+</body>
+</html>

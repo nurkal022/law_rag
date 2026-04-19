@@ -86,7 +86,15 @@ class DataLoader:
             return []
     
     def _get_demo_data(self) -> List[Dict[str, Any]]:
-        """Демо-данные для тестирования"""
+        """Демо-данные для тестирования — грузим из demo_data.json если есть"""
+        json_path = os.path.join(os.path.dirname(__file__), 'demo_data.json')
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Не удалось загрузить demo_data.json: {e}")
+        # Fallback: встроенные данные
         return [
             {
                 "id": "15567336",
