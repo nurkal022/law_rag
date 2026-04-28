@@ -181,6 +181,19 @@ if os.getenv('RAG_AUTOINIT', '1') == '1':
     threading.Thread(target=_bg_rag_init, daemon=True, name='rag-autoinit').start()
 
 
+# Запрещаем браузеру кешировать HTML-страницы — иначе пользователи
+# видят старый интерфейс после деплоя. Статика (CSS/JS/PNG) кешируется,
+# их версионируют через mtime в base.html.
+@app.after_request
+def add_no_cache_headers(response):
+    ct = response.content_type or ''
+    if ct.startswith('text/html'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+
 @app.route('/')
 def index():
     """Главная страница - дашборд с инструментами"""
