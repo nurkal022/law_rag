@@ -932,11 +932,9 @@ $(document).ready(function () {
             } catch(e) { parsed = text.replace(/\n/g, '<br>'); }
         }
 
+        // Бейдж уверенности скрыт — обычному пользователю проценты неинформативны.
+        // Если понадобится снова — раскомментировать и confidence передаётся в функцию.
         let confHtml = '';
-        if (confidence !== null && confidence !== undefined) {
-            const cls = confidence > 0.7 ? 'conf-high' : confidence > 0.4 ? 'conf-med' : 'conf-low';
-            confHtml = `<span class="conf-badge ${cls}">${(confidence*100).toFixed(0)}%</span>`;
-        }
 
         let srcHtml = '';
         if (sources && sources.length > 0) {
@@ -949,7 +947,6 @@ $(document).ready(function () {
                 <div class="sources-list" id="slist-${mid}">
                     ${sources.map((s,i) => `
                         <div class="source-card" data-sidx="${i}">
-                            <span class="score-pill">${(s.similarity_score*100).toFixed(0)}%</span>
                             <div class="s-num">Источник ${i+1}</div>
                             <div class="s-title">${escHtml(s.title||'')}</div>
                             <div class="s-sub">${escHtml(s.position||'')}</div>
