@@ -425,15 +425,36 @@
         font-size: 0.6875rem; font-weight: 600;
         float: right;
     }
+    /* Inline ссылки на источники — компактные «пилюли» в стиле Perplexity */
     .src-ref {
-        display: inline-block;
-        background: rgba(79,110,247,0.2);
+        display: inline-flex;
+        align-items: baseline;
+        gap: 2px;
+        background: rgba(79,110,247,0.16);
         color: #a5b4fc;
-        padding: 1px 7px; border-radius: 10px;
-        font-size: 0.75rem; cursor: pointer;
-        transition: all 0.15s;
+        padding: 1px 7px;
+        margin: 0 2px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        font-feature-settings: "tnum";
+        cursor: pointer;
+        line-height: 1.4;
+        vertical-align: baseline;
+        transition: background 0.15s, color 0.15s, transform 0.1s;
+        user-select: none;
+        white-space: nowrap;
     }
-    .src-ref:hover { background: var(--primary); color: white; }
+    .src-ref:hover { background: var(--primary); color: #fff; transform: translateY(-1px); }
+    .src-ref .src-n { font-size: 0.65rem; opacity: 0.85; }
+    .src-ref .src-loc { font-size: 0.65rem; opacity: 0.7; margin-left: 1px; }
+
+    /* Подсветка карточки источника при клике на пилюлю */
+    @keyframes src-flash {
+        0%   { box-shadow: 0 0 0 0 rgba(79,110,247,0.55); border-color: rgba(79,110,247,0.8); }
+        100% { box-shadow: 0 0 0 8px rgba(79,110,247,0); border-color: rgba(255,255,255,0.08); }
+    }
+    .source-card.flash { animation: src-flash 1.2s ease-out; }
 
     /* Feedback */
     .feedback-row {
@@ -924,9 +945,20 @@ $(document).ready(function () {
                 marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
                 parsed = marked.parse(text);
                 if (sources && sources.length) {
-                    parsed = parsed.replace(/\[Источник (\d+)\]/g, (m, n) => {
+                    // Ловим расширенную форму со статьёй/пунктом, а также короткую.
+                    // Примеры: "[Источник 1, Статья 22, пункт 2]", "[Источник 2, Статья 7]", "[Источник 3]".
+                    // Пилюля показывает номер источника + (опц.) лаконичный локатор "ст.22 п.2".
+                    const RE = /\[\s*(?:Источник|Source|Дереккөз)\s*(\d+)(?:[,;\s]+(?:Статья|ст\.?|Article|Бап)\s*(\d+(?:\.\d+)?))?(?:[,;\s]+(?:пункт|п\.?|часть|ч\.?|Point)\s*(\d+(?:\.\d+)?))?\s*\]/gi;
+                    parsed = parsed.replace(RE, (m, n, art, pt) => {
                         const i = parseInt(n) - 1;
-                        return sources[i] ? `<span class="src-ref" data-src="${i}" data-mid="${mid}">Ист. ${n}</span>` : m;
+                        if (!sources[i]) return m;
+                        const src = sources[i];
+                        const loc = [art ? `ст.${art}` : '', pt ? `п.${pt}` : ''].filter(Boolean).join(' ');
+                        const tip = [src.title || `Источник ${n}`, loc].filter(Boolean).join(' · ');
+                        return `<span class="src-ref" data-src="${i}" data-mid="${mid}" title="${escHtml(tip)}">`
+                             + `<span class="src-n">${n}</span>`
+                             + (loc ? `<span class="src-loc">${escHtml(loc)}</span>` : '')
+                             + `</span>`;
                     });
                 }
             } catch(e) { parsed = text.replace(/\n/g, '<br>'); }
@@ -1251,13 +1283,20 @@ $(document).ready(function () {
             const mid = ref.dataset.mid;
             const idx = ref.dataset.src;
             const list = document.getElementById(`slist-${mid}`);
+            const tog = document.getElementById(`stog-${mid}`);
             if (list) {
                 list.style.display = 'block';
+                if (tog) {
+                    const ico = tog.querySelector('.stog-ico');
+                    if (ico) ico.className = 'fas fa-chevron-up stog-ico';
+                }
                 const item = list.querySelector(`[data-sidx="${idx}"]`);
                 if (item) {
-                    item.style.outline = '1.5px solid rgba(79,110,247,0.6)';
+                    item.classList.remove('flash');
+                    void item.offsetWidth; // restart CSS animation
+                    item.classList.add('flash');
                     item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    setTimeout(() => item.style.outline = '', 1800);
+                    setTimeout(() => item.classList.remove('flash'), 1500);
                 }
             }
         }
