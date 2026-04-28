@@ -52,9 +52,13 @@
         text-decoration: none;
     }
     .sidebar-brand .slogo {
-        width: 28px; height: 28px;
+        width: 32px; height: 32px;
         object-fit: contain;
         flex-shrink: 0;
+        background: #fff;
+        border-radius: 50%;
+        padding: 4px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.08);
     }
 
     .btn-new-chat {
@@ -210,22 +214,43 @@
         text-align: center;
     }
     .welcome-icon {
-        width: 80px; height: 80px;
+        width: 96px; height: 96px;
         margin-bottom: 1.25rem;
+        background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f3f6fb 100%);
+        border-radius: 50%;
+        padding: 14px;
+        box-shadow:
+            0 12px 32px rgba(79,110,247,0.28),
+            0 0 0 1px rgba(255,255,255,0.06);
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
+    }
+    .welcome-icon::before {
+        content: '';
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(79,110,247,0.35) 0%, transparent 70%);
+        z-index: -1;
+        filter: blur(8px);
     }
     .welcome-icon img {
         width: 100%; height: 100%;
         object-fit: contain;
     }
     .welcome-title {
-        font-size: 1.5rem; font-weight: 700;
-        color: rgba(255,255,255,0.9);
+        font-size: 1.6rem; font-weight: 700;
+        background: linear-gradient(135deg, #ffffff 0%, #c8d4ff 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
         margin-bottom: 0.5rem;
+        letter-spacing: -0.01em;
     }
     .welcome-sub {
         font-size: 0.9rem;
-        color: rgba(255,255,255,0.4);
-        max-width: 400px; line-height: 1.6;
+        color: rgba(255,255,255,0.5);
+        max-width: 440px; line-height: 1.6;
         margin-bottom: 2rem;
     }
     .suggestions-grid {
@@ -236,21 +261,22 @@
         width: 100%;
     }
     .suggestion-card {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.09);
         border-radius: 12px;
         padding: 0.875rem 1rem;
         text-align: left;
         cursor: pointer;
-        color: rgba(255,255,255,0.65);
+        color: rgba(255,255,255,0.7);
         font-size: 0.8125rem;
         line-height: 1.5;
-        transition: all 0.15s;
+        transition: transform 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
     }
     .suggestion-card:hover {
-        background: rgba(255,255,255,0.1);
-        border-color: rgba(79,110,247,0.4);
+        background: rgba(79,110,247,0.12);
+        border-color: rgba(79,110,247,0.5);
         color: #fff;
+        transform: translateY(-1px);
     }
 
     /* RAG status block */
@@ -300,8 +326,13 @@
     /* AI message */
     .ai-message { display: flex; gap: 0.75rem; align-items: flex-start; }
     .ai-avatar {
-        width: 30px; height: 30px;
+        width: 34px; height: 34px;
         flex-shrink: 0; margin-top: 2px;
+        background: #fff;
+        border-radius: 50%;
+        padding: 5px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.05);
+        display: flex; align-items: center; justify-content: center;
     }
     .ai-avatar img {
         width: 100%; height: 100%;
