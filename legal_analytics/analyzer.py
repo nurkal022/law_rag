@@ -21,17 +21,30 @@ class LegalCommentAnalyzer:
     """Продвинутый анализатор комментариев к законопроектам"""
     
     def __init__(self):
-        # Инициализация NLTK компонентов (офлайн режим - данные уже скачаны)
-        # Пропускаем загрузку если нет интернета
+        # Инициализация NLTK компонентов.
+        # NLTK_NO_DOWNLOAD=1 — полностью пропустить network-вызовы (Docker preload, оффлайн).
+        # Иначе пытаемся проверить наличие данных и скачать только недостающие, с таймаутом.
         import os
-        if os.environ.get('HF_HUB_OFFLINE') != '1':
+        if os.environ.get('NLTK_NO_DOWNLOAD') != '1':
+            import socket
+            old_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(5)
             try:
-                nltk.download('punkt', quiet=True)
-                nltk.download('punkt_tab', quiet=True)
-                nltk.download('stopwords', quiet=True)
-                nltk.download('averaged_perceptron_tagger', quiet=True)
-            except:
-                pass
+                for pkg, path in (
+                    ('punkt', 'tokenizers/punkt'),
+                    ('punkt_tab', 'tokenizers/punkt_tab'),
+                    ('stopwords', 'corpora/stopwords'),
+                    ('averaged_perceptron_tagger', 'taggers/averaged_perceptron_tagger'),
+                ):
+                    try:
+                        nltk.data.find(path)
+                    except LookupError:
+                        try:
+                            nltk.download(pkg, quiet=True)
+                        except Exception:
+                            pass
+            finally:
+                socket.setdefaulttimeout(old_timeout)
         
         self.stemmer = SnowballStemmer('russian')
         

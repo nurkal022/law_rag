@@ -25,21 +25,25 @@ COPY . .
 
 RUN mkdir -p exports docs database/backups .cache/huggingface .cache/sentence_transformers
 
+# NLTK данные на этапе build, чтобы рантайм не делал сетевые вызовы
+RUN python -m nltk.downloader -d /usr/local/share/nltk_data \
+        punkt punkt_tab stopwords averaged_perceptron_tagger || true
+ENV NLTK_DATA=/usr/local/share/nltk_data
+
 EXPOSE 5003
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:5003/ || exit 1
+    CMD curl -fsS http://localhost:5003/healthz || exit 1
 
 CMD ["gunicorn", \
      "--bind", "0.0.0.0:5003", \
-     "--workers", "4", \
-     "--worker-class", "gthread", \
-     "--threads", "4", \
+     "--workers", "2", \
+     "--worker-class", "sync", \
      "--timeout", "300", \
      "--graceful-timeout", "30", \
-     "--keep-alive", "10", \
-     "--max-requests", "1000", \
-     "--max-requests-jitter", "100", \
+     "--keep-alive", "5", \
+     "--max-requests", "500", \
+     "--max-requests-jitter", "50", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
      "app:app"]

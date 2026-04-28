@@ -103,14 +103,19 @@ class ResponseGenerator:
 
         # Подготавливаем историю разговора
         messages = [{"role": "system", "content": system_prompt}]
-        
-        if conversation_history:
+
+        # Для коротких/неоднозначных запросов историю не подмешиваем —
+        # иначе модель отвечает на прошлый вопрос вместо текущего
+        # (например, "в казахстане" → ответ берётся из предыдущего обсуждения).
+        is_ambiguous = len(user_query.strip()) < 15 or len(user_query.split()) <= 2
+
+        if conversation_history and not is_ambiguous:
             for msg in conversation_history[-5:]:  # Последние 5 сообщений
                 messages.extend([
                     {"role": "user", "content": msg['user_query']},
                     {"role": "assistant", "content": msg['ai_response']}
                 ])
-        
+
         # Добавляем текущий запрос
         messages.append({"role": "user", "content": user_query})
         

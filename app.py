@@ -80,6 +80,17 @@ data_loader = DataLoader()
 
 _PAGE_PATHS = {'/', '/chat', '/chat-simple', '/tools', '/about', '/law-generator', '/legal-analytics'}
 
+# User-Agent подстроки внутренних клиентов (Docker healthcheck, мониторинг).
+# Такие запросы не учитываются в page_visits.
+_INTERNAL_UA_SUBSTRINGS = ('curl/', 'wget/', 'kube-probe', 'healthcheck')
+
+
+@app.route('/healthz')
+def healthz():
+    """Лёгкий health-check для Docker/K8s. Не пишется в page_visits."""
+    return 'ok', 200
+
+
 @app.before_request
 def track_visit():
     """Запись посещений публичных страниц"""
@@ -88,13 +99,16 @@ def track_visit():
     if request.path not in _PAGE_PATHS:
         return
     try:
+        ua = request.headers.get('User-Agent', '')
+        ua_lower = ua.lower()
+        # Пропускаем healthcheck'и и боты-мониторы — не должны раздувать статистику
+        if any(s in ua_lower for s in _INTERNAL_UA_SUBSTRINGS):
+            return
         ip = request.headers.get('CF-Connecting-IP') or \
              request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
         ip_hash = hashlib.sha256(ip.encode()).hexdigest()
-        ua = request.headers.get('User-Agent', '')
         referer = request.headers.get('Referer', '')
         # Определяем тип устройства
-        ua_lower = ua.lower()
         if any(k in ua_lower for k in ('mobile', 'android', 'iphone')):
             device = 'mobile'
         elif any(k in ua_lower for k in ('tablet', 'ipad')):

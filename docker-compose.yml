@@ -32,7 +32,7 @@ services:
       DATABASE_URL: postgresql://lawai:lawai_dev_2026@localhost:5433/lawai
       OLLAMA_BASE_URL: http://localhost:11434
       LLM_PROVIDER_TYPE: ${LLM_PROVIDER_TYPE:-ollama}
-      LLM_MODEL: ${LLM_MODEL:-gpt-oss:20b}
+      LLM_MODEL: ${LLM_MODEL:-gemma4:26b}
       SECRET_KEY: ${SECRET_KEY}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
@@ -45,6 +45,8 @@ services:
       MAX_TOKENS: 4000
       TEMPERATURE: 0.1
       TOP_K_RESULTS: 5
+      # Пропускать NLTK download в контейнере (мастер с --preload не должен делать сетевые вызовы при старте)
+      NLTK_NO_DOWNLOAD: "1"
     volumes:
       - ./docs:/app/docs
       - ./exports:/app/exports
