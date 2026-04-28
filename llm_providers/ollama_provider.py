@@ -24,28 +24,48 @@ class OllamaProvider(LLMProvider):
         """Выполняет запрос к Ollama API"""
         model = model or self.default_model
         
-        # Конвертируем формат сообщений для Ollama
-        # Ollama использует формат с полем "content" и "role"
+        # Конвертируем формат сообщений для Ollama.
+        # Gemma 2/3/4 не поддерживает role="system" — склеиваем системный промпт
+        # в первое user-сообщение, иначе модель его молча игнорирует.
+        is_gemma = model.lower().startswith("gemma")
         ollama_messages = []
-        for msg in messages:
-            ollama_messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-        
+        if is_gemma:
+            system_text = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+            for msg in messages:
+                if msg["role"] == "system":
+                    continue
+                if msg["role"] == "user" and system_text and not ollama_messages:
+                    ollama_messages.append({
+                        "role": "user",
+                        "content": f"{system_text}\n\nВопрос: {msg['content']}",
+                    })
+                    system_text = ""
+                else:
+                    ollama_messages.append({"role": msg["role"], "content": msg["content"]})
+        else:
+            for msg in messages:
+                ollama_messages.append({"role": msg["role"], "content": msg["content"]})
+
+        # Reasoning-модели (gpt-oss и пр.) генерируют thinking-токены, которые
+        # не идут в content. Для нашего use case (юридический ответ) thinking
+        # не нужен и съедает num_predict — отключаем.
+        request_payload = {
+            "model": model,
+            "messages": ollama_messages,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+                **kwargs.get('options', {})
+            },
+            "stream": False,
+            "think": False,
+            "keep_alive": "10m",
+        }
+
         try:
             response = requests.post(
                 f"{self.base_url}/api/chat",
-                json={
-                    "model": model,
-                    "messages": ollama_messages,
-                    "options": {
-                        "temperature": temperature,
-                        "num_predict": max_tokens,
-                        **kwargs.get('options', {})
-                    },
-                    "stream": False
-                },
+                json=request_payload,
                 timeout=300  # 5 минут таймаут для больших моделей
             )
             
