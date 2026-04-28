@@ -167,6 +167,20 @@ app.generator = generator
 app.ensure_rag_initialized = ensure_rag_initialized
 
 
+# Автоматическая инициализация RAG при старте приложения в фоне.
+# Пользователю не нужно нажимать «Запустить» — embeddings загружаются
+# параллельно с web-сервером и обычно готовы через 5-15 секунд.
+# RAG_AUTOINIT=0 в env отключает (для тестов / dev).
+if os.getenv('RAG_AUTOINIT', '1') == '1':
+    import threading
+    def _bg_rag_init():
+        try:
+            initialize_rag_system()
+        except Exception as e:
+            print(f"⚠️  Фоновая инициализация RAG не удалась: {e}")
+    threading.Thread(target=_bg_rag_init, daemon=True, name='rag-autoinit').start()
+
+
 @app.route('/')
 def index():
     """Главная страница - дашборд с инструментами"""
