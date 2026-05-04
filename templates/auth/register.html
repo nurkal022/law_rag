@@ -1,0 +1,39 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Регистрация — LawVision{% endblock %}
+
+{% block auth_body %}
+<h1 class="auth-title">Создайте аккаунт</h1>
+<p class="auth-sub">Бесплатно. Помогите нам сделать LawVision лучше — мы используем обратную связь для улучшения ответов.</p>
+
+{% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+
+<form method="post" class="auth-form" autocomplete="on">
+    <div class="mb-3">
+        <label class="form-label" for="full_name">Имя <span style="color: rgba(255,255,255,0.3); font-weight: 400;">(необязательно)</span></label>
+        <input type="text" id="full_name" name="full_name"
+               class="form-control" value="{{ full_name or '' }}"
+               placeholder="Как к вам обращаться">
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="email">Email</label>
+        <input type="email" id="email" name="email" required
+               class="form-control" value="{{ email or '' }}"
+               placeholder="you@example.com">
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="password">Пароль</label>
+        <input type="password" id="password" name="password" required minlength="6"
+               class="form-control" placeholder="минимум 6 символов">
+    </div>
+    <button type="submit" class="auth-btn">Зарегистрироваться</button>
+</form>
+
+<div class="auth-divider">или</div>
+<a href="{{ url_for('auth.login_google') }}" class="auth-google disabled" title="Скоро будет доступно">
+    <i class="fab fa-google"></i> Регистрация через Google
+</a>
+
+<p class="auth-foot">
+    Уже есть аккаунт? <a href="{{ url_for('auth.login') }}">Войти</a>
+</p>
+{% endblock %}

@@ -425,6 +425,77 @@
         font-size: 0.6875rem; font-weight: 600;
         float: right;
     }
+    /* Auth-badge в шапке чата */
+    .auth-badge {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        font-size: 0.75rem; font-weight: 500;
+        padding: 0.3rem 0.7rem; border-radius: 999px;
+        margin-left: auto; margin-right: 0.5rem;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.7);
+        white-space: nowrap; user-select: none;
+    }
+    .auth-badge.guest { color: #fbbf24; background: rgba(217,119,6,0.1); border-color: rgba(217,119,6,0.25); }
+    .auth-badge.user { color: #a5b4fc; background: rgba(79,110,247,0.1); border-color: rgba(79,110,247,0.25); }
+    .auth-badge a { color: inherit; text-decoration: none; }
+    .auth-badge a:hover { text-decoration: underline; }
+    .auth-badge .ab-sep { opacity: 0.4; }
+
+    /* Modal лимита */
+    .auth-modal {
+        position: fixed; inset: 0;
+        z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        padding: 1rem;
+        animation: amFade 0.2s ease-out;
+    }
+    @keyframes amFade { from { opacity: 0; } to { opacity: 1; } }
+    .auth-modal-back {
+        position: absolute; inset: 0;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(4px);
+    }
+    .auth-modal-card {
+        position: relative;
+        max-width: 440px; width: 100%;
+        background: #15161a;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 18px;
+        padding: 2rem 1.75rem;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+        text-align: center;
+        animation: amSlide 0.25s ease-out;
+    }
+    @keyframes amSlide { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .amc-logo {
+        width: 72px; height: 72px;
+        margin: 0 auto 1rem;
+        background: #fff; border-radius: 50%; padding: 12px;
+        box-shadow: 0 8px 24px rgba(79,110,247,0.3);
+    }
+    .amc-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .amc-title { color: #fff; font-size: 1.2rem; font-weight: 700; margin-bottom: 0.625rem; line-height: 1.35; }
+    .amc-text { color: rgba(255,255,255,0.6); font-size: 0.9rem; line-height: 1.55; margin-bottom: 1.5rem; }
+    .amc-actions { display: flex; flex-direction: column; gap: 0.625rem; }
+    .amc-btn-primary {
+        background: linear-gradient(135deg, #4f6ef7 0%, #7c5cff 100%);
+        color: #fff; border-radius: 10px;
+        padding: 0.75rem 1rem; font-weight: 600; font-size: 0.9rem;
+        text-decoration: none; transition: filter 0.15s;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .amc-btn-primary:hover { filter: brightness(1.1); color: #fff; }
+    .amc-btn-secondary {
+        color: rgba(255,255,255,0.7);
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 0.65rem 1rem; font-size: 0.85rem;
+        text-decoration: none; transition: background 0.15s;
+    }
+    .amc-btn-secondary:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
     /* Inline ссылки на источники — компактные «пилюли» в стиле Perplexity */
     .src-ref {
         display: inline-flex;
@@ -693,9 +764,31 @@
                 <i class="fas fa-bars"></i>
             </button>
             <span class="topbar-title" id="topbarTitle">Юридический консультант</span>
+            <span id="authBadge" class="auth-badge" style="display:none;"></span>
             <button class="btn-topbar" id="clearChatBtn" title="Новый чат">
                 <i class="fas fa-edit" style="font-size:0.875rem"></i>
             </button>
+        </div>
+
+        <!-- Modal: гость исчерпал лимит -->
+        <div class="auth-modal" id="authModal" style="display:none;">
+            <div class="auth-modal-back"></div>
+            <div class="auth-modal-card">
+                <div class="amc-logo"><img src="/static/logo.png" alt="LV"></div>
+                <h2 class="amc-title">Вы попробовали LawVision — спасибо!</h2>
+                <p class="amc-text">
+                    Чтобы продолжить пользоваться сервисом, пожалуйста, зарегистрируйтесь.
+                    Это бесплатно, займёт меньше минуты, и поможет нам делать ассистента точнее.
+                </p>
+                <div class="amc-actions">
+                    <a href="/register?next=/chat" class="amc-btn-primary">
+                        <i class="fas fa-user-plus"></i> Создать аккаунт
+                    </a>
+                    <a href="/login?next=/chat" class="amc-btn-secondary">
+                        Уже есть аккаунт? Войти
+                    </a>
+                </div>
+            </div>
         </div>
 
         <!-- Messages -->
@@ -816,6 +909,35 @@ $(document).ready(function () {
 
     /* current session messages (in-memory for current chat) */
     let currentMessages = [];
+
+    /* ════════════ AUTH STATE ════════════ */
+    let authState = { authenticated: false, guest_remaining: null };
+    async function loadAuthState() {
+        try {
+            const r = await fetch('/api/auth/me', { cache: 'no-store' });
+            authState = await r.json();
+        } catch(e) { /* offline — оставим default */ }
+        renderAuthBadge();
+    }
+    function renderAuthBadge() {
+        const el = document.getElementById('authBadge');
+        if (!el) return;
+        el.style.display = '';
+        if (authState.authenticated && authState.user) {
+            el.className = 'auth-badge user';
+            const name = authState.user.full_name || authState.user.email;
+            el.innerHTML = `<i class="fas fa-user-circle"></i> ${name}`
+                         + ` <span class="ab-sep">·</span>`
+                         + ` <a href="/logout" title="Выйти">Выйти</a>`;
+        } else {
+            const left = (authState.guest_remaining ?? 5);
+            el.className = 'auth-badge guest';
+            el.innerHTML = `<i class="fas fa-user-clock"></i> Гость · осталось ${left} из ${authState.guest_limit ?? 5}`
+                         + ` <span class="ab-sep">·</span>`
+                         + ` <a href="/login?next=/chat">Войти</a>`;
+        }
+    }
+    loadAuthState();
 
     /* ════════════ SIDEBAR RENDER ════════════ */
     function renderSidebar() {
@@ -1067,6 +1189,14 @@ $(document).ready(function () {
             const data = await resp.json();
             removeTyping();
 
+            // Гость исчерпал бесплатные вопросы — показываем модал, не пишем сообщение
+            if (resp.status === 403 && data.error_type === 'guest_limit') {
+                document.getElementById('authModal').style.display = 'flex';
+                authState.guest_remaining = 0;
+                renderAuthBadge();
+                return;
+            }
+
             let answerText = data.answer || 'Нет ответа';
             if (!resp.ok || data.error || data.error_type) {
                 if (data.error_type === 'api_error' || data.error_type === 'config_error')
@@ -1074,6 +1204,11 @@ $(document).ready(function () {
             }
 
             appendAiBubble(answerText, data.sources, data.confidence, data.chat_history_id);
+            // обновим оставшийся лимит для гостя
+            if (authState && !authState.authenticated) {
+                authState.guest_remaining = Math.max(0, (authState.guest_remaining ?? 5) - 1);
+                renderAuthBadge();
+            }
             currentMessages.push({
                 role: 'assistant',
                 content: answerText,

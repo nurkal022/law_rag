@@ -140,6 +140,40 @@ class PageVisit(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
+class User(db.Model):
+    """Зарегистрированный пользователь.
+    password_hash может быть None если юзер пришёл через OAuth (Google и пр.)."""
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=True)
+    full_name = db.Column(db.String(255))
+    google_id = db.Column(db.String(64), unique=True, nullable=True, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    last_login_at = db.Column(db.DateTime)
+
+    def set_password(self, password: str):
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password: str) -> bool:
+        from werkzeug.security import check_password_hash
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'full_name': self.full_name,
+            'has_google': bool(self.google_id),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class LawProject(db.Model):
     """Модель законопроекта"""
     __tablename__ = 'law_projects'

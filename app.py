@@ -159,6 +159,15 @@ def ensure_rag_initialized():
 from blueprints.admin import admin_bp
 app.register_blueprint(admin_bp)
 
+# Регистрация auth blueprint (логин / регистрация / гостевой лимит)
+from blueprints.auth import auth_bp
+from blueprints.auth.routes import current_user, GUEST_FREE_QUESTIONS
+app.register_blueprint(auth_bp)
+
+# Создаём таблицу users если её ещё нет (db.create_all безопасен — не трогает существующие)
+with app.app_context():
+    db.create_all()
+
 # Expose shared objects to blueprint via current_app
 app.db_manager = db_manager
 app.doc_processor = doc_processor  # None until RAG initialized; updated in initialize_rag_system
@@ -331,7 +340,26 @@ ollama pull gpt-oss:20b
         # Получаем ID сессии
         session_id = session.get('session_id', str(uuid.uuid4()))
         session['session_id'] = session_id
-        
+
+        # Проверяем гостевой лимит (5 бесплатных вопросов).
+        # Авторизованным пользователям лимита нет.
+        from database.models import ChatHistory
+        user = current_user()
+        if user is None:
+            used = ChatHistory.query.filter_by(session_id=session_id).count()
+            if used >= GUEST_FREE_QUESTIONS:
+                return jsonify({
+                    'error': 'guest_limit',
+                    'error_type': 'guest_limit',
+                    'guest_used': used,
+                    'guest_limit': GUEST_FREE_QUESTIONS,
+                    'answer': (
+                        'Вы использовали все 5 бесплатных вопросов. '
+                        'Чтобы продолжить пользоваться LawVision, пожалуйста, '
+                        'зарегистрируйтесь — это бесплатно и займёт меньше минуты.'
+                    ),
+                }), 403
+
         # Если режим поиска по документам включен, проверяем инициализацию
         if use_rag:
             # Проверяем инициализацию системы поиска по документам
