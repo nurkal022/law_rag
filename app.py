@@ -164,6 +164,12 @@ from blueprints.auth import auth_bp
 from blueprints.auth.routes import current_user, GUEST_FREE_QUESTIONS
 app.register_blueprint(auth_bp)
 
+
+# Делаем текущего пользователя доступным во всех шаблонах через {{ auth_user }}
+@app.context_processor
+def inject_auth_user():
+    return {'auth_user': current_user()}
+
 # Создаём таблицу users если её ещё нет (db.create_all безопасен — не трогает существующие)
 with app.app_context():
     db.create_all()

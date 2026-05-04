@@ -132,6 +132,75 @@
             font-weight: 600;
         }
 
+        /* ─── Auth кнопки в навигации ─── */
+        .nav-auth {
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .btn-login {
+            color: var(--text);
+            font-size: 0.875rem; font-weight: 500;
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+        .btn-login:hover { background: var(--primary-lighter); color: var(--primary); }
+        .btn-register {
+            background: var(--primary-gradient, linear-gradient(135deg,#4f6ef7 0%,#7c5cff 100%));
+            color: #fff !important;
+            font-size: 0.875rem; font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(79,110,247,0.25);
+            transition: filter 0.15s, transform 0.1s;
+        }
+        .btn-register:hover { filter: brightness(1.1); color: #fff; transform: translateY(-1px); }
+        .btn-register:active { transform: translateY(0); }
+
+        .nav-user-btn {
+            background: var(--primary-lighter, rgba(79,110,247,0.08));
+            border: 1px solid var(--border, rgba(0,0,0,0.08));
+            color: var(--text);
+            font-size: 0.875rem; font-weight: 500;
+            padding: 0.4rem 0.75rem;
+            border-radius: 999px;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .nav-user-btn:hover { background: var(--primary-lighter); }
+        .nav-user-avatar {
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: var(--primary-gradient, linear-gradient(135deg,#4f6ef7,#7c5cff));
+            color: #fff;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700;
+            text-transform: uppercase;
+        }
+        .nav-user-menu {
+            min-width: 220px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 0.5rem;
+        }
+        .nav-user-info { padding: 0.5rem 0.75rem; }
+        .nav-user-info-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+        .nav-user-info-email { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+        .nav-user-menu .dropdown-item {
+            border-radius: 6px; font-size: 0.875rem;
+            padding: 0.45rem 0.75rem;
+        }
+        .nav-user-menu .dropdown-item:hover {
+            background: var(--primary-lighter); color: var(--primary);
+        }
+
+        @media (max-width: 991px) {
+            .nav-auth { width: 100%; padding-top: 0.75rem; margin-top: 0.5rem; border-top: 1px solid var(--border); justify-content: center; }
+        }
+
         /* ─── Cards ─── */
         .card {
             border: 1px solid var(--border);
@@ -417,6 +486,34 @@
                     <span class="lang-option" data-lang="ru" onclick="I18n.switchLanguage('ru')">RU</span>
                     <span class="lang-option" data-lang="kz" onclick="I18n.switchLanguage('kz')">QZ</span>
                     <span class="lang-option" data-lang="en" onclick="I18n.switchLanguage('en')">EN</span>
+                </div>
+
+                <div class="nav-auth ms-3">
+                {% if auth_user %}
+                    <div class="nav-user dropdown">
+                        <button type="button" class="nav-user-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="nav-user-avatar">
+                                {{ (auth_user.full_name or auth_user.email)[:1] | upper }}
+                            </span>
+                            <span class="nav-user-name d-none d-md-inline">
+                                {{ auth_user.full_name or auth_user.email.split('@')[0] }}
+                            </span>
+                            <i class="fas fa-chevron-down" style="font-size:0.65rem;opacity:0.55;"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end nav-user-menu">
+                            <li class="nav-user-info">
+                                <div class="nav-user-info-name">{{ auth_user.full_name or 'Без имени' }}</div>
+                                <div class="nav-user-info-email">{{ auth_user.email }}</div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/chat"><i class="fas fa-comments me-2"></i>Перейти в чат</a></li>
+                            <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Выйти</a></li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <a class="btn-login" href="/login">Войти</a>
+                    <a class="btn-register" href="/register">Регистрация</a>
+                {% endif %}
                 </div>
             </div>
         </div>
