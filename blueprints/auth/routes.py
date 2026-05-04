@@ -51,6 +51,37 @@ def logout_user():
         delattr(g, '_current_user')
 
 
+def log_usage(module: str, action: str, details: dict = None):
+    """Записать событие использования. Безопасный — глотает ошибки.
+    Вызывайте из любого endpoint после успешного действия."""
+    try:
+        import hashlib
+        from database.models import UsageEvent
+        ip = (request.headers.get('CF-Connecting-IP')
+              or request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip())
+        ip_hash = hashlib.sha256(ip.encode()).hexdigest() if ip else None
+        user = current_user()
+        ev = UsageEvent(
+            user_id=user.id if user else None,
+            session_id=session.get('session_id'),
+            ip_hash=ip_hash,
+            module=module,
+            action=action,
+            path=request.path,
+            referer=request.headers.get('Referer'),
+            user_agent=(request.headers.get('User-Agent') or '')[:500],
+            details=details,
+        )
+        db.session.add(ev)
+        db.session.commit()
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        print(f"⚠️  log_usage failed ({module}/{action}): {e}")
+
+
 # ───────────────────── routes ─────────────────────
 
 @auth_bp.route('/register', methods=['GET', 'POST'])

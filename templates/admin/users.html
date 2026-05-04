@@ -1,0 +1,114 @@
+{% extends "admin/layout.html" %}
+{% block title %}Пользователи{% endblock %}
+{% block page_title %}Пользователи{% endblock %}
+
+{% block extra_css %}
+.filters {
+    display: flex; gap: 0.625rem; align-items: center;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+.filters select { border: 1.5px solid var(--border); border-radius: 8px; padding: 0.4rem 0.75rem; font-size: 0.875rem; background: var(--content-bg); color: var(--text); outline: none; }
+.filters select:focus { border-color: var(--primary); }
+.users-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.users-card table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.users-card th { background: #f8fafc; text-align: left; padding: 0.6rem 0.875rem; font-size: 0.6875rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+.users-card td { padding: 0.7rem 0.875rem; border-bottom: 1px solid var(--border); }
+.users-card tr:last-child td { border-bottom: 0; }
+.users-card tr:hover td { background: #fafbff; }
+.user-name { font-weight: 600; }
+.user-email { color: var(--text-secondary); font-size: 0.8125rem; }
+.avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg,#4f6ef7 0%, #7c5cff 100%);
+    color: #fff; font-weight: 700; font-size: 0.875rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-right: 0.625rem; vertical-align: middle;
+    text-transform: uppercase;
+}
+.num-cell { text-align: right; font-feature-settings: "tnum"; font-weight: 600; }
+.num-cell.zero { color: var(--text-light); font-weight: 400; }
+.bar {
+    background: rgba(79,110,247,0.15);
+    height: 4px; border-radius: 2px; margin-top: 4px;
+    width: 100%; overflow: hidden;
+}
+.bar-fill { background: linear-gradient(135deg,#4f6ef7,#7c5cff); height: 100%; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.6875rem; font-weight: 600; }
+.tag.chat { background: rgba(79,110,247,0.12); color: #4f6ef7; }
+.tag.law_generator { background: rgba(168,85,247,0.12); color: #a855f7; }
+.tag.contracts { background: rgba(16,185,129,0.12); color: #059669; }
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <label style="font-size:0.75rem;color:var(--text-secondary);display:flex;align-items:center;gap:0.4rem;">
+        Активность за
+        <select id="period">
+            <option value="24h">24 часа</option>
+            <option value="7d" selected>7 дней</option>
+            <option value="30d">30 дней</option>
+            <option value="all">Всё время</option>
+        </select>
+    </label>
+    <span style="margin-left:auto;font-size:0.8125rem;color:var(--text-secondary);" id="totalLabel">…</span>
+</div>
+
+<div class="users-card">
+    <table>
+        <thead><tr>
+            <th>Пользователь</th>
+            <th>Регистрация</th>
+            <th>Последний вход</th>
+            <th>Топ-модуль</th>
+            <th class="num-cell">За период</th>
+            <th class="num-cell">Всего</th>
+        </tr></thead>
+        <tbody id="usersBody"><tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:1.5rem;">Загрузка…</td></tr></tbody>
+    </table>
+</div>
+
+<script>
+function fmtDate(iso) {
+    if (!iso) return '<span style="color:var(--text-light)">—</span>';
+    return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+async function load() {
+    const period = document.getElementById('period').value;
+    const r = await fetch('/api/admin/users?period=' + period);
+    const d = await r.json();
+    document.getElementById('totalLabel').textContent = `Всего пользователей: ${d.count}`;
+    const body = document.getElementById('usersBody');
+    if (!d.items.length) {
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:2rem;">Зарегистрированных пользователей пока нет</td></tr>';
+        return;
+    }
+    const max = Math.max(...d.items.map(u => u.events_period || 0), 1);
+    body.innerHTML = d.items.map(u => {
+        const initial = (u.full_name || u.email || '?').slice(0,1).toUpperCase();
+        const name = u.full_name || u.email.split('@')[0];
+        const pct = (u.events_period || 0) * 100 / max;
+        return `<tr id="u-${u.id}">
+            <td>
+                <span class="avatar">${initial}</span>
+                <span>
+                    <span class="user-name">${name}</span><br>
+                    <span class="user-email">${u.email}</span>
+                </span>
+            </td>
+            <td>${fmtDate(u.created_at)}</td>
+            <td>${fmtDate(u.last_login_at)}</td>
+            <td>${u.top_module ? `<span class="tag ${u.top_module}">${u.top_module}</span>` : '<span style="color:var(--text-light)">—</span>'}</td>
+            <td class="num-cell ${(u.events_period||0)===0?'zero':''}">${u.events_period || 0}
+                <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+            </td>
+            <td class="num-cell ${(u.events_total||0)===0?'zero':''}">${u.events_total || 0}</td>
+        </tr>`;
+    }).join('');
+}
+document.getElementById('period').addEventListener('change', load);
+load();
+</script>
+{% endblock %}

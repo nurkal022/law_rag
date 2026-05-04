@@ -394,3 +394,126 @@ def _write_env_settings(data):
 
     with open(env_path, 'w') as f:
         f.writelines(result)
+
+
+# ───────────────────── Usage analytics: events + users ─────────────────────
+
+@admin_bp.route('/api/admin/usage')
+@require_admin
+def api_usage_events():
+    """Журнал событий использования с фильтрами.
+    Query: module=, action=, period=24h|7d|30d|all, user_id=, limit=, offset="""
+    from database.models import UsageEvent, db
+
+    q = UsageEvent.query
+
+    module = request.args.get('module')
+    if module:
+        q = q.filter(UsageEvent.module == module)
+    action = request.args.get('action')
+    if action:
+        q = q.filter(UsageEvent.action == action)
+    user_id = request.args.get('user_id', type=int)
+    if user_id:
+        q = q.filter(UsageEvent.user_id == user_id)
+    elif request.args.get('only_guests') == '1':
+        q = q.filter(UsageEvent.user_id.is_(None))
+
+    period = request.args.get('period', '7d')
+    if period != 'all':
+        delta_map = {'24h': timedelta(hours=24), '7d': timedelta(days=7), '30d': timedelta(days=30)}
+        delta = delta_map.get(period, timedelta(days=7))
+        q = q.filter(UsageEvent.created_at >= datetime.utcnow() - delta)
+
+    total = q.count()
+    limit = min(int(request.args.get('limit', 50)), 500)
+    offset = int(request.args.get('offset', 0))
+
+    items = q.order_by(UsageEvent.created_at.desc()).offset(offset).limit(limit).all()
+
+    # Агрегаты по модулям/действиям за тот же период
+    agg_q = q.with_entities(
+        UsageEvent.module, UsageEvent.action, db.func.count(UsageEvent.id)
+    ).group_by(UsageEvent.module, UsageEvent.action).all()
+    by_module = {}
+    for module_name, action_name, cnt in agg_q:
+        by_module.setdefault(module_name, {'total': 0, 'actions': {}})
+        by_module[module_name]['total'] += cnt
+        by_module[module_name]['actions'][action_name] = cnt
+
+    return jsonify({
+        'total': total,
+        'period': period,
+        'limit': limit, 'offset': offset,
+        'items': [e.to_dict() for e in items],
+        'by_module': by_module,
+    })
+
+
+@admin_bp.route('/api/admin/users')
+@require_admin
+def api_users_list():
+    """Список пользователей с агрегатами активности."""
+    from database.models import User, UsageEvent, db
+    from sqlalchemy import func
+
+    period = request.args.get('period', '7d')
+    delta_map = {'24h': timedelta(hours=24), '7d': timedelta(days=7), '30d': timedelta(days=30)}
+    since = datetime.utcnow() - delta_map.get(period, timedelta(days=7)) if period != 'all' else None
+
+    # Подзапрос: количество событий за период
+    period_subq = db.session.query(
+        UsageEvent.user_id, func.count(UsageEvent.id).label('events_period')
+    )
+    if since is not None:
+        period_subq = period_subq.filter(UsageEvent.created_at >= since)
+    period_subq = period_subq.group_by(UsageEvent.user_id).subquery()
+
+    # Всего за всё время
+    total_subq = db.session.query(
+        UsageEvent.user_id, func.count(UsageEvent.id).label('events_total')
+    ).group_by(UsageEvent.user_id).subquery()
+
+    rows = db.session.query(
+        User,
+        period_subq.c.events_period,
+        total_subq.c.events_total,
+    ).outerjoin(period_subq, User.id == period_subq.c.user_id) \
+     .outerjoin(total_subq,  User.id == total_subq.c.user_id) \
+     .order_by(db.desc(db.func.coalesce(period_subq.c.events_period, 0))) \
+     .all()
+
+    users_data = []
+    for user, ev_period, ev_total in rows:
+        # Найдём топ-модуль за период (1 запрос на юзера, но юзеров мало)
+        top_q = db.session.query(
+            UsageEvent.module, func.count(UsageEvent.id).label('c')
+        ).filter(UsageEvent.user_id == user.id)
+        if since is not None:
+            top_q = top_q.filter(UsageEvent.created_at >= since)
+        top_q = top_q.group_by(UsageEvent.module).order_by(db.desc('c')).first()
+
+        users_data.append({
+            **user.to_dict(),
+            'last_login_at': user.last_login_at.isoformat() if user.last_login_at else None,
+            'events_period': int(ev_period or 0),
+            'events_total': int(ev_total or 0),
+            'top_module': top_q[0] if top_q else None,
+            'is_active': user.is_active,
+        })
+
+    return jsonify({
+        'period': period,
+        'count': len(users_data),
+        'items': users_data,
+    })
+
+
+@admin_bp.route('/api/admin/users/<int:user_id>/events')
+@require_admin
+def api_user_events(user_id: int):
+    """История событий конкретного пользователя."""
+    from database.models import UsageEvent
+    items = UsageEvent.query.filter_by(user_id=user_id) \
+        .order_by(UsageEvent.created_at.desc()).limit(200).all()
+    return jsonify({'items': [e.to_dict() for e in items]})

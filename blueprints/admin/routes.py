@@ -93,3 +93,17 @@ def questions():
                            rating_filter=rating_filter,
                            total=total_all,
                            active='questions')
+
+
+@admin_bp.route('/admin/usage')
+@require_admin
+def usage_page():
+    """Журнал использования модулей (чат / законы / договоры)."""
+    return render_template('admin/usage.html', active='usage')
+
+
+@admin_bp.route('/admin/users')
+@require_admin
+def users_page():
+    """Список пользователей с активностью."""
+    return render_template('admin/users.html', active='users')

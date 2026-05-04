@@ -1,0 +1,148 @@
+{% extends "admin/layout.html" %}
+{% block title %}Журнал событий{% endblock %}
+{% block page_title %}Журнал событий использования{% endblock %}
+
+{% block extra_css %}
+.filters {
+    display: flex; gap: 0.625rem; flex-wrap: wrap;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 0.875rem 1rem;
+    margin-bottom: 1rem;
+}
+.filters select, .filters input {
+    border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 0.4rem 0.75rem; font-size: 0.875rem;
+    background: var(--content-bg); color: var(--text);
+    outline: none;
+}
+.filters select:focus, .filters input:focus { border-color: var(--primary); }
+.filters label { font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem; }
+
+.module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+.module-stat { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; }
+.ms-name { font-size: 0.6875rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.ms-num { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-top: 2px; }
+.ms-actions { font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px; }
+.ms-actions span { display: inline-block; margin-right: 0.5rem; }
+
+.events-table { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.events-table table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+.events-table th { background: #f8fafc; text-align: left; padding: 0.6rem 0.875rem; font-size: 0.6875rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+.events-table td { padding: 0.6rem 0.875rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.events-table tr:last-child td { border-bottom: 0; }
+.events-table tr:hover td { background: #fafbff; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.6875rem; font-weight: 600; white-space: nowrap; }
+.tag.chat { background: rgba(79,110,247,0.12); color: #4f6ef7; }
+.tag.law_generator { background: rgba(168,85,247,0.12); color: #a855f7; }
+.tag.contracts { background: rgba(16,185,129,0.12); color: #059669; }
+.tag.analytics { background: rgba(217,119,6,0.12); color: #d97706; }
+.muted { color: var(--text-light); font-size: 0.75rem; }
+.user-cell { font-weight: 500; }
+.user-cell.guest { color: var(--text-light); font-style: italic; font-weight: 400; }
+.details-pre { font-family: ui-monospace, monospace; font-size: 0.7rem; color: var(--text-secondary); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <label>Период
+        <select id="period">
+            <option value="24h">24 часа</option>
+            <option value="7d" selected>7 дней</option>
+            <option value="30d">30 дней</option>
+            <option value="all">Всё время</option>
+        </select>
+    </label>
+    <label>Модуль
+        <select id="module">
+            <option value="">Все</option>
+            <option value="chat">Чат</option>
+            <option value="law_generator">Генератор законов</option>
+            <option value="contracts">Договоры</option>
+        </select>
+    </label>
+    <label>Действие
+        <select id="action">
+            <option value="">Все</option>
+            <option value="ask">Запрос (ask)</option>
+            <option value="generate">Генерация</option>
+            <option value="analyze">Анализ</option>
+        </select>
+    </label>
+    <label>
+        <input type="checkbox" id="onlyGuests"> Только гости
+    </label>
+    <span style="margin-left:auto;font-size:0.8125rem;color:var(--text-secondary);" id="totalLabel">…</span>
+</div>
+
+<div class="module-grid" id="moduleGrid"></div>
+
+<div class="events-table">
+    <table>
+        <thead><tr>
+            <th>Когда</th><th>Модуль</th><th>Действие</th><th>Пользователь</th><th>Путь</th><th>Откуда</th><th>Детали</th>
+        </tr></thead>
+        <tbody id="eventsBody"><tr><td colspan="7" class="muted">Загрузка…</td></tr></tbody>
+    </table>
+</div>
+
+<script>
+const $ = sel => document.querySelector(sel);
+
+function fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+async function load() {
+    const period = $('#period').value;
+    const module = $('#module').value;
+    const action = $('#action').value;
+    const onlyGuests = $('#onlyGuests').checked ? '1' : '0';
+    const params = new URLSearchParams({ period, only_guests: onlyGuests, limit: '100' });
+    if (module) params.set('module', module);
+    if (action) params.set('action', action);
+    const r = await fetch('/api/admin/usage?' + params.toString());
+    const d = await r.json();
+
+    $('#totalLabel').textContent = `Найдено: ${d.total}`;
+
+    const grid = $('#moduleGrid'); grid.innerHTML = '';
+    Object.entries(d.by_module).forEach(([mod, info]) => {
+        const div = document.createElement('div');
+        div.className = 'module-stat';
+        const actions = Object.entries(info.actions)
+            .map(([a, c]) => `<span><b>${c}</b> ${a}</span>`).join('');
+        div.innerHTML = `<div class="ms-name">${mod}</div>
+            <div class="ms-num">${info.total}</div>
+            <div class="ms-actions">${actions}</div>`;
+        grid.appendChild(div);
+    });
+
+    const body = $('#eventsBody');
+    if (!d.items.length) {
+        body.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center;padding:2rem;">Событий нет</td></tr>';
+        return;
+    }
+    body.innerHTML = d.items.map(e => `
+        <tr>
+            <td>${fmtDate(e.created_at)}</td>
+            <td><span class="tag ${e.module}">${e.module}</span></td>
+            <td>${e.action}</td>
+            <td class="user-cell ${e.user_email ? '' : 'guest'}">
+                ${e.user_email ? `<a href="/admin/users#u-${e.user_id}">${e.user_email}</a>` : 'гость · ' + (e.session_id || '—')}
+                <div class="muted">ip ${e.ip_short || '—'}</div>
+            </td>
+            <td><span class="muted">${e.path || ''}</span></td>
+            <td><span class="muted">${e.referer ? new URL(e.referer, location.origin).pathname : '—'}</span></td>
+            <td><div class="details-pre" title='${e.details ? JSON.stringify(e.details).replace(/'/g, "&#39;") : ""}'>${e.details ? JSON.stringify(e.details) : ''}</div></td>
+        </tr>
+    `).join('');
+}
+
+['period','module','action','onlyGuests'].forEach(id => {
+    document.getElementById(id).addEventListener('change', load);
+});
+load();
+</script>
+{% endblock %}

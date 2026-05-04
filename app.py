@@ -161,7 +161,7 @@ app.register_blueprint(admin_bp)
 
 # Регистрация auth blueprint (логин / регистрация / гостевой лимит)
 from blueprints.auth import auth_bp
-from blueprints.auth.routes import current_user, GUEST_FREE_QUESTIONS
+from blueprints.auth.routes import current_user, GUEST_FREE_QUESTIONS, log_usage
 app.register_blueprint(auth_bp)
 
 
@@ -464,6 +464,11 @@ ollama pull gpt-oss:20b
                 )
             except Exception as e:
                 print(f"Ошибка сохранения истории: {e}")
+            log_usage('chat', 'ask', details={
+                'query_len': len(user_query),
+                'sources_count': len(response_data.get('sources') or []),
+                'model': response_data.get('model_used'),
+            })
 
         return jsonify({
             'answer': response_data['answer'],
@@ -688,9 +693,14 @@ def generate_law_project():
                 generation_result['sections'],
                 generation_result['metadata']
             )
-        
+            log_usage('law_generator', 'generate', details={
+                'project_id': generation_result.get('project_id'),
+                'topic': (data.get('topic') or data.get('subject') or '')[:120],
+                'sections': len(generation_result.get('sections') or []),
+            })
+
         return jsonify(generation_result)
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -1209,6 +1219,11 @@ def generate_contract():
     if rag_initialized and retriever:
         contract_generator.retriever = retriever
     result = contract_generator.generate(contract_type, data, language)
+    if result.get('success'):
+        log_usage('contracts', 'generate', details={
+            'type': contract_type,
+            'language': language,
+        })
     return jsonify(result)
 
 @app.route('/api/contracts/analyze', methods=['POST'])
@@ -1232,6 +1247,11 @@ def analyze_contract():
     if rag_initialized and retriever:
         contract_analyzer.retriever = retriever
     result = contract_analyzer.analyze(text, contract_type)
+    if result.get('success'):
+        log_usage('contracts', 'analyze', details={
+            'type': contract_type,
+            'text_length': len(text),
+        })
     return jsonify(result)
 
 @app.errorhandler(404)

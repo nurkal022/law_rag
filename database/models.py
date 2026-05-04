@@ -140,6 +140,42 @@ class PageVisit(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
+class UsageEvent(db.Model):
+    """Событие использования модуля (чат, генерация закона/договора и т.п.).
+    Используется для админ-аналитики: кто, откуда, какой модуль, что сделал."""
+    __tablename__ = 'usage_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'),
+                         nullable=True, index=True)
+    session_id = db.Column(db.String(64), index=True)   # Flask cookie session_id
+    ip_hash = db.Column(db.String(64), index=True)
+    module = db.Column(db.String(32), nullable=False, index=True)  # 'chat'|'law_generator'|'contracts'|'analytics'
+    action = db.Column(db.String(64), nullable=False)             # 'ask'|'generate'|'export'|'analyze'|'session_save'
+    path = db.Column(db.String(500))      # request.path
+    referer = db.Column(db.String(500))
+    user_agent = db.Column(db.String(500))
+    details = db.Column(db.JSON)          # произвольные метаданные (тип договора, тема закона, формат экспорта)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    user = db.relationship('User', lazy='joined')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user_email': self.user.email if self.user else None,
+            'session_id': (self.session_id or '')[:8],
+            'ip_short': (self.ip_hash or '')[:8],
+            'module': self.module,
+            'action': self.action,
+            'path': self.path,
+            'referer': self.referer,
+            'details': self.details,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class User(db.Model):
     """Зарегистрированный пользователь.
     password_hash может быть None если юзер пришёл через OAuth (Google и пр.)."""
