@@ -1,14 +1,34 @@
 {% extends "base.html" %}
 
+{% block main_class %}p-0 m-0 auth-main{% endblock %}
+
 {% block extra_css %}
 <style>
+/* Auth-страницы — полностью изолированы: без navbar/footer, fullscreen */
+body { background: #0d0d10 !important; margin: 0; }
+nav.navbar { display: none !important; }
+footer.site-footer { display: none !important; }
+main.auth-main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+
 .auth-shell {
-    min-height: calc(100vh - 60px);
+    min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
     padding: 2rem 1rem;
-    background: radial-gradient(ellipse at top, rgba(79,110,247,0.18) 0%, transparent 50%),
+    background: radial-gradient(ellipse at top, rgba(79,110,247,0.22) 0%, transparent 55%),
+                radial-gradient(ellipse at bottom right, rgba(124,92,255,0.18) 0%, transparent 50%),
                 #0d0d10;
+    position: relative;
 }
+/* Маленькая ссылка «← На главную» вверху слева */
+.auth-back {
+    position: absolute; top: 1.25rem; left: 1.25rem;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.85rem; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.4rem 0.75rem; border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+}
+.auth-back:hover { background: rgba(255,255,255,0.06); color: #fff; }
 .auth-card {
     width: 100%; max-width: 400px;
     background: #15161a;
@@ -99,6 +119,7 @@
 
 {% block content %}
 <div class="auth-shell">
+    <a href="/" class="auth-back"><i class="fas fa-arrow-left"></i> На главную</a>
     <div class="auth-card">
         <div class="auth-logo"><img src="/static/logo.png" alt="LawVision"></div>
         {% block auth_body %}{% endblock %}
