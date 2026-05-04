@@ -107,3 +107,11 @@ def usage_page():
 def users_page():
     """Список пользователей с активностью."""
     return render_template('admin/users.html', active='users')
+
+
+@admin_bp.route('/admin/users/<int:user_id>')
+@require_admin
+def user_detail_page(user_id: int):
+    from database.models import User
+    user = User.query.get_or_404(user_id)
+    return render_template('admin/user_detail.html', user=user, active='users')

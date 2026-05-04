@@ -517,3 +517,71 @@ def api_user_events(user_id: int):
     items = UsageEvent.query.filter_by(user_id=user_id) \
         .order_by(UsageEvent.created_at.desc()).limit(200).all()
     return jsonify({'items': [e.to_dict() for e in items]})
+
+
+@admin_bp.route('/api/admin/usage/<int:event_id>')
+@require_admin
+def api_usage_detail(event_id: int):
+    """Детали события + связанные данные (chat-history, law-project) +
+    соседние события того же пользователя/сессии."""
+    from datetime import timedelta
+    from database.models import UsageEvent, ChatHistory, db
+
+    ev = db.session.get(UsageEvent, event_id)
+    if not ev:
+        return jsonify({'error': 'not found'}), 404
+
+    payload = {
+        'event': {
+            **ev.to_dict(),
+            'session_id_full': ev.session_id,
+            'ip_hash_full': ev.ip_hash,
+            'user_agent': ev.user_agent,
+            'user_full_name': ev.user.full_name if ev.user else None,
+        },
+    }
+
+    # Связанный чат — ищем ChatHistory с тем же session_id в окне ±10 секунд
+    if ev.module == 'chat' and ev.session_id and ev.created_at:
+        window = timedelta(seconds=10)
+        ch = ChatHistory.query.filter(
+            ChatHistory.session_id == ev.session_id,
+            ChatHistory.created_at >= ev.created_at - window,
+            ChatHistory.created_at <= ev.created_at + window,
+        ).order_by(
+            db.func.abs(db.func.extract('epoch', ChatHistory.created_at - ev.created_at))
+        ).first()
+        if ch:
+            payload['chat'] = {
+                'id': ch.id,
+                'query': ch.user_query,
+                'answer': ch.ai_response,
+                'sources': ch.sources,
+                'created_at': ch.created_at.isoformat() if ch.created_at else None,
+            }
+
+    # Соседние события (3 до, 3 после) — по тому же user_id или session_id
+    neighbours_q = UsageEvent.query
+    if ev.user_id:
+        neighbours_q = neighbours_q.filter(UsageEvent.user_id == ev.user_id)
+    else:
+        neighbours_q = neighbours_q.filter(
+            UsageEvent.session_id == ev.session_id,
+            UsageEvent.user_id.is_(None),
+        )
+
+    before = neighbours_q.filter(
+        UsageEvent.created_at < ev.created_at,
+        UsageEvent.id != ev.id,
+    ).order_by(UsageEvent.created_at.desc()).limit(3).all()
+    after = neighbours_q.filter(
+        UsageEvent.created_at > ev.created_at,
+        UsageEvent.id != ev.id,
+    ).order_by(UsageEvent.created_at.asc()).limit(3).all()
+
+    payload['neighbours'] = {
+        'before': [e.to_dict() for e in reversed(before)],
+        'after': [e.to_dict() for e in after],
+    }
+
+    return jsonify(payload)

@@ -1,0 +1,110 @@
+{% extends "admin/layout.html" %}
+{% block title %}{{ user.email }} — пользователь{% endblock %}
+{% block page_title %}
+    <a href="/admin/users" style="color: inherit; text-decoration: none;"><i class="fas fa-arrow-left"></i></a>
+    {{ user.full_name or user.email }}
+{% endblock %}
+
+{% block extra_css %}
+.user-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.25rem; }
+.user-avatar-lg {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg,#4f6ef7 0%, #7c5cff 100%);
+    color: #fff; font-weight: 700; font-size: 1.5rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    text-transform: uppercase;
+}
+.user-meta-name { font-size: 1.125rem; font-weight: 700; color: var(--text); }
+.user-meta-email { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem; }
+.user-meta-info { font-size: 0.8125rem; color: var(--text-light); }
+.user-meta-info span { margin-right: 1rem; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+.kpi { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; }
+.kpi-label { font-size: 0.6875rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-top: 4px; }
+
+.events-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.events-card table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+.events-card th { background: #f8fafc; text-align: left; padding: 0.6rem 0.875rem; font-size: 0.6875rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+.events-card td { padding: 0.6rem 0.875rem; border-bottom: 1px solid var(--border); }
+.events-card tr:last-child td { border-bottom: 0; }
+.events-card tbody tr { cursor: pointer; }
+.events-card tbody tr:hover { background: rgba(79,110,247,0.05); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.6875rem; font-weight: 600; }
+.tag.chat { background: rgba(79,110,247,0.12); color: #4f6ef7; }
+.tag.law_generator { background: rgba(168,85,247,0.12); color: #a855f7; }
+.tag.contracts { background: rgba(16,185,129,0.12); color: #059669; }
+{% endblock %}
+
+{% block content %}
+<div class="user-card">
+    <div class="user-avatar-lg">{{ (user.full_name or user.email)[:1] | upper }}</div>
+    <div style="flex:1;">
+        <div class="user-meta-name">{{ user.full_name or 'Без имени' }}</div>
+        <div class="user-meta-email">{{ user.email }}</div>
+        <div class="user-meta-info">
+            <span><i class="fas fa-calendar-plus" style="color:var(--text-light)"></i>
+                Зарегистрирован: {{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '—' }}</span>
+            <span><i class="fas fa-sign-in-alt" style="color:var(--text-light)"></i>
+                Последний вход: {{ user.last_login_at.strftime('%d.%m.%Y %H:%M') if user.last_login_at else 'не входил' }}</span>
+            {% if user.google_id %}<span><i class="fab fa-google"></i> Google</span>{% endif %}
+            {% if not user.is_active %}<span style="color:#dc2626"><i class="fas fa-ban"></i> Неактивен</span>{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="kpi-grid" id="kpiGrid">
+    <div class="kpi"><div class="kpi-label">Всего событий</div><div class="kpi-value" id="kpiTotal">…</div></div>
+    <div class="kpi"><div class="kpi-label">Чат</div><div class="kpi-value" id="kpiChat">…</div></div>
+    <div class="kpi"><div class="kpi-label">Договоры</div><div class="kpi-value" id="kpiContracts">…</div></div>
+    <div class="kpi"><div class="kpi-label">Генератор законов</div><div class="kpi-value" id="kpiLaw">…</div></div>
+</div>
+
+<div class="events-card">
+    <table>
+        <thead><tr>
+            <th>Когда</th><th>Модуль</th><th>Действие</th><th>Путь</th><th>Откуда</th><th>Детали</th>
+        </tr></thead>
+        <tbody id="userEvents"><tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:1.5rem;">Загрузка…</td></tr></tbody>
+    </table>
+</div>
+
+<script>
+function fmtDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+(async () => {
+    const r = await fetch('/api/admin/users/{{ user.id }}/events');
+    const d = await r.json();
+    const items = d.items || [];
+    const counts = { chat: 0, contracts: 0, law_generator: 0 };
+    for (const e of items) if (e.module in counts) counts[e.module]++;
+    document.getElementById('kpiTotal').textContent = items.length;
+    document.getElementById('kpiChat').textContent = counts.chat;
+    document.getElementById('kpiContracts').textContent = counts.contracts;
+    document.getElementById('kpiLaw').textContent = counts.law_generator;
+
+    const body = document.getElementById('userEvents');
+    if (!items.length) {
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:2rem;">Активности пока нет</td></tr>';
+        return;
+    }
+    body.innerHTML = items.map(e => `
+        <tr onclick="window.location='/admin/usage#e-${e.id}'; openDD && openDD(${e.id})">
+            <td>${fmtDate(e.created_at)}</td>
+            <td><span class="tag ${e.module}">${e.module}</span></td>
+            <td>${escHtml(e.action)}</td>
+            <td><span style="color:var(--text-light)">${escHtml(e.path || '')}</span></td>
+            <td><span style="color:var(--text-light)">${e.referer ? new URL(e.referer, location.origin).pathname : '—'}</span></td>
+            <td><div style="font-family:ui-monospace,monospace;font-size:0.7rem;color:var(--text-secondary);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.details ? escHtml(JSON.stringify(e.details)) : ''}</div></td>
+        </tr>
+    `).join('');
+})();
+</script>
+{% endblock %}

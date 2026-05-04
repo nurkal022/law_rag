@@ -40,6 +40,32 @@
 .user-cell { font-weight: 500; }
 .user-cell.guest { color: var(--text-light); font-style: italic; font-weight: 400; }
 .details-pre { font-family: ui-monospace, monospace; font-size: 0.7rem; color: var(--text-secondary); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.events-table tbody tr { cursor: pointer; }
+.events-table tbody tr:hover { background: var(--primary-lighter, rgba(79,110,247,0.04)); }
+
+/* Drill-down modal */
+.dd-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(2px); z-index: 9000; display: none; align-items: flex-start; justify-content: center; padding: 3rem 1rem; overflow-y: auto; }
+.dd-overlay.show { display: flex; }
+.dd-card { background: var(--card-bg, #fff); border-radius: 14px; max-width: 880px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.25); overflow: hidden; animation: ddIn 0.18s ease-out; }
+@keyframes ddIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.dd-head { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.dd-title { font-weight: 700; font-size: 1rem; color: var(--text); flex: 1; }
+.dd-close { border: 0; background: transparent; color: var(--text-light); font-size: 1.25rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 8px; }
+.dd-close:hover { background: rgba(0,0,0,0.05); }
+.dd-body { padding: 1rem 1.25rem; max-height: 70vh; overflow-y: auto; }
+.dd-grid { display: grid; grid-template-columns: 130px 1fr; gap: 0.625rem 1rem; font-size: 0.8125rem; margin-bottom: 1.25rem; }
+.dd-grid dt { color: var(--text-light); font-weight: 600; }
+.dd-grid dd { margin: 0; word-break: break-all; color: var(--text); }
+.dd-grid dd code { font-family: ui-monospace, monospace; font-size: 0.7375rem; background: rgba(0,0,0,0.04); padding: 1px 6px; border-radius: 4px; }
+.dd-section-title { font-size: 0.75rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em; margin: 1.25rem 0 0.625rem; }
+.dd-pre { background: #0f172a; color: #e2e8f0; padding: 0.75rem 0.875rem; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 0.75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+.dd-chat-q { background: rgba(79,110,247,0.06); border-left: 3px solid var(--primary); padding: 0.625rem 0.875rem; border-radius: 0 8px 8px 0; font-size: 0.875rem; margin-bottom: 0.625rem; }
+.dd-chat-a { background: #f8fafc; border: 1px solid var(--border); padding: 0.625rem 0.875rem; border-radius: 8px; font-size: 0.875rem; line-height: 1.55; max-height: 260px; overflow-y: auto; white-space: pre-wrap; }
+.dd-neighbours { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.dd-nb-row { display: flex; gap: 0.625rem; align-items: center; padding: 0.5rem 0.625rem; border-radius: 8px; background: #f8fafc; font-size: 0.8125rem; cursor: pointer; transition: background 0.12s; }
+.dd-nb-row:hover { background: rgba(79,110,247,0.06); }
+.dd-nb-time { color: var(--text-light); font-size: 0.7rem; min-width: 90px; }
+.dd-nb-arrow { color: var(--text-light); font-size: 0.75rem; min-width: 18px; text-align: center; }
 {% endblock %}
 
 {% block content %}
@@ -85,6 +111,17 @@
     </table>
 </div>
 
+<!-- Drill-down модал -->
+<div class="dd-overlay" id="ddOverlay" role="dialog" aria-modal="true">
+    <div class="dd-card">
+        <div class="dd-head">
+            <div class="dd-title" id="ddTitle">Детали события</div>
+            <button class="dd-close" id="ddClose" aria-label="Закрыть"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="dd-body" id="ddBody"></div>
+    </div>
+</div>
+
 <script>
 const $ = sel => document.querySelector(sel);
 
@@ -125,17 +162,17 @@ async function load() {
         return;
     }
     body.innerHTML = d.items.map(e => `
-        <tr>
+        <tr data-id="${e.id}">
             <td>${fmtDate(e.created_at)}</td>
             <td><span class="tag ${e.module}">${e.module}</span></td>
             <td>${e.action}</td>
             <td class="user-cell ${e.user_email ? '' : 'guest'}">
-                ${e.user_email ? `<a href="/admin/users#u-${e.user_id}">${e.user_email}</a>` : 'гость · ' + (e.session_id || '—')}
+                ${e.user_email ? `<a href="/admin/users/${e.user_id}" onclick="event.stopPropagation()">${e.user_email}</a>` : 'гость · ' + (e.session_id || '—')}
                 <div class="muted">ip ${e.ip_short || '—'}</div>
             </td>
             <td><span class="muted">${e.path || ''}</span></td>
             <td><span class="muted">${e.referer ? new URL(e.referer, location.origin).pathname : '—'}</span></td>
-            <td><div class="details-pre" title='${e.details ? JSON.stringify(e.details).replace(/'/g, "&#39;") : ""}'>${e.details ? JSON.stringify(e.details) : ''}</div></td>
+            <td><div class="details-pre">${e.details ? JSON.stringify(e.details) : ''}</div></td>
         </tr>
     `).join('');
 }
@@ -144,5 +181,114 @@ async function load() {
     document.getElementById(id).addEventListener('change', load);
 });
 load();
+
+/* ════════════ Drill-down ════════════ */
+const ddOverlay = document.getElementById('ddOverlay');
+const ddBody    = document.getElementById('ddBody');
+const ddTitle   = document.getElementById('ddTitle');
+document.getElementById('ddClose').addEventListener('click', closeDD);
+ddOverlay.addEventListener('click', (e) => { if (e.target === ddOverlay) closeDD(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ddOverlay.classList.contains('show')) closeDD(); });
+
+document.getElementById('eventsBody').addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    const tr = e.target.closest('tr[data-id]');
+    if (tr) openDD(tr.dataset.id);
+});
+
+function escHtml(s) {
+    return String(s ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function openDD(id) {
+    ddOverlay.classList.add('show');
+    ddBody.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-light)">Загрузка…</div>';
+    ddTitle.textContent = `Событие #${id}`;
+    let d;
+    try {
+        const r = await fetch('/api/admin/usage/' + id);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        d = await r.json();
+    } catch (err) {
+        ddBody.innerHTML = `<div style="padding:1rem;color:#dc2626;">Ошибка: ${escHtml(err.message)}</div>`;
+        return;
+    }
+    const e = d.event;
+    ddTitle.innerHTML = `<span class="tag ${e.module}" style="margin-right:0.5rem;">${e.module}</span> ${e.action} <span style="color:var(--text-light);font-weight:400;font-size:0.8125rem;">· #${e.id}</span>`;
+
+    let html = '<dl class="dd-grid">';
+    html += `<dt>Когда</dt><dd>${fmtDate(e.created_at)} <span class="muted">· ${escHtml(e.created_at)}</span></dd>`;
+    if (e.user_email) {
+        html += `<dt>Пользователь</dt><dd><a href="/admin/users/${e.user_id}">${escHtml(e.user_full_name || e.user_email)}</a> <span class="muted">${escHtml(e.user_email)}</span></dd>`;
+    } else {
+        html += `<dt>Пользователь</dt><dd><span class="muted">гость</span></dd>`;
+    }
+    html += `<dt>Session ID</dt><dd><code>${escHtml(e.session_id_full || '—')}</code></dd>`;
+    html += `<dt>IP-hash</dt><dd><code>${escHtml(e.ip_hash_full || '—')}</code></dd>`;
+    html += `<dt>Путь</dt><dd><code>${escHtml(e.path || '—')}</code></dd>`;
+    html += `<dt>Откуда (referer)</dt><dd>${e.referer ? `<a href="${escHtml(e.referer)}" target="_blank">${escHtml(e.referer)}</a>` : '<span class="muted">—</span>'}</dd>`;
+    html += `<dt>User-Agent</dt><dd style="font-size:0.7375rem;color:var(--text-secondary)">${escHtml(e.user_agent || '—')}</dd>`;
+    html += '</dl>';
+
+    if (e.details && Object.keys(e.details).length) {
+        html += '<div class="dd-section-title">Метаданные действия</div>';
+        html += `<pre class="dd-pre">${escHtml(JSON.stringify(e.details, null, 2))}</pre>`;
+    }
+
+    if (d.chat) {
+        html += '<div class="dd-section-title">Связанный чат</div>';
+        html += `<div class="dd-chat-q"><b>Q:</b> ${escHtml(d.chat.query)}</div>`;
+        html += `<div class="dd-chat-a">${escHtml(d.chat.answer || '').slice(0, 4000)}</div>`;
+        if (Array.isArray(d.chat.sources) && d.chat.sources.length) {
+            html += `<div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-secondary);">Источников: ${d.chat.sources.length}</div>`;
+        }
+    }
+
+    if (d.neighbours && (d.neighbours.before.length || d.neighbours.after.length)) {
+        html += '<div class="dd-section-title">Активность пользователя вокруг этого события</div>';
+        html += '<div class="dd-neighbours">';
+        for (const n of d.neighbours.before) {
+            html += `<div class="dd-nb-row" data-id="${n.id}">
+                <span class="dd-nb-time">${fmtDate(n.created_at)}</span>
+                <span class="dd-nb-arrow">↑</span>
+                <span class="tag ${n.module}">${n.module}</span>
+                <span>${n.action}</span>
+                <span class="muted" style="margin-left:auto">${escHtml(n.path || '')}</span>
+            </div>`;
+        }
+        html += `<div class="dd-nb-row" style="background:rgba(79,110,247,0.12);font-weight:600;cursor:default;">
+            <span class="dd-nb-time">${fmtDate(e.created_at)}</span>
+            <span class="dd-nb-arrow">●</span>
+            <span class="tag ${e.module}">${e.module}</span>
+            <span>${e.action}</span>
+            <span class="muted" style="margin-left:auto">текущее</span>
+        </div>`;
+        for (const n of d.neighbours.after) {
+            html += `<div class="dd-nb-row" data-id="${n.id}">
+                <span class="dd-nb-time">${fmtDate(n.created_at)}</span>
+                <span class="dd-nb-arrow">↓</span>
+                <span class="tag ${n.module}">${n.module}</span>
+                <span>${n.action}</span>
+                <span class="muted" style="margin-left:auto">${escHtml(n.path || '')}</span>
+            </div>`;
+        }
+        html += '</div>';
+    }
+
+    ddBody.innerHTML = html;
+    ddBody.scrollTop = 0;
+
+    // Клики по соседним событиям → открыть их
+    ddBody.querySelectorAll('.dd-nb-row[data-id]').forEach(el => {
+        el.addEventListener('click', () => openDD(el.dataset.id));
+    });
+}
+
+function closeDD() {
+    ddOverlay.classList.remove('show');
+    ddBody.innerHTML = '';
+}
 </script>
 {% endblock %}
