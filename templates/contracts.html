@@ -28,8 +28,41 @@
     .contract-form .form-label { font-size: 0.8125rem; font-weight: 500; }
     .contract-form .form-control { font-size: 0.875rem; }
 
-    /* Results */
-    .contract-result { white-space: pre-wrap; font-size: 0.875rem; line-height: 1.7; }
+    /* Results — рендер сгенерированного договора */
+    .contract-result {
+        font-size: 0.9rem;
+        line-height: 1.7;
+        color: #1e293b;
+        font-family: "Times New Roman", Georgia, serif;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 0.5rem 1rem;
+    }
+    .contract-result h1, .contract-result h2, .contract-result h3, .contract-result h4 {
+        font-family: "Times New Roman", Georgia, serif;
+        color: #0f172a;
+        margin-top: 1.4rem;
+        margin-bottom: 0.6rem;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+    .contract-result h1 { font-size: 1.25rem; text-align: center; margin-top: 0.5rem; }
+    .contract-result h2 { font-size: 1.05rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+    .contract-result h3 { font-size: 0.95rem; }
+    .contract-result p  { margin: 0.45rem 0; text-align: justify; }
+    .contract-result ul, .contract-result ol { padding-left: 1.5rem; margin: 0.4rem 0; }
+    .contract-result li { margin: 0.2rem 0; }
+    .contract-result strong { font-weight: 700; }
+    .contract-result em { font-style: italic; }
+    .contract-result code {
+        background: #f1f5f9; color: #0f172a;
+        padding: 1px 6px; border-radius: 4px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 0.825rem;
+    }
+    .contract-result hr { border: 0; border-top: 1px solid #e5e7eb; margin: 1rem 0; }
+    .contract-result table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+    .contract-result table th, .contract-result table td { border: 1px solid #cbd5e1; padding: 6px 10px; text-align: left; }
 
     /* Analysis cards */
     .risk-card { padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; border-left: 3px solid; }
@@ -156,9 +189,19 @@
                             <button class="btn btn-sm btn-light" onclick="copyContract()">
                                 <i class="fas fa-copy"></i> <span data-i18n="contracts.copy">Копировать</span>
                             </button>
-                            <button class="btn btn-sm btn-light" onclick="downloadContract()">
-                                <i class="fas fa-download"></i> <span data-i18n="contracts.download">Скачать</span>
-                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-download"></i> <span data-i18n="contracts.download">Скачать</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); exportContract('docx')">
+                                        <i class="fas fa-file-word me-2" style="color:#2b579a"></i> Word (.docx)
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); exportContract('pdf')">
+                                        <i class="fas fa-file-pdf me-2" style="color:#dc2626"></i> PDF
+                                    </a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -268,6 +311,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- marked.js для рендера markdown в договоре -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 let selectedType = null;
 let currentFields = [];
@@ -343,7 +388,7 @@ function generateContract() {
         modal.hide();
         if (result.success) {
             generatedContract = result.contract_text;
-            document.getElementById('contract-text').textContent = result.contract_text;
+            renderContract(result.contract_text);
             document.getElementById('generate-result').style.display = 'block';
             document.getElementById('generate-result').scrollIntoView({behavior: 'smooth'});
         } else {
@@ -351,6 +396,17 @@ function generateContract() {
         }
     })
     .catch(e => { modal.hide(); alert('Ошибка сети'); });
+}
+
+function renderContract(md) {
+    const target = document.getElementById('contract-text');
+    if (window.marked && typeof marked.parse === 'function') {
+        marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
+        target.innerHTML = marked.parse(md || '');
+    } else {
+        // Фолбэк: показываем как preformatted текст с переносами
+        target.textContent = md || '';
+    }
 }
 
 function copyContract() {
@@ -362,12 +418,35 @@ function copyContract() {
     });
 }
 
-function downloadContract() {
-    const blob = new Blob([generatedContract], {type: 'text/plain;charset=utf-8'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `contract_${selectedType}_${new Date().toISOString().slice(0,10)}.txt`;
-    a.click();
+async function exportContract(format) {
+    if (!generatedContract) return;
+    try {
+        const r = await fetch('/api/contracts/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contract_text: generatedContract,
+                contract_type: selectedType,
+                format: format,
+            }),
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error || `HTTP ${r.status}`);
+        }
+        const blob = await r.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const cd = r.headers.get('Content-Disposition') || '';
+        const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+        a.download = m ? decodeURIComponent(m[1]) : `contract.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+    } catch (e) {
+        alert('Ошибка экспорта: ' + (e.message || e));
+    }
 }
 
 // ===== ANALYZE =====

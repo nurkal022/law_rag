@@ -1254,6 +1254,43 @@ def analyze_contract():
         })
     return jsonify(result)
 
+
+@app.route('/api/contracts/export', methods=['POST'])
+def export_contract():
+    """Экспорт сгенерированного договора в DOCX или PDF."""
+    from contracts.exporter import to_docx, to_pdf
+
+    data = request.get_json(silent=True) or {}
+    text = data.get('contract_text') or ''
+    contract_type = data.get('contract_type')
+    fmt = (data.get('format') or 'docx').lower()
+
+    if not text.strip():
+        return jsonify({'success': False, 'error': 'Пустой текст договора'}), 400
+    if fmt not in ('docx', 'pdf'):
+        return jsonify({'success': False, 'error': 'Поддерживаются форматы docx и pdf'}), 400
+
+    try:
+        if fmt == 'docx':
+            blob, filename = to_docx(text, contract_type)
+            mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        else:
+            blob, filename = to_pdf(text, contract_type)
+            mime = 'application/pdf'
+    except Exception as e:
+        print(f"❌ contracts export ({fmt}): {e}")
+        return jsonify({'success': False, 'error': f'Ошибка экспорта: {e}'}), 500
+
+    log_usage('contracts', 'export', details={'type': contract_type, 'format': fmt, 'size': len(blob)})
+
+    from flask import send_file
+    return send_file(
+        io.BytesIO(blob),
+        mimetype=mime,
+        as_attachment=True,
+        download_name=filename,
+    )
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
