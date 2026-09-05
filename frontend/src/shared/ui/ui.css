@@ -94,10 +94,10 @@
   border-radius: 0;
   padding: 0 1px;
   white-space: nowrap;
-  /* Область нажатия до 44px без влияния на высоту строки: вертикальный
-     padding строчного элемента не увеличивает межстрочное расстояние. */
-  padding-block: var(--s-3);
-  margin-block: calc(var(--s-3) * -1);
+  /* Вертикальный padding ради области нажатия здесь не годится: border-bottom
+     рисуется по границе padding и уезжает на следующую строку. Требование к
+     размеру цели касания к строчным ссылкам внутри абзаца и не применяется —
+     это прямое исключение критерия. */
   transition: background-color var(--motion), border-color var(--motion);
 }
 button.cite { border-width: 0 0 1px 0; }
