@@ -8,6 +8,7 @@
 
 .ws-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s-2);
   margin-bottom: var(--s-6);
@@ -236,7 +237,7 @@
   content: '↓';
   font-family: var(--font-mono);
   font-size: var(--t-mono-size);
-  color: var(--ochre);
+  color: var(--ochre-ink);
 }
 
 .ws-link__norm {
@@ -259,7 +260,47 @@
 }
 
 @media (max-width: 860px) {
-  .ws-search { margin-left: 0; width: 100%; }
+  .ws-search { margin-left: 0; width: 100%; min-width: 0; }
   .ws-matter { flex-direction: column; gap: var(--s-2); }
-  .ws-matter__meta { align-items: flex-start; flex-direction: row; gap: var(--s-4); }
+  .ws-matter__meta { align-items: flex-start; flex-direction: row; flex-wrap: wrap; gap: var(--s-2) var(--s-4); }
+}
+
+@media (max-width: 620px) {
+  /* Зона перетаскивания: подпись и кнопка друг под другом */
+  .ws-drop { flex-direction: column; gap: var(--s-3); padding: var(--s-5) var(--s-4); }
+
+  /* Реестр: колонка «источник» уступает место названию и статусу.
+     Тот же смысл несёт колонка статуса, поэтому потери сведений нет. */
+  .ws-col-src { display: none; }
+  .ws-col-status { width: auto; }
+  .ws-status-cell { flex-wrap: wrap; white-space: normal; }
+
+  /* На телефоне строка реестра читается столбиком, а не уезжает вбок.
+     Шапка скрыта: название, дело и статус говорят сами за себя. */
+  .table:has(.ws-cell-doc) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .table:has(.ws-cell-doc) tr {
+    display: block;
+    border-bottom: var(--border);
+    padding: var(--s-3) 0;
+  }
+  .table:has(.ws-cell-doc) td {
+    display: block;
+    border: 0;
+    padding: 0;
+  }
+  .table:has(.ws-cell-doc) td + td { margin-top: var(--s-2); }
+  .table:has(.ws-cell-doc) .ws-col-src { display: none; }
+  .table:has(.ws-cell-doc) .ws-col-status { width: auto; }
+
+  /* Метаданные документа — столбиком, без слипшихся линий */
+  .ws-meta { gap: var(--s-2) var(--s-3); }
+
+  /* Поле вопроса по документу: кнопка под полем во всю ширину */
+  .ws-ask { flex-direction: column; align-items: stretch; gap: var(--s-3); }
 }

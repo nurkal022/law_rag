@@ -156,11 +156,35 @@
 /* ---------- Узкий экран ---------- */
 
 @media (max-width: 860px) {
-  .an-figures { gap: var(--s-5) 0; }
+  /* Вертикальные линии между показателями заменяются горизонтальными:
+     на двух столбцах вертикаль рвётся и читается как ошибка. */
+  .an-figures { gap: 0; }
   .an-figure {
     flex: 1 1 40%;
-    padding: 0 var(--s-4);
+    padding: var(--s-4) var(--s-4);
+    border-left: 0;
+    border-top: var(--border);
   }
+  .an-figure:nth-child(-n + 2) { border-top: 0; }
+  .an-figure:nth-child(odd) { padding-left: 0; }
+  .an-figure:nth-child(even) { padding-right: 0; }
+
+  /* Таблица тем прокручивается внутри своего блока, а не тянет страницу */
+  .an-block:has(> .table) { overflow-x: auto; }
+
   .an-risk { grid-template-columns: 1fr; }
   .an-risk__no { display: none; }
+}
+
+@media (max-width: 620px) {
+  .an-figures { padding: var(--s-4) 0; }
+  .an-figure__value { font-size: var(--t-h1-size); line-height: var(--t-h1-lh); }
+  .an-source { gap: var(--s-2) var(--s-3); }
+
+  /* Полоса доли не должна распирать последнюю колонку таблицы */
+  .an-share__track { min-width: var(--s-8); }
+  .an-share__num { min-width: 4ch; }
+
+  /* Подписи шкалы графика не слипаются */
+  .an-plot-scale { gap: var(--s-1); }
 }

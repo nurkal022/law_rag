@@ -283,9 +283,9 @@
 }
 
 /* ---------- Узкий экран ----------
-   До 1000px предпросмотр уходит под форму. */
+   До 1100px предпросмотр уходит под форму. */
 
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .ct-split { grid-template-columns: minmax(0, 1fr); row-gap: var(--s-8); }
   .ct-split__aside {
     border-left: 0;
@@ -295,8 +295,16 @@
   }
 }
 
+@media (max-width: 860px) {
+  .ct-drop { padding: var(--s-6) var(--s-4); }
+  .ct-doc__title { font-size: var(--t-h2-size); line-height: var(--t-h2-lh); }
+}
+
 @media (max-width: 620px) {
   .ct-grid { grid-template-columns: minmax(0, 1fr); }
   .ct-norm { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
-  .ct-summary { gap: var(--s-6); }
+  .ct-summary { gap: var(--s-4) var(--s-6); }
+  .ct-summary__value { font-size: var(--t-h1-size); line-height: var(--t-h1-lh); }
+  .ct-sec__title { font-size: var(--t-h3-size); }
+  .ct-actions > .btn { flex: 1 1 auto; }
 }

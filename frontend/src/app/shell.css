@@ -114,13 +114,13 @@
     width: auto;
     display: flex;
     gap: var(--s-1);
-    overflow-x: auto;
+    flex-wrap: wrap;
     border-right: 0;
     border-bottom: var(--border);
     padding: var(--s-2) var(--s-3);
   }
   .rail__group { display: none; }
-  .rail__link { white-space: nowrap; padding: var(--s-2) var(--s-3); }
+  .rail__link { white-space: nowrap; flex: 0 0 auto; padding: var(--s-2) var(--s-3); }
   .rail__link--on { border-left: 0; border-bottom: 2px solid var(--seal); padding-left: var(--s-3); }
   .page { padding: var(--s-4); }
 }
@@ -134,8 +134,10 @@
   .hdr { padding: 0 var(--s-4); gap: var(--s-3); }
   .hdr__user { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  /* Лента разделов прокручивается сама, не растягивая страницу */
-  .rail { flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  /* Разделы переносятся на вторую строку, а не прокручиваются вбок:
+     боковая прокрутка без видимого признака прячет половину навигации,
+     а растворяющая кромка делается градиентом, который здесь запрещён. */
+  .rail { flex-wrap: wrap; row-gap: var(--s-1); }
 
   /* Цель касания — не меньше 44px по высоте */
   .wordmark { display: inline-flex; align-items: center; min-height: 44px; }

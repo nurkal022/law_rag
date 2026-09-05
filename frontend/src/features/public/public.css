@@ -222,7 +222,7 @@
   font-weight: var(--t-display-weight);
   font-size: calc(var(--t-display-size) * 1.4);
   line-height: 1;
-  color: var(--ochre);
+  color: var(--ochre-ink);
   display: block;
   margin-bottom: var(--s-4);
 }
@@ -403,7 +403,17 @@
   .contacts li { flex-direction: column; gap: var(--s-1); }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 620px) {
+  /* Заголовок секции и пояснение к нему — друг под другом */
+  .pub-sec__head { flex-direction: column; gap: var(--s-2); }
+  .pub-note { max-width: none; }
+
+  .pub-hdr__actions { flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+  .pub-wordmark { display: inline-flex; align-items: center; min-height: 44px; }
+  .pub-cta { min-height: 44px; }
+  .pub-link { display: inline-flex; align-items: center; min-height: 44px; }
+  .pub-langs__item { display: inline-flex; align-items: center; min-height: 44px; padding-inline: var(--s-2); }
+
   .pub-ftr__cols { grid-template-columns: 1fr; }
   .who thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .who tr { display: block; border-bottom: var(--border); padding-block: var(--s-4); }

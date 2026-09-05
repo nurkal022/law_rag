@@ -175,3 +175,11 @@
   .laws-form { grid-template-columns: 1fr; }
   .laws-sec__body { padding-left: var(--s-2); }
 }
+
+@media (max-width: 620px) {
+  /* Строка раздела: состояние и знак раскрытия не выдавливают название */
+  .laws-sec__head { flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+  .laws-sec__name { flex: 1 1 60%; }
+  .laws-actions > .btn { flex: 1 1 auto; }
+  .laws-version { gap: var(--s-1) var(--s-3); }
+}

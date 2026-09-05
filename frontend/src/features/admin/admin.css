@@ -105,4 +105,21 @@
   .adm-metric:nth-child(2) { border-top: 0; }
   .adm-feed__who { display: none; }
   .adm-query { flex-wrap: wrap; }
+
+  /* Таблицы админки уже лежат в .adm-scroll — включаем инерцию прокрутки */
+  .adm-scroll { -webkit-overflow-scrolling: touch; }
+
+  .adm-section__head { flex-wrap: wrap; }
+}
+
+@media (max-width: 620px) {
+  .adm-metric__value { font-size: var(--t-h1-size); line-height: var(--t-h1-lh); }
+  .adm-metric { padding: var(--s-4) var(--s-3); }
+  .adm-metric:first-child,
+  .adm-metric:nth-child(odd) { padding-left: 0; }
+  .adm-metric:nth-child(even) { padding-right: 0; }
+
+  .adm-feed__time,
+  .adm-query__time { width: auto; }
+  .adm-query__meta { gap: var(--s-3); }
 }
