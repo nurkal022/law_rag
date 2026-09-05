@@ -289,7 +289,9 @@ function Preview({
 
 function DraftTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
   const toast = useToast()
-  const [typeId, setTypeId] = useState<string>('')
+  // Тип выбран сразу: пустой экран не показывает ни формы, ни предпросмотра
+  // и не даёт понять, что тут вообще происходит.
+  const [typeId, setTypeId] = useState<string>('supply')
   const [values, setValues] = useState<Values>({})
   const [built, setBuilt] = useState(false)
 
