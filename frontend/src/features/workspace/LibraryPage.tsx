@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import type { DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, DragEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Link } from '../../shared/nav'
 import {
   Body,
@@ -14,11 +15,13 @@ import {
   Table,
   TableTitle,
   UIText,
+  useToast,
 } from '../../shared/ui'
 import type { StatusKind } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
 import type { Dict, Lang } from '../../i18n'
 import './workspace.css'
+import './workspace.motion.css'
 
 const dict: Dict = {
   title: { ru: 'Мои документы', kz: 'Менің құжаттарым', en: 'My documents' },
@@ -65,6 +68,27 @@ const dict: Dict = {
     ru: 'В этом деле пока нет документов. Снимите фильтр или загрузите файл.',
     kz: 'Бұл істе әзірге құжат жоқ. Сүзгіні алып тастаңыз немесе файл жүктеңіз.',
     en: 'This matter has no documents yet. Clear the filter or upload a file.',
+  },
+  colActs: { ru: 'Действия', kz: 'Әрекеттер', en: 'Actions' },
+  remove: { ru: 'Удалить', kz: 'Жою', en: 'Delete' },
+  removeAria: {
+    ru: 'Удалить документ из библиотеки',
+    kz: 'Құжатты кітапханадан жою',
+    en: 'Delete document from the library',
+  },
+  removeAsk: { ru: 'Удалить безвозвратно?', kz: 'Қайтарымсыз жойылсын ба?', en: 'Delete permanently?' },
+  removeYes: { ru: 'Да, удалить', kz: 'Иә, жою', en: 'Yes, delete' },
+  cancel: { ru: 'Отмена', kz: 'Болдырмау', en: 'Cancel' },
+  removed: { ru: 'Документ удалён', kz: 'Құжат жойылды', en: 'Document deleted' },
+  queued: {
+    ru: 'Файл принят, идёт индексация',
+    kz: 'Файл қабылданды, индекстеу жүріп жатыр',
+    en: 'File accepted, indexing has started',
+  },
+  ready: {
+    ru: 'Документ проиндексирован и доступен в диалоге',
+    kz: 'Құжат индекстелді және диалогта қолжетімді',
+    en: 'The document is indexed and available in the conversation',
   },
 }
 
@@ -242,23 +266,117 @@ const STATUS_KEY: Record<DocStatus, string> = {
   failed: 'stFailed',
 }
 
+/**
+ * Реестр живёт в состоянии: загрузка, повтор индексации и удаление меняют его
+ * прямо на экране. До подключения /api/workspace/documents индексация —
+ * имитация с задержкой, а не запрос к серверу.
+ */
+const INDEX_MS = 2500
+
 export function LibraryPage() {
   const t = useT(dict)
   const { lang } = useLang()
-  const [filter, setFilter] = useState<string>('all')
+  const toast = useToast()
+  const [params, setParams] = useSearchParams()
+
+  const [docs, setDocs] = useState<DocRow[]>(DOCS)
   const [query, setQuery] = useState('')
   const [over, setOver] = useState(false)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+
+  const fileRef = useRef<HTMLInputElement>(null)
+  const timers = useRef<number[]>([])
+
+  useEffect(
+    () => () => {
+      for (const id of timers.current) window.clearTimeout(id)
+    },
+    [],
+  )
+
+  /* Фильтр по делу живёт в адресе: со страницы дел сюда приходят по ссылке
+     /workspace?matter=<id>, и выбранное дело должно быть уже подставлено. */
+  const fromUrl = params.get('matter')
+  const filter = fromUrl && fromUrl.trim() ? fromUrl : 'all'
+  /* Дело, созданное на соседнем экране, ещё не значится в замоканном списке:
+     его имя приходит вместе с фильтром, чтобы чип было чем подписать. */
+  const extraName = params.get('name')
+  const known = filter === 'all' || filter === 'none' || MATTER_IDS.includes(filter)
+
+  const setFilter = useCallback(
+    (id: string) => {
+      const next = new URLSearchParams(params)
+      if (id === 'all') next.delete('matter')
+      else next.set('matter', id)
+      setParams(next, { replace: true })
+      setConfirmId(null)
+    },
+    [params, setParams],
+  )
+
+  /** Перевод строки в «проиндексирован» через задержку — имитация фоновой индексации. */
+  const indexLater = useCallback(
+    (id: string, title: string) => {
+      const timer = window.setTimeout(() => {
+        setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, status: 'indexed' } : d)))
+        toast(`${title} — ${t('ready')}`, 'ok')
+      }, INDEX_MS)
+      timers.current.push(timer)
+    },
+    [toast, t],
+  )
+
+  const accept = useCallback(
+    (files: FileList | null) => {
+      const file = files?.[0]
+      if (!file) return
+      const id = `up-${Date.now()}`
+      const name = file.name.replace(/\.[^.]+$/, '')
+      const row: DocRow = {
+        id,
+        title: { ru: name, kz: name, en: name },
+        ref: `DOC-2026-${String(Math.floor(Math.random() * 900) + 100)}`,
+        matter: filter !== 'all' && filter !== 'none' ? filter : null,
+        source: 'upload',
+        status: 'pending',
+      }
+      setDocs((prev) => [row, ...prev])
+      setQuery('')
+      toast(t('queued'))
+      indexLater(id, name)
+    },
+    [filter, indexLater, toast, t],
+  )
+
+  const retry = useCallback(
+    (d: DocRow) => {
+      setDocs((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: 'pending' } : x)))
+      indexLater(d.id, d.title[lang])
+    },
+    [indexLater, lang],
+  )
+
+  const remove = useCallback(
+    (d: DocRow) => {
+      setDocs((prev) => prev.filter((x) => x.id !== d.id))
+      setConfirmId(null)
+      toast(`${t('removed')}: ${d.title[lang]}`, 'ok')
+    },
+    [toast, t, lang],
+  )
 
   const rows = useMemo(
     () =>
-      DOCS.filter((d) => {
+      docs.filter((d) => {
         if (filter === 'none' && d.matter !== null) return false
         if (filter !== 'all' && filter !== 'none' && d.matter !== filter) return false
         const q = query.trim().toLowerCase()
-        if (q && !d.title[lang].toLowerCase().includes(q)) return false
+        if (q && !d.title[lang].toLowerCase().includes(q) && !d.ref.toLowerCase().includes(q)) {
+          return false
+        }
         return true
       }),
-    [filter, query, lang],
+    [docs, filter, query, lang],
   )
 
   const onDrag = (e: DragEvent<HTMLDivElement>, state: boolean) => {
@@ -266,21 +384,42 @@ export function LibraryPage() {
     setOver(state)
   }
 
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setOver(false)
+    accept(e.dataTransfer?.files ?? null)
+  }
+
   return (
     <div className="page">
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".pdf,.docx"
+        className="visually-hidden"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          accept(e.currentTarget.files)
+          e.currentTarget.value = ''
+        }}
+      />
+
       <div className="page__head">
         <div className="page__title">
           <Display>{t('title')}</Display>
           <Body tone="mute">{t('subtitle')}</Body>
         </div>
         <div className="ws-actions">
-          <Button variant="primary">{t('upload')}</Button>
+          <Button variant="primary" onClick={() => fileRef.current?.click()}>
+            {t('upload')}
+          </Button>
         </div>
       </div>
 
       <div className="ws-filters">
         <Chip active={filter === 'all'} onClick={() => setFilter('all')}>
-          {t('all')} · {DOCS.length}
+          {t('all')} · {docs.length}
         </Chip>
         {MATTER_IDS.map((id) => (
           <Chip key={id} active={filter === id} onClick={() => setFilter(id)}>
@@ -290,6 +429,11 @@ export function LibraryPage() {
         <Chip active={filter === 'none'} onClick={() => setFilter('none')}>
           {t('noMatter')}
         </Chip>
+        {known ? null : (
+          <Chip active onClick={() => setFilter('all')}>
+            {extraName ?? filter}
+          </Chip>
+        )}
         <div className="ws-search">
           <Input
             type="search"
@@ -306,23 +450,31 @@ export function LibraryPage() {
         onDragOver={(e) => onDrag(e, true)}
         onDragEnter={(e) => onDrag(e, true)}
         onDragLeave={(e) => onDrag(e, false)}
-        onDrop={(e) => onDrag(e, false)}
+        onDrop={onDrop}
       >
         <Body tone="mute" style={{ margin: 0 }}>
           {over ? t('dropOver') : t('drop')}
         </Body>
-        <Button variant="secondary">{t('choose')}</Button>
+        <Button variant="secondary" onClick={() => fileRef.current?.click()}>
+          {t('choose')}
+        </Button>
       </div>
 
       {rows.length === 0 ? (
-        <Empty
-          title={DOCS.length === 0 ? t('emptyTitle') : t('emptyFilterTitle')}
-          action={<Button variant="primary">{t('upload')}</Button>}
-        >
-          {DOCS.length === 0 ? t('emptyBody') : t('emptyFilterBody')}
-        </Empty>
+        <div className="enter">
+          <Empty
+            title={docs.length === 0 ? t('emptyTitle') : t('emptyFilterTitle')}
+            action={
+              <Button variant="primary" onClick={() => fileRef.current?.click()}>
+                {t('upload')}
+              </Button>
+            }
+          >
+            {docs.length === 0 ? t('emptyBody') : t('emptyFilterBody')}
+          </Empty>
+        </div>
       ) : (
-        <Table>
+        <Table className="ws-registry">
           <thead>
             <tr>
               <th scope="col">{t('colDoc')}</th>
@@ -333,11 +485,15 @@ export function LibraryPage() {
               <th scope="col" className="ws-col-status">
                 {t('colStatus')}
               </th>
+              <th scope="col" className="ws-col-acts">
+                <span className="visually-hidden">{t('colActs')}</span>
+              </th>
             </tr>
           </thead>
-          <tbody>
-            {rows.map((d) => (
-              <tr key={d.id}>
+          {/* Ключ по составу фильтра: при смене выборки лента набегает заново */}
+          <tbody key={`${filter}:${query}`}>
+            {rows.map((d, i) => (
+              <tr key={d.id} className="enter-item" style={{ '--i': i } as CSSProperties}>
                 <td>
                   <div className="ws-cell-doc">
                     <Link to={`/workspace/documents/${d.id}`}>
@@ -360,11 +516,38 @@ export function LibraryPage() {
                   <div className="ws-status-cell">
                     <Status kind={STATUS_KIND[d.status]}>{t(STATUS_KEY[d.status])}</Status>
                     {d.status === 'failed' ? (
-                      <Button variant="ghost" aria-label={`${t('retryAria')}: ${d.title[lang]}`}>
+                      <Button
+                        variant="ghost"
+                        aria-label={`${t('retryAria')}: ${d.title[lang]}`}
+                        onClick={() => retry(d)}
+                      >
                         <Caption>{t('retry')}</Caption>
                       </Button>
                     ) : null}
                   </div>
+                </td>
+                <td className="ws-col-acts">
+                  {confirmId === d.id ? (
+                    <div className="ws-confirm swap">
+                      <Caption tone="mute">{t('removeAsk')}</Caption>
+                      <Button variant="danger" onClick={() => remove(d)}>
+                        <Caption>{t('removeYes')}</Caption>
+                      </Button>
+                      <Button variant="ghost" onClick={() => setConfirmId(null)}>
+                        <Caption>{t('cancel')}</Caption>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="ws-row-acts">
+                      <Button
+                        variant="ghost"
+                        aria-label={`${t('removeAria')}: ${d.title[lang]}`}
+                        onClick={() => setConfirmId(d.id)}
+                      >
+                        <Caption>{t('remove')}</Caption>
+                      </Button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

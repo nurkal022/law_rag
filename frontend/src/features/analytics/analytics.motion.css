@@ -1,0 +1,173 @@
+/* ============================================================
+   TURA — движение и действия экрана аналитики.
+
+   Дополняет analytics.css, не переписывая его: здесь только то, что
+   объясняет появление данных и отвечает на нажатие. Все длительности и
+   кривые — из tokens.css, поэтому «меньше движения» гасит слой разом.
+   ============================================================ */
+
+/* ---------- Полоса тональности ----------
+   Сегменты вырастают от нуля: доля набирается на глазах, а не возникает
+   готовой. Ширину задаёт разметка, здесь только правило перехода. */
+.an-bar__seg {
+  transition: width var(--dur-3) var(--ease-out), opacity var(--motion);
+  min-width: 0;
+}
+
+/* Легенда — фильтр. Кнопка без собственной плоскости: подчёркивание
+   насечкой снизу показывает, что выборка сужена. */
+.anm-legend-btn {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-1) 0;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color var(--motion), opacity var(--motion);
+}
+.anm-legend-btn:hover { border-bottom-color: var(--rule); }
+.anm-legend-btn--on { border-bottom-color: var(--ink); }
+/* Когда фильтр включён, остальные тональности отступают на второй план */
+.an-legend--filtered .anm-legend-btn:not(.anm-legend-btn--on) { opacity: 0.45; }
+.an-bar--filtered .an-bar__seg:not(.an-bar__seg--on) { opacity: 0.3; }
+
+/* ---------- График: линия отрисовывается ----------
+   pathLength=1 в разметке позволяет вести штрих в долях длины, не измеряя
+   геометрию в JS. Линия проводится слева направо — так же, как читают. */
+@keyframes anm-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+.anm-plot-wrap { position: relative; }
+
+.anm-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: anm-draw calc(var(--dur-3) * 1.6) var(--ease) both;
+}
+
+/* Точки садятся на уже проведённую линию, по одной */
+@keyframes anm-dot {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.anm-dot {
+  opacity: 0;
+  animation: anm-dot var(--motion-state) both;
+  animation-delay: calc(calc(var(--dur-3) * 1.4) + var(--i, 0) * var(--stagger));
+}
+.anm-dot--on { r: 3.5; }
+
+/* Прозрачная область захвата: попасть в точку радиусом 2 невозможно */
+.anm-hit { fill: none; pointer-events: all; cursor: pointer; }
+
+/* Подпись значения — над точкой, в разметке HTML: в SVG кегль поехал бы
+   вместе с масштабом viewBox. */
+.anm-tip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: var(--s-1) var(--s-2);
+  background: var(--ink);
+  color: var(--paper);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: anm-dot var(--motion) both;
+}
+.anm-tip .t-mono { color: var(--paper); }
+
+/* ---------- Заголовок-сортировка ---------- */
+.anm-sort {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-1);
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  transition: color var(--motion);
+}
+.anm-sort:hover { color: var(--ink); }
+.anm-sort__mark {
+  font-family: var(--font-mono);
+  font-size: var(--t-label-size);
+  color: var(--seal);
+  visibility: hidden;
+}
+.anm-sort--on .anm-sort__mark { visibility: visible; }
+
+/* ---------- Риск: раскрывающаяся строка ---------- */
+.anm-risk-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-4);
+  width: 100%;
+  padding: var(--s-4) var(--s-2);
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background-color var(--motion);
+}
+.anm-risk-head:hover { background: var(--surface); }
+
+.anm-risk-sign {
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
+  color: var(--mute);
+  transition: transform var(--motion-state);
+}
+.anm-risk--on .anm-risk-sign { transform: rotate(90deg); }
+
+.anm-risk-title {
+  font-family: var(--font-serif);
+  font-size: var(--t-legal-size);
+  line-height: var(--t-h2-lh);
+  color: var(--ink);
+}
+
+.anm-risk-body {
+  padding: 0 var(--s-2) var(--s-4) var(--s-8);
+  max-width: var(--measure);
+}
+.anm-risk-rec {
+  margin-top: var(--s-3);
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--ochre);
+}
+
+/* ---------- Ожидание разбора ---------- */
+.anm-wait {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-12) 0;
+  justify-items: start;
+}
+
+@media (max-width: 620px) {
+  .anm-risk-head { grid-template-columns: auto 1fr; }
+  .anm-risk-body { padding-left: var(--s-2); }
+}
+
+/* ---------- Строка риска целиком отдана раскрытию ----------
+   Отступы теперь несут заголовок-кнопка и раскрытая часть, иначе
+   поля складываются вдвое. */
+.an-risk {
+  display: block;
+  padding: 0;
+}
+
+/* Подпись оси графика: номер недели и значение отдельными строками —
+   через разделитель они рвались на узком экране. */
+.an-plot-scale__item { display: flex; flex-direction: column; gap: 1px; }
+.an-plot-scale__value { color: var(--ink-2); }

@@ -1,0 +1,110 @@
+/* ============================================================
+   TURA — рабочее место: движение и состояния, появившиеся вместе
+   с действиями (создание дела, удаление документа, подсветка привязки,
+   полная проверка).
+
+   Отдельный файл, потому что workspace.css ведёт агент адаптивной вёрстки.
+   Значения — только токенами из tokens.css.
+   ============================================================ */
+
+/* ---------- Форма создания дела ----------
+   Не карточка: блок отделён линиями сверху и снизу. */
+.ws-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4) 0 var(--s-5);
+  border-top: var(--border);
+  border-bottom: var(--border);
+  margin-bottom: var(--s-5);
+  max-width: var(--measure);
+}
+
+.ws-form__acts {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* ---------- Действия в строке реестра ---------- */
+.ws-row-acts {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  white-space: nowrap;
+}
+
+/* Подтверждение удаления встаёт на место строки действий,
+   а не всплывает отдельным окном поверх работы. */
+.ws-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  white-space: nowrap;
+}
+
+.ws-col-acts {
+  width: 1%;
+}
+
+/* ---------- Панель «пункт → норма»: подсветка привязки ----------
+   Главный жест экрана: нажатие на координату в тексте ответа приводит
+   к своей привязке. Подсветка держится ровно столько, чтобы взгляд успел
+   её найти, и уходит сама. */
+.ws-link {
+  scroll-margin-top: var(--s-8);
+}
+
+@keyframes ws-flash {
+  0% { background: var(--seal-wash); }
+  70% { background: var(--seal-wash); }
+  100% { background: transparent; }
+}
+
+.ws-link--flash {
+  animation: ws-flash calc(var(--dur-3) * 4) var(--ease) both;
+  border-left: 2px solid var(--seal);
+  padding-left: var(--s-3);
+  margin-left: calc(var(--s-3) * -1);
+}
+
+/* ---------- Полная проверка ---------- */
+.ws-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: var(--border);
+}
+
+.ws-check__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ws-finding {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.ws-finding:first-child { border-top: 0; }
+
+.ws-finding__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.ws-finding__text {
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink-2);
+  margin: 0;
+}
+
+/* ---------- Диалог по документу: набор ответа ---------- */
+.ws-answer--typing p:last-child { display: inline; }

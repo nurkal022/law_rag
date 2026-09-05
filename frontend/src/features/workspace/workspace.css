@@ -277,26 +277,26 @@
 
   /* На телефоне строка реестра читается столбиком, а не уезжает вбок.
      Шапка скрыта: название, дело и статус говорят сами за себя. */
-  .table:has(.ws-cell-doc) thead {
+  .ws-registry thead {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
   }
-  .table:has(.ws-cell-doc) tr {
+  .ws-registry tr {
     display: block;
     border-bottom: var(--border);
     padding: var(--s-3) 0;
   }
-  .table:has(.ws-cell-doc) td {
+  .ws-registry td {
     display: block;
     border: 0;
     padding: 0;
   }
-  .table:has(.ws-cell-doc) td + td { margin-top: var(--s-2); }
-  .table:has(.ws-cell-doc) .ws-col-src { display: none; }
-  .table:has(.ws-cell-doc) .ws-col-status { width: auto; }
+  .ws-registry td + td { margin-top: var(--s-2); }
+  .ws-registry .ws-col-src { display: none; }
+  .ws-registry .ws-col-status { width: auto; }
 
   /* Метаданные документа — столбиком, без слипшихся линий */
   .ws-meta { gap: var(--s-2) var(--s-3); }
