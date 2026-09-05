@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from '../../shared/nav'
 import { Caption, Label, UIText } from '../../shared/ui'
 import { LANGS, useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'

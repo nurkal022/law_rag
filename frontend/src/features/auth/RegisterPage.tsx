@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from '../../shared/nav'
 import { Body, Button, Caption, Cite, Display, Input, Label, Legal, UIText } from '../../shared/ui'
-import { useT } from '../../i18n'
+import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
+import { citeCode } from '../legal/cite'
 import './auth.css'
 
 const dict: Dict = {
@@ -72,6 +73,7 @@ const dict: Dict = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export function RegisterPage() {
+  const { lang } = useLang()
   const t = useT(dict)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -106,7 +108,7 @@ export function RegisterPage() {
         <div className="auth__sample">
           <Label>{t('sampleLabel')}</Label>
           <Body className="auth__sample-text">
-            {t('sampleText')} <Cite code="ГК РК 178.1" />
+            {t('sampleText')} <Cite code={citeCode('ГК РК 178.1', lang)} />
           </Body>
         </div>
       </aside>

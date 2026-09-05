@@ -14,8 +14,9 @@ import {
   UIText,
 } from '../../shared/ui'
 import type { StatusKind } from '../../shared/ui'
-import { useT } from '../../i18n'
+import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
+import { citeCode } from '../legal/cite'
 import './analytics.css'
 
 /* ============================================================
@@ -246,6 +247,7 @@ function pct(part: number, whole = TOTAL): number {
 }
 
 export function AnalyticsPage() {
+  const { lang } = useLang()
   const t = useT(dict)
   const fileRef = useRef<HTMLInputElement>(null)
   // Демо-набор показывается сразу: экран аналитики бессмыслен без данных,
@@ -472,7 +474,7 @@ export function AnalyticsPage() {
                     <div className="an-risk__main">
                       <Legal>{t(`rk_${r.id}` as Key)}</Legal>
                       <div className="an-risk__meta">
-                        <Cite code={r.cite} />
+                        <Cite code={citeCode(r.cite, lang)} />
                         <Caption tone="mute">{t(kindKey[r.kind])}</Caption>
                         <Status kind={r.level}>{t(levelKey[r.level])}</Status>
                         {theme ? (

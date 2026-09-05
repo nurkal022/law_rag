@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { DragEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from '../../shared/nav'
 import {
   Body,
   Button,
@@ -16,8 +16,8 @@ import {
   UIText,
 } from '../../shared/ui'
 import type { StatusKind } from '../../shared/ui'
-import { useT } from '../../i18n'
-import type { Dict } from '../../i18n'
+import { useLang, useT } from '../../i18n'
+import type { Dict, Lang } from '../../i18n'
 import './workspace.css'
 
 const dict: Dict = {
@@ -71,10 +71,36 @@ const dict: Dict = {
 type Source = 'upload' | 'tura'
 type DocStatus = 'indexed' | 'pending' | 'failed'
 
+/** Строка на трёх языках. */
+type L10n = Record<Lang, string>
+
+/** Названия дел, к которым привязаны документы. Ключ — идентификатор дела. */
+const MATTER_NAMES: Record<string, L10n> = {
+  'astana-logistik': {
+    ru: 'ТОО «Астана Логистик»',
+    kz: '«Астана Логистик» ЖШС',
+    en: 'Astana Logistik LLP',
+  },
+  'sklad-ryskulova': {
+    ru: 'Аренда склада на Рыскулова',
+    kz: 'Рысқұлов көшесіндегі қойманы жалға алу',
+    en: 'Warehouse lease on Ryskulov street',
+  },
+  kaztransservis: {
+    ru: 'Спор с АО «КазТрансСервис»',
+    kz: '«ҚазТрансСервис» АҚ-мен дау',
+    en: 'Dispute with KazTransService JSC',
+  },
+  hr: { ru: 'Кадровые документы', kz: 'Кадр құжаттары', en: 'HR documents' },
+}
+
+const MATTER_IDS = Object.keys(MATTER_NAMES)
+
 interface DocRow {
   id: string
-  title: string
+  title: L10n
   ref: string
+  /** Идентификатор дела либо null, если документ ни к одному не привязан. */
   matter: string | null
   source: Source
   status: DocStatus
@@ -82,16 +108,126 @@ interface DocRow {
 
 /** Замоканный реестр — до подключения /api/workspace/documents. */
 const DOCS: DocRow[] = [
-  { id: '47-p', title: 'Договор поставки № 47-П', ref: 'DOC-2026-047', matter: 'ТОО «Астана Логистик»', source: 'upload', status: 'indexed' },
-  { id: 'lease-sk', title: 'Договор аренды складского помещения', ref: 'DOC-2026-051', matter: 'Аренда склада на Рыскулова', source: 'upload', status: 'indexed' },
-  { id: 'charter', title: 'Устав ТОО «Астана Логистик»', ref: 'DOC-2026-012', matter: 'ТОО «Астана Логистик»', source: 'upload', status: 'indexed' },
-  { id: 'poa', title: 'Доверенность на представительство в суде', ref: 'DOC-2026-063', matter: 'Спор с АО «КазТрансСервис»', source: 'tura', status: 'indexed' },
-  { id: 'nda', title: 'Соглашение о неразглашении с подрядчиком', ref: 'DOC-2026-070', matter: null, source: 'tura', status: 'pending' },
-  { id: 'claim', title: 'Претензия о взыскании неустойки', ref: 'DOC-2026-072', matter: 'Спор с АО «КазТрансСервис»', source: 'tura', status: 'indexed' },
-  { id: 'bill', title: 'Законопроект о внесении изменений в Закон «О госзакупках»', ref: 'DOC-2026-058', matter: null, source: 'tura', status: 'indexed' },
-  { id: 'labor', title: 'Трудовой договор с директором филиала', ref: 'DOC-2026-039', matter: 'Кадровые документы', source: 'upload', status: 'failed' },
-  { id: 'act', title: 'Акт сверки взаиморасчётов за 2025 год', ref: 'DOC-2026-044', matter: 'ТОО «Астана Логистик»', source: 'upload', status: 'failed' },
-  { id: 'protocol', title: 'Протокол общего собрания участников', ref: 'DOC-2026-018', matter: 'Аренда склада на Рыскулова', source: 'upload', status: 'indexed' },
+  {
+    id: '47-p',
+    title: {
+      ru: 'Договор поставки № 47-П',
+      kz: '№ 47-П жеткізу шарты',
+      en: 'Supply contract No. 47-P',
+    },
+    ref: 'DOC-2026-047',
+    matter: 'astana-logistik',
+    source: 'upload',
+    status: 'indexed',
+  },
+  {
+    id: 'lease-sk',
+    title: {
+      ru: 'Договор аренды складского помещения',
+      kz: 'Қойма үй-жайын жалға алу шарты',
+      en: 'Warehouse lease agreement',
+    },
+    ref: 'DOC-2026-051',
+    matter: 'sklad-ryskulova',
+    source: 'upload',
+    status: 'indexed',
+  },
+  {
+    id: 'charter',
+    title: {
+      ru: 'Устав ТОО «Астана Логистик»',
+      kz: '«Астана Логистик» ЖШС жарғысы',
+      en: 'Charter of Astana Logistik LLP',
+    },
+    ref: 'DOC-2026-012',
+    matter: 'astana-logistik',
+    source: 'upload',
+    status: 'indexed',
+  },
+  {
+    id: 'poa',
+    title: {
+      ru: 'Доверенность на представительство в суде',
+      kz: 'Сотта өкілдік етуге сенімхат',
+      en: 'Power of attorney for court representation',
+    },
+    ref: 'DOC-2026-063',
+    matter: 'kaztransservis',
+    source: 'tura',
+    status: 'indexed',
+  },
+  {
+    id: 'nda',
+    title: {
+      ru: 'Соглашение о неразглашении с подрядчиком',
+      kz: 'Мердігермен жасалған құпиялылық туралы келісім',
+      en: 'Non-disclosure agreement with a contractor',
+    },
+    ref: 'DOC-2026-070',
+    matter: null,
+    source: 'tura',
+    status: 'pending',
+  },
+  {
+    id: 'claim',
+    title: {
+      ru: 'Претензия о взыскании неустойки',
+      kz: 'Тұрақсыздық айыбын өндіру туралы кінәрат-талап',
+      en: 'Letter of claim for recovery of a penalty',
+    },
+    ref: 'DOC-2026-072',
+    matter: 'kaztransservis',
+    source: 'tura',
+    status: 'indexed',
+  },
+  {
+    id: 'bill',
+    title: {
+      ru: 'Законопроект о внесении изменений в Закон «О госзакупках»',
+      kz: '«Мемлекеттік сатып алу туралы» Заңға өзгерістер енгізу туралы заң жобасы',
+      en: 'Draft law amending the Public Procurement Act',
+    },
+    ref: 'DOC-2026-058',
+    matter: null,
+    source: 'tura',
+    status: 'indexed',
+  },
+  {
+    id: 'labor',
+    title: {
+      ru: 'Трудовой договор с директором филиала',
+      kz: 'Филиал директорымен жасалған еңбек шарты',
+      en: 'Employment contract with the branch director',
+    },
+    ref: 'DOC-2026-039',
+    matter: 'hr',
+    source: 'upload',
+    status: 'failed',
+  },
+  {
+    id: 'act',
+    title: {
+      ru: 'Акт сверки взаиморасчётов за 2025 год',
+      kz: '2025 жылғы өзара есеп айырысуды салыстыру актісі',
+      en: 'Reconciliation statement for 2025',
+    },
+    ref: 'DOC-2026-044',
+    matter: 'astana-logistik',
+    source: 'upload',
+    status: 'failed',
+  },
+  {
+    id: 'protocol',
+    title: {
+      ru: 'Протокол общего собрания участников',
+      kz: 'Қатысушылардың жалпы жиналысының хаттамасы',
+      en: 'Minutes of the general meeting of participants',
+    },
+    ref: 'DOC-2026-018',
+    matter: 'sklad-ryskulova',
+    source: 'upload',
+    status: 'indexed',
+  },
 ]
 
 const STATUS_KIND: Record<DocStatus, StatusKind> = {
@@ -106,15 +242,9 @@ const STATUS_KEY: Record<DocStatus, string> = {
   failed: 'stFailed',
 }
 
-const MATTERS = [
-  'ТОО «Астана Логистик»',
-  'Аренда склада на Рыскулова',
-  'Спор с АО «КазТрансСервис»',
-  'Кадровые документы',
-]
-
 export function LibraryPage() {
   const t = useT(dict)
+  const { lang } = useLang()
   const [filter, setFilter] = useState<string>('all')
   const [query, setQuery] = useState('')
   const [over, setOver] = useState(false)
@@ -125,10 +255,10 @@ export function LibraryPage() {
         if (filter === 'none' && d.matter !== null) return false
         if (filter !== 'all' && filter !== 'none' && d.matter !== filter) return false
         const q = query.trim().toLowerCase()
-        if (q && !d.title.toLowerCase().includes(q)) return false
+        if (q && !d.title[lang].toLowerCase().includes(q)) return false
         return true
       }),
-    [filter, query],
+    [filter, query, lang],
   )
 
   const onDrag = (e: DragEvent<HTMLDivElement>, state: boolean) => {
@@ -152,9 +282,9 @@ export function LibraryPage() {
         <Chip active={filter === 'all'} onClick={() => setFilter('all')}>
           {t('all')} · {DOCS.length}
         </Chip>
-        {MATTERS.map((m) => (
-          <Chip key={m} active={filter === m} onClick={() => setFilter(m)}>
-            {m}
+        {MATTER_IDS.map((id) => (
+          <Chip key={id} active={filter === id} onClick={() => setFilter(id)}>
+            {MATTER_NAMES[id][lang]}
           </Chip>
         ))}
         <Chip active={filter === 'none'} onClick={() => setFilter('none')}>
@@ -211,14 +341,14 @@ export function LibraryPage() {
                 <td>
                   <div className="ws-cell-doc">
                     <Link to={`/workspace/documents/${d.id}`}>
-                      <TableTitle>{d.title}</TableTitle>
+                      <TableTitle>{d.title[lang]}</TableTitle>
                     </Link>
                     <Mono tone="mute">{d.ref}</Mono>
                   </div>
                 </td>
                 <td>
                   {d.matter ? (
-                    <UIText tone="ink2">{d.matter}</UIText>
+                    <UIText tone="ink2">{MATTER_NAMES[d.matter][lang]}</UIText>
                   ) : (
                     <UIText tone="mute">{t('dash')}</UIText>
                   )}
@@ -230,7 +360,7 @@ export function LibraryPage() {
                   <div className="ws-status-cell">
                     <Status kind={STATUS_KIND[d.status]}>{t(STATUS_KEY[d.status])}</Status>
                     {d.status === 'failed' ? (
-                      <Button variant="ghost" aria-label={`${t('retryAria')}: ${d.title}`}>
+                      <Button variant="ghost" aria-label={`${t('retryAria')}: ${d.title[lang]}`}>
                         <Caption>{t('retry')}</Caption>
                       </Button>
                     ) : null}

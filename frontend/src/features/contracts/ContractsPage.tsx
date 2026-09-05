@@ -21,6 +21,7 @@ import {
 import type { StatusKind, TabItem } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
 import type { Dict, Lang } from '../../i18n'
+import { citeCode } from '../legal/cite'
 
 import './contracts.css'
 import {
@@ -274,7 +275,7 @@ function Preview({
         </div>
         {type.norms.map((n) => (
           <div className="ct-norm" key={n.code}>
-            <Cite code={n.code} />
+            <Cite code={citeCode(n.code, lang)} />
             <span className="ct-norm__note">{tr(n.note, lang)}</span>
           </div>
         ))}
@@ -530,7 +531,7 @@ function ReviewTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
                     <p className="ct-finding__quote">{tr(f.quote, lang)}</p>
 
                     <div className="ct-finding__norm">
-                      <Cite code={f.cite} />
+                      <Cite code={citeCode(f.cite, lang)} />
                       <Caption tone="mute">{tr(f.citeNote, lang)}</Caption>
                     </div>
 

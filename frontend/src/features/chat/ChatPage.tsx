@@ -14,6 +14,7 @@ import {
 } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
 import type { Dict, Lang } from '../../i18n'
+import { citeCode } from '../legal/cite'
 import { ANSWERS, EXAMPLES, pickAnswer } from './mock'
 import type { MockAnswer, Seg } from './mock'
 import './chat.css'
@@ -233,7 +234,7 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
                 <div className="chat__source" key={s.code}>
                   <div className="chat__source-head">
                     <span className="chat__source-doc">{s.doc[lang as Lang]}</span>
-                    <Cite code={s.code} onClick={() => openCite(s.code)} />
+                    <Cite code={citeCode(s.code, lang)} onClick={() => openCite(citeCode(s.code, lang))} />
                   </div>
                   <div className="chat__source-text t-legal">{s.excerpt[lang as Lang]}</div>
                 </div>

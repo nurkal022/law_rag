@@ -81,12 +81,15 @@ const dict: Dict = {
 
 /* ---------- Данные (статические, правдоподобные) ---------- */
 
-const metrics = [
-  { key: 'mUsers', value: '1 284', delta: 'mUsersDelta' },
-  { key: 'mQuestions', value: '3 917', delta: 'mQuestionsDelta' },
-  { key: 'mDocs', value: '412', delta: 'mDocsDelta' },
-  { key: 'mLatency', value: '4,2 с', delta: 'mLatencyDelta' },
-] as const
+/** Строка на трёх языках. */
+type L10n = Record<Lang, string>
+
+const metrics: { key: string; value: L10n; delta: string }[] = [
+  { key: 'mUsers', value: { ru: '1 284', kz: '1 284', en: '1,284' }, delta: 'mUsersDelta' },
+  { key: 'mQuestions', value: { ru: '3 917', kz: '3 917', en: '3,917' }, delta: 'mQuestionsDelta' },
+  { key: 'mDocs', value: { ru: '412', kz: '412', en: '412' }, delta: 'mDocsDelta' },
+  { key: 'mLatency', value: { ru: '4,2 с', kz: '4,2 с', en: '4.2 s' }, delta: 'mLatencyDelta' },
+]
 
 const feed = [
   { time: '14:52', who: 'a.suleimenova@vsk.kz', key: 'evAsk' },
@@ -107,15 +110,70 @@ const users = [
   { email: 's.abenov@kaspi.kz', name: 'Санжар Әбенов', signup: '2026-06-27', seen: '2026-09-04 18:20', asks: 94 },
 ] as const
 
-const docs = [
-  { title: 'Гражданский кодекс РК (общая часть)', size: '4,8 МБ', chunks: 3128, loaded: '2025-10-14' },
-  { title: 'Гражданский кодекс РК (особенная часть)', size: '5,6 МБ', chunks: 3742, loaded: '2025-10-14' },
-  { title: 'Трудовой кодекс РК', size: '2,1 МБ', chunks: 1416, loaded: '2025-10-21' },
-  { title: 'Налоговый кодекс РК', size: '7,3 МБ', chunks: 5024, loaded: '2026-01-09' },
-  { title: 'Кодекс РК об административных правонарушениях', size: '6,2 МБ', chunks: 4310, loaded: '2026-01-09' },
-  { title: 'Закон «О государственных закупках»', size: '1,4 МБ', chunks: 902, loaded: '2026-04-02' },
-  { title: 'Закон «О персональных данных и их защите»', size: '0,6 МБ', chunks: 318, loaded: '2026-05-16' },
-] as const
+const docs: { title: L10n; size: L10n; chunks: number; loaded: string }[] = [
+  {
+    title: {
+      ru: 'Гражданский кодекс РК (общая часть)',
+      kz: 'ҚР Азаматтық кодексі (жалпы бөлім)',
+      en: 'Civil Code of the RK (general part)',
+    },
+    size: { ru: '4,8 МБ', kz: '4,8 МБ', en: '4.8 MB' },
+    chunks: 3128,
+    loaded: '2025-10-14',
+  },
+  {
+    title: {
+      ru: 'Гражданский кодекс РК (особенная часть)',
+      kz: 'ҚР Азаматтық кодексі (ерекше бөлім)',
+      en: 'Civil Code of the RK (special part)',
+    },
+    size: { ru: '5,6 МБ', kz: '5,6 МБ', en: '5.6 MB' },
+    chunks: 3742,
+    loaded: '2025-10-14',
+  },
+  {
+    title: { ru: 'Трудовой кодекс РК', kz: 'ҚР Еңбек кодексі', en: 'Labour Code of the RK' },
+    size: { ru: '2,1 МБ', kz: '2,1 МБ', en: '2.1 MB' },
+    chunks: 1416,
+    loaded: '2025-10-21',
+  },
+  {
+    title: { ru: 'Налоговый кодекс РК', kz: 'ҚР Салық кодексі', en: 'Tax Code of the RK' },
+    size: { ru: '7,3 МБ', kz: '7,3 МБ', en: '7.3 MB' },
+    chunks: 5024,
+    loaded: '2026-01-09',
+  },
+  {
+    title: {
+      ru: 'Кодекс РК об административных правонарушениях',
+      kz: 'ҚР Әкімшілік құқық бұзушылық туралы кодексі',
+      en: 'Code of the RK on Administrative Offences',
+    },
+    size: { ru: '6,2 МБ', kz: '6,2 МБ', en: '6.2 MB' },
+    chunks: 4310,
+    loaded: '2026-01-09',
+  },
+  {
+    title: {
+      ru: 'Закон «О государственных закупках»',
+      kz: '«Мемлекеттік сатып алу туралы» Заң',
+      en: 'Law on Public Procurement',
+    },
+    size: { ru: '1,4 МБ', kz: '1,4 МБ', en: '1.4 MB' },
+    chunks: 902,
+    loaded: '2026-04-02',
+  },
+  {
+    title: {
+      ru: 'Закон «О персональных данных и их защите»',
+      kz: '«Дербес деректер және оларды қорғау туралы» Заң',
+      en: 'Law on Personal Data and its Protection',
+    },
+    size: { ru: '0,6 МБ', kz: '0,6 МБ', en: '0.6 MB' },
+    chunks: 318,
+    loaded: '2026-05-16',
+  },
+]
 
 const queries: {
   time: string
@@ -178,12 +236,44 @@ const queries: {
   },
 ]
 
-const keys = [
-  { name: 'Мобильное приложение', prefix: 'tura_live_9f2c…', created: '2026-01-12', used: '2026-09-05 14:12', limit: '20 000' },
-  { name: 'Портал госзакупок', prefix: 'tura_live_4ab7…', created: '2026-03-30', used: '2026-09-05 11:44', limit: '5 000' },
-  { name: 'Стенд разработки', prefix: 'tura_test_1d80…', created: '2026-06-08', used: '2026-08-29 09:03', limit: '500' },
-  { name: 'Интеграция АО «Каспий»', prefix: 'tura_live_7e51…', created: '2026-08-21', used: '', limit: '1 000' },
-] as const
+const keys: { name: L10n; prefix: string; created: string; used: string; limit: L10n }[] = [
+  {
+    name: { ru: 'Мобильное приложение', kz: 'Мобильді қосымша', en: 'Mobile app' },
+    prefix: 'tura_live_9f2c…',
+    created: '2026-01-12',
+    used: '2026-09-05 14:12',
+    limit: { ru: '20 000', kz: '20 000', en: '20,000' },
+  },
+  {
+    name: {
+      ru: 'Портал госзакупок',
+      kz: 'Мемлекеттік сатып алу порталы',
+      en: 'Public procurement portal',
+    },
+    prefix: 'tura_live_4ab7…',
+    created: '2026-03-30',
+    used: '2026-09-05 11:44',
+    limit: { ru: '5 000', kz: '5 000', en: '5,000' },
+  },
+  {
+    name: { ru: 'Стенд разработки', kz: 'Әзірлеу стенді', en: 'Development sandbox' },
+    prefix: 'tura_test_1d80…',
+    created: '2026-06-08',
+    used: '2026-08-29 09:03',
+    limit: { ru: '500', kz: '500', en: '500' },
+  },
+  {
+    name: {
+      ru: 'Интеграция АО «Каспий»',
+      kz: '«Каспий» АҚ интеграциясы',
+      en: 'Kaspiy JSC integration',
+    },
+    prefix: 'tura_live_7e51…',
+    created: '2026-08-21',
+    used: '',
+    limit: { ru: '1 000', kz: '1 000', en: '1,000' },
+  },
+]
 
 const rateKind: Record<'up' | 'down' | 'none', StatusKind> = {
   up: 'ok',
@@ -228,7 +318,7 @@ export function AdminPage() {
           <div className="adm-metrics">
             {metrics.map((m) => (
               <div key={m.key} className="adm-metric">
-                <div className="adm-metric__value">{m.value}</div>
+                <div className="adm-metric__value">{m.value[lang]}</div>
                 <Label className="adm-metric__label">{t(m.key)}</Label>
                 <Caption tone="mute" className="adm-metric__delta">
                   {t(m.delta)}
@@ -303,11 +393,11 @@ export function AdminPage() {
             </thead>
             <tbody>
               {docs.map((d) => (
-                <tr key={d.title}>
+                <tr key={d.loaded + d.title.ru}>
                   <td>
-                    <TableTitle>{d.title}</TableTitle>
+                    <TableTitle>{d.title[lang]}</TableTitle>
                   </td>
-                  <td>{d.size}</td>
+                  <td>{d.size[lang]}</td>
                   <td className="adm-num">
                     <Mono>{d.chunks}</Mono>
                   </td>
@@ -362,7 +452,7 @@ export function AdminPage() {
                 {keys.map((k) => (
                   <tr key={k.prefix}>
                     <td>
-                      <TableTitle>{k.name}</TableTitle>
+                      <TableTitle>{k.name[lang]}</TableTitle>
                     </td>
                     <td>
                       <Mono>{k.prefix}</Mono>
@@ -374,11 +464,11 @@ export function AdminPage() {
                       {k.used ? <Mono tone="mute">{k.used}</Mono> : <Caption tone="mute">{t('never')}</Caption>}
                     </td>
                     <td className="adm-num">
-                      <Mono>{k.limit}</Mono>
+                      <Mono>{k.limit[lang]}</Mono>
                     </td>
                     <td>
                       <div className="adm-actions">
-                        <Button variant="danger" aria-label={`${t('keyRevokeAria')}: ${k.name}`}>
+                        <Button variant="danger" aria-label={`${t('keyRevokeAria')}: ${k.name[lang]}`}>
                           {t('keyRevoke')}
                         </Button>
                       </div>

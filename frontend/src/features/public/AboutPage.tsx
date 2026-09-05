@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../../shared/nav'
 import { Body, Cite, H2, Label, Legal } from '../../shared/ui'
-import { useT } from '../../i18n'
+import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
+import { citeCode } from '../legal/cite'
 import { PublicPage } from './PublicChrome'
 import './public.css'
 
@@ -168,6 +169,7 @@ const dict: Dict = {
 }
 
 export function AboutPage() {
+  const { lang } = useLang()
   const t = useT(dict)
 
   return (
@@ -225,7 +227,7 @@ export function AboutPage() {
           <Legal as="p">{t('tech3')}</Legal>
           <Legal as="p">
             {t('tech4pre')}
-            <Cite code="ГК РК 178.1" />
+            <Cite code={citeCode('ГК РК 178.1', lang)} />
             {t('tech4post')}
           </Legal>
         </div>

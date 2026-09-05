@@ -14,7 +14,7 @@ import {
   UIText,
 } from '../../shared/ui'
 import type { StatusKind } from '../../shared/ui'
-import { useT } from '../../i18n'
+import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import './laws.css'
 
@@ -423,13 +423,16 @@ const emptyForm: Form = { title: '', reason: '', subject: '', acts: '' }
 
 export function LawsPage() {
   const t = useT(dict)
+  const { lang } = useLang()
 
   const [selected, setSelected] = useState<string | null>('procurement')
+  /* Форма редактируется пользователем, поэтому язык берётся только при первом
+     построении: иначе смена языка затирала бы внесённые правки. */
   const [form, setForm] = useState<Form>(() => ({
-    title: dict.dProcurement.ru,
-    reason: dict.rProcurement.ru,
-    subject: dict.sProcurement.ru,
-    acts: dict.aProcurement.ru,
+    title: dict.dProcurement[lang],
+    reason: dict.rProcurement[lang],
+    subject: dict.sProcurement[lang],
+    acts: dict.aProcurement[lang],
   }))
   const [built, setBuilt] = useState(true)
   const [open, setOpen] = useState<string | null>('explanatory_note')

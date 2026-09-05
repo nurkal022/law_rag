@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../../shared/nav'
 import { Body, Caption, Cite, H2, H3, Label, Legal, UIText } from '../../shared/ui'
-import { useT } from '../../i18n'
+import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
+import { citeCode } from '../legal/cite'
 import { PublicPage } from './PublicChrome'
 import './public.css'
 
@@ -232,6 +233,7 @@ const TRUST = [
 ] as const
 
 export function HomePage() {
+  const { lang } = useLang()
   const t = useT(dict)
 
   return (
@@ -265,14 +267,14 @@ export function HomePage() {
             <Label className="spec__label">{t('specALabel')}</Label>
             <Legal as="p" className="spec__a">
               {t('specA1pre')}
-              <Cite code="ГК РК 178.1" />
+              <Cite code={citeCode('ГК РК 178.1', lang)} />
               {t('specA1post')}
-              <Cite code="ГК РК 180.1" />
+              <Cite code={citeCode('ГК РК 180.1', lang)} />
               {t('specA1end')}
             </Legal>
             <Legal as="p" className="spec__a">
               {t('specA2pre')}
-              <Cite code="ГК РК 159.11" />
+              <Cite code={citeCode('ГК РК 159.11', lang)} />
               {t('specA2end')}
             </Legal>
           </div>
@@ -281,15 +283,15 @@ export function HomePage() {
             <Label className="spec__label">{t('specSrcLabel')}</Label>
             <div className="spec__srcs">
               <span className="spec__src">
-                <Cite code="ГК РК 178.1" />
+                <Cite code={citeCode('ГК РК 178.1', lang)} />
                 <Caption tone="mute">{t('specSrc1')}</Caption>
               </span>
               <span className="spec__src">
-                <Cite code="ГК РК 180.1" />
+                <Cite code={citeCode('ГК РК 180.1', lang)} />
                 <Caption tone="mute">{t('specSrc2')}</Caption>
               </span>
               <span className="spec__src">
-                <Cite code="ГПК РК 30.1" />
+                <Cite code={citeCode('ГПК РК 30.1', lang)} />
                 <Caption tone="mute">{t('specSrc3')}</Caption>
               </span>
             </div>

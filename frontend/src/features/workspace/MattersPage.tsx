@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link } from '../../shared/nav'
 import { Body, Button, Caption, Display, Empty, H2, Label, Mono, UIText } from '../../shared/ui'
-import { useT } from '../../i18n'
-import type { Dict } from '../../i18n'
+import { useLang, useT } from '../../i18n'
+import type { Dict, Lang } from '../../i18n'
 import './workspace.css'
 
 const dict: Dict = {
@@ -24,12 +24,15 @@ const dict: Dict = {
   },
 }
 
+/** Строка на трёх языках. */
+type L10n = Record<Lang, string>
+
 interface Matter {
   id: string
-  title: string
-  description: string
+  title: L10n
+  description: L10n
   docs: number
-  updated: string
+  updated: L10n
   archived?: boolean
 }
 
@@ -37,53 +40,99 @@ interface Matter {
 const MATTERS: Matter[] = [
   {
     id: 'astana-logistik',
-    title: 'ТОО «Астана Логистик»',
-    description: 'Корпоративное сопровождение: устав, договоры поставки, акты сверки.',
+    title: {
+      ru: 'ТОО «Астана Логистик»',
+      kz: '«Астана Логистик» ЖШС',
+      en: 'Astana Logistik LLP',
+    },
+    description: {
+      ru: 'Корпоративное сопровождение: устав, договоры поставки, акты сверки.',
+      kz: 'Корпоративтік сүйемелдеу: жарғы, жеткізу шарттары, салыстыру актілері.',
+      en: 'Corporate support: charter, supply contracts, reconciliation statements.',
+    },
     docs: 12,
-    updated: '4 сентября 2026',
+    updated: { ru: '4 сентября 2026', kz: '2026 жылғы 4 қыркүйек', en: '4 September 2026' },
   },
   {
     id: 'sklad-ryskulova',
-    title: 'Аренда склада на Рыскулова',
-    description: 'Долгосрочная аренда 1 400 м², согласование условий с арендодателем.',
+    title: {
+      ru: 'Аренда склада на Рыскулова',
+      kz: 'Рысқұлов көшесіндегі қойманы жалға алу',
+      en: 'Warehouse lease on Ryskulov street',
+    },
+    description: {
+      ru: 'Долгосрочная аренда 1 400 м², согласование условий с арендодателем.',
+      kz: '1 400 ш. м. ұзақ мерзімді жалдау, жалға берушімен талаптарды келісу.',
+      en: 'Long-term lease of 1,400 sq m; terms under negotiation with the landlord.',
+    },
     docs: 6,
-    updated: '2 сентября 2026',
+    updated: { ru: '2 сентября 2026', kz: '2026 жылғы 2 қыркүйек', en: '2 September 2026' },
   },
   {
     id: 'kaztransservis',
-    title: 'Спор с АО «КазТрансСервис»',
-    description: 'Взыскание неустойки за просрочку поставки, досудебный порядок.',
+    title: {
+      ru: 'Спор с АО «КазТрансСервис»',
+      kz: '«ҚазТрансСервис» АҚ-мен дау',
+      en: 'Dispute with KazTransService JSC',
+    },
+    description: {
+      ru: 'Взыскание неустойки за просрочку поставки, досудебный порядок.',
+      kz: 'Жеткізуді кешіктіргені үшін тұрақсыздық айыбын өндіру, сотқа дейінгі тәртіп.',
+      en: 'Recovery of a penalty for late delivery; pre-action stage.',
+    },
     docs: 9,
-    updated: '28 августа 2026',
+    updated: { ru: '28 августа 2026', kz: '2026 жылғы 28 тамыз', en: '28 August 2026' },
   },
   {
     id: 'hr',
-    title: 'Кадровые документы',
-    description: 'Трудовые договоры, должностные инструкции, приказы по филиалу.',
+    title: { ru: 'Кадровые документы', kz: 'Кадр құжаттары', en: 'HR documents' },
+    description: {
+      ru: 'Трудовые договоры, должностные инструкции, приказы по филиалу.',
+      kz: 'Еңбек шарттары, лауазымдық нұсқаулықтар, филиал бойынша бұйрықтар.',
+      en: 'Employment contracts, job descriptions, branch orders.',
+    },
     docs: 21,
-    updated: '15 августа 2026',
+    updated: { ru: '15 августа 2026', kz: '2026 жылғы 15 тамыз', en: '15 August 2026' },
   },
   {
     id: 'tender-2025',
-    title: 'Госзакупки 2025: тендер на перевозки',
-    description: 'Завершено: заявка отозвана, документы сохранены для истории.',
+    title: {
+      ru: 'Госзакупки 2025: тендер на перевозки',
+      kz: '2025 мемлекеттік сатып алу: тасымалдау тендері',
+      en: 'Public procurement 2025: haulage tender',
+    },
+    description: {
+      ru: 'Завершено: заявка отозвана, документы сохранены для истории.',
+      kz: 'Аяқталды: өтінім кері қайтарылды, құжаттар тарих үшін сақталды.',
+      en: 'Closed: the bid was withdrawn and the documents kept for the record.',
+    },
     docs: 4,
-    updated: '11 марта 2026',
+    updated: { ru: '11 марта 2026', kz: '2026 жылғы 11 наурыз', en: '11 March 2026' },
     archived: true,
   },
 ]
 
-function MatterRow({ m, updatedLabel, docsLabel }: { m: Matter; updatedLabel: string; docsLabel: string }) {
+function MatterRow({
+  m,
+  lang,
+  updatedLabel,
+  docsLabel,
+}: {
+  m: Matter
+  lang: Lang
+  updatedLabel: string
+  docsLabel: string
+}) {
   return (
     <Link
       to="/workspace"
       className={m.archived ? 'ws-matter ws-matter--archived' : 'ws-matter'}
-      aria-label={m.title}
+      aria-label={m.title[lang]}
     >
       <span className="ws-matter__main">
-        <H2 as="span">{m.title}</H2>
+        <H2 as="span">{m.title[lang]}</H2>
         <Body as="span" tone="mute" style={{ margin: 0 }}>
-          {m.description}
+          {m.description[lang]}
         </Body>
       </span>
       <span className="ws-matter__meta">
@@ -91,7 +140,7 @@ function MatterRow({ m, updatedLabel, docsLabel }: { m: Matter; updatedLabel: st
           {m.docs} {docsLabel}
         </UIText>
         <Caption tone="mute">
-          {updatedLabel}: {m.updated}
+          {updatedLabel}: {m.updated[lang]}
         </Caption>
       </span>
     </Link>
@@ -100,6 +149,7 @@ function MatterRow({ m, updatedLabel, docsLabel }: { m: Matter; updatedLabel: st
 
 export function MattersPage() {
   const t = useT(dict)
+  const { lang } = useLang()
   const active = MATTERS.filter((m) => !m.archived)
   const archived = MATTERS.filter((m) => m.archived)
 
@@ -127,7 +177,7 @@ export function MattersPage() {
           </div>
           <div className="ws-matters">
             {active.map((m) => (
-              <MatterRow key={m.id} m={m} updatedLabel={t('updated')} docsLabel={t('docs')} />
+              <MatterRow key={m.id} m={m} lang={lang} updatedLabel={t('updated')} docsLabel={t('docs')} />
             ))}
           </div>
 
@@ -139,7 +189,7 @@ export function MattersPage() {
               </div>
               <div className="ws-matters">
                 {archived.map((m) => (
-                  <MatterRow key={m.id} m={m} updatedLabel={t('updated')} docsLabel={t('docs')} />
+                  <MatterRow key={m.id} m={m} lang={lang} updatedLabel={t('updated')} docsLabel={t('docs')} />
                 ))}
               </div>
             </>
