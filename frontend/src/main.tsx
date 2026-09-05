@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom'
 import './styles/tokens.css'
 import './styles/base.css'
 import './shared/ui/ui.css'
+import './shared/ui/motion.css'
 
 import { router } from './app/routes'
 

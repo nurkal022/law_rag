@@ -1,4 +1,5 @@
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Link } from '../shared/nav'
 import { LANGS, useLang, useT } from '../i18n'
 import type { Dict } from '../i18n'
 import './shell.css'
@@ -49,6 +50,7 @@ function Langs() {
 
 export function Shell() {
   const t = useT(dict)
+  const location = useLocation()
 
   return (
     <div className="shell">
@@ -91,7 +93,11 @@ export function Shell() {
         </nav>
 
         <main className="main">
-          <Outlet />
+          {/* key по пути: при переходе содержимое проявляется заново,
+              а рельс и шапка не мигают. */}
+          <div key={location.pathname} className="swap">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

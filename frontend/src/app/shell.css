@@ -124,3 +124,50 @@
   .rail__link--on { border-left: 0; border-bottom: 2px solid var(--seal); padding-left: var(--s-3); }
   .page { padding: var(--s-4); }
 }
+
+/* ---------- Планшет и телефон: общие правила ----------
+   Единый набор брейкпоинтов продукта: 1100, 860, 620, 390.
+   Компоненты из shared/ui правятся здесь, а не в самой библиотеке. */
+
+@media (max-width: 860px) {
+  /* Шапка: имя пользователя не выдавливает переключатель языков */
+  .hdr { padding: 0 var(--s-4); gap: var(--s-3); }
+  .hdr__user { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Лента разделов прокручивается сама, не растягивая страницу */
+  .rail { flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+
+  /* Цель касания — не меньше 44px по высоте */
+  .wordmark { display: inline-flex; align-items: center; min-height: 44px; }
+  .rail__link { display: flex; align-items: center; min-height: 44px; }
+  .langs__item { display: inline-flex; align-items: center; min-height: 44px; padding-inline: var(--s-2); }
+  .btn { min-height: 44px; }
+  .btn--ghost { min-height: 44px; padding-inline: var(--s-3); }
+  .chip { min-height: 44px; padding-inline: var(--s-3); }
+  .field__control { min-height: 44px; }
+  .field__control--area { min-height: calc(var(--s-16) + var(--s-6)); }
+
+  /* Вкладки: прокрутка внутри полосы, а не перенос уродливым столбиком */
+  .tabs { gap: var(--s-4); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs__item { flex: none; min-height: 44px; white-space: nowrap; }
+
+  /* Уведомления не занимают всю ширину экрана краем в край */
+  .toasts { left: var(--s-4); right: var(--s-4); }
+  .toast { min-width: 0; max-width: none; }
+}
+
+@media (max-width: 620px) {
+  /* Действие страницы уходит под заголовок, а не наезжает на него */
+  .page__head { flex-wrap: wrap; align-items: flex-start; }
+  .page__title { flex: 1 1 100%; }
+
+  .page { padding: var(--s-4) var(--s-4) var(--s-8); }
+
+  /* Таблицы-реестры: колонки уплотняются, чтобы строка помещалась */
+  .table th, .table td { padding: var(--s-3) var(--s-2); }
+  .table th:first-child, .table td:first-child { padding-left: 0; }
+  .table th:last-child, .table td:last-child { padding-right: 0; }
+
+  /* Пустое состояние не занимает пол-экрана вертикали */
+  .empty { padding: var(--s-8) var(--s-4); }
+}

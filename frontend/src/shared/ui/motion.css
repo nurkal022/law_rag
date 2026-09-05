@@ -1,0 +1,136 @@
+/* ============================================================
+   TURA — движение.
+
+   Правило одно: движение объясняет, откуда взялся элемент и что
+   изменилось. Ничего не подпрыгивает, ничего не вращается, ничего не
+   движется дольше --dur-3. Все длительности и кривые — из tokens.css,
+   поэтому системная настройка «меньше движения» гасит весь слой разом.
+   ============================================================ */
+
+/* ---------- Появление ---------- */
+@keyframes tura-enter {
+  from { opacity: 0; transform: translateY(var(--enter-shift)); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes tura-enter-soft {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Элемент въезжает снизу и проявляется. */
+.enter { animation: tura-enter var(--motion-enter) both; }
+.enter-soft { animation: tura-enter-soft var(--motion-enter) both; }
+
+/**
+ * Лента, где соседи появляются по очереди. Задержку задаёт индекс:
+ *   <li className="enter-item" style={{ '--i': i }}>
+ * Потолок в 12 шагов — иначе низ длинного списка ждёт неприлично долго.
+ */
+.enter-item {
+  animation: tura-enter var(--motion-enter) both;
+  animation-delay: calc(min(var(--i, 0), 12) * var(--stagger));
+}
+
+/* ---------- Раскрытие ----------
+   Для сворачиваемых блоков: источники в чате, разделы законопроекта. */
+@keyframes tura-unfold {
+  from { opacity: 0; transform: translateY(calc(var(--enter-shift) * -0.5)); }
+  to   { opacity: 1; transform: none; }
+}
+.unfold { animation: tura-unfold var(--motion-state) var(--ease) both; }
+
+/* ---------- Смена содержимого ----------
+   Когда на месте одного набора данных появляется другой: переключены
+   вкладка, тип договора, язык. Мягче, чем появление с нуля. */
+.swap { animation: tura-enter-soft var(--motion-state) var(--ease) both; }
+
+/* ---------- Отклик на нажатие ----------
+   Не увеличение, а едва заметная просадка: бумага прогибается под нажимом. */
+.btn:active:not(:disabled),
+.chip:active,
+button.cite:active { transform: translateY(1px); }
+
+.btn, .chip, button.cite { transition:
+  background-color var(--motion),
+  border-color var(--motion),
+  color var(--motion),
+  transform var(--dur-1) var(--ease); }
+
+/* ---------- Строка реестра ----------
+   Подсветка приходит слева, как будто по строке ведут пальцем. */
+.table tbody tr { position: relative; }
+.table tbody tr::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--seal);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--motion-state);
+}
+.table tbody tr:hover::after { transform: scaleY(1); }
+
+/* ---------- Правовая координата ----------
+   Подчёркивание наливается цветом слева направо: ссылка ведёт к источнику. */
+.cite { position: relative; }
+.cite::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: var(--seal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-state);
+}
+.cite:hover::after { transform: scaleX(1); }
+
+/* ---------- Вкладки ----------
+   Линия под активной вкладкой переезжает, а не перепрыгивает. */
+.tabs__item { position: relative; }
+.tabs__item::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--seal);
+  transform: scaleX(0);
+  transition: transform var(--motion-state);
+}
+.tabs__item--on::after { transform: scaleX(1); }
+.tabs__item--on { border-bottom-color: transparent; }
+
+/* ---------- Пункт навигации ----------
+   Вставная линия выезжает сверху вниз при переходе в раздел. */
+.rail__link { position: relative; }
+.rail__link--on { border-left-color: transparent; }
+.rail__link--on::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--seal);
+  animation: tura-rail var(--motion-state) var(--ease) both;
+}
+@keyframes tura-rail {
+  from { transform: scaleY(0); transform-origin: top; }
+  to   { transform: scaleY(1); }
+}
+
+/* ---------- Уведомление ---------- */
+@keyframes tura-toast {
+  from { opacity: 0; transform: translateY(var(--s-3)); }
+  to   { opacity: 1; transform: none; }
+}
+.toast { animation: tura-toast var(--motion-state) var(--ease-out) both; }
+
+/* ---------- Числа-показатели ----------
+   Цифры набираются табличными знаками, иначе при счёте прыгает ширина. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ---------- Состояние до появления ----------
+   Блок, ещё не дошедший до экрана: занимает место, но невидим.
+   Без этого при первой отрисовке страница «моргает» готовым содержимым. */
+.pre-enter { opacity: 0; }
