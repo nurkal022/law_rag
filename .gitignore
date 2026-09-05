@@ -309,3 +309,5 @@ exports/
 
 # Google Search Console site verification
 googlea*.html 
+# Superpowers brainstorming mockups
+.superpowers/
