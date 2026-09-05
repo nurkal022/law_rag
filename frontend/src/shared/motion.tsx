@@ -50,7 +50,22 @@ export function Reveal({
       { rootMargin: '0px 0px -12% 0px' },
     )
     io.observe(el)
-    return () => io.disconnect()
+
+    /**
+     * Страховка. До появления блок скрыт, поэтому любой сбой наблюдателя
+     * означает не «нет анимации», а «содержимого нет вообще». Так и случается
+     * в headless-снимках с виртуальным временем. Через полторы секунды
+     * показываем безусловно: лучше показать без движения, чем не показать.
+     */
+    const failsafe = window.setTimeout(() => {
+      setShown(true)
+      io.disconnect()
+    }, 1500)
+
+    return () => {
+      window.clearTimeout(failsafe)
+      io.disconnect()
+    }
   }, [shown])
 
   const style = delay ? ({ animationDelay: `${delay}ms` } as CSSProperties) : undefined
@@ -80,6 +95,7 @@ export function useCountUp(target: number, duration = 900) {
       return
     }
     let raf = 0
+    let done = false
     const start = performance.now()
     const tick = (now: number) => {
       const p = Math.min(1, (now - start) / duration)
@@ -87,9 +103,28 @@ export function useCountUp(target: number, duration = 900) {
       const eased = 1 - Math.pow(1 - p, 3)
       setValue(target * eased)
       if (p < 1) raf = requestAnimationFrame(tick)
+      else done = true
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+
+    /**
+     * Страховка. Если кадры отрисовки не идут — вкладка в фоне, снимок в
+     * headless, экономия энергии — счёт замирает на промежуточном значении,
+     * и человек видит «0 комментариев» вместо 1247. Это уже не потеря
+     * анимации, а ложные данные, поэтому по истечении срока ставим точное
+     * значение безусловно.
+     */
+    const failsafe = window.setTimeout(() => {
+      if (!done) {
+        cancelAnimationFrame(raf)
+        setValue(target)
+      }
+    }, duration + 400)
+
+    return () => {
+      window.clearTimeout(failsafe)
+      cancelAnimationFrame(raf)
+    }
   }, [target, duration])
 
   return value
