@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import {
   Body,
   Button,
@@ -9,14 +10,17 @@ import {
   Input,
   Label,
   Legal,
+  Loading,
   Status,
   Textarea,
   UIText,
+  useToast,
 } from '../../shared/ui'
 import type { StatusKind } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import './laws.css'
+import './laws.motion.css'
 
 /* ============================================================
    Законопроекты.
@@ -50,6 +54,14 @@ function roman(n: number): string {
     }
   }
   return out
+}
+
+/** Имитация работы, которую в бою делает генератор на сервере. */
+const GEN_MS = 1500
+
+/** Задержка соседа в ленте: индекс уезжает в CSS, длительность — в токенах. */
+function step(i: number): CSSProperties {
+  return { ['--i' as string]: i } as CSSProperties
 }
 
 /* ---------- Разделы пакета ---------- */
@@ -91,11 +103,16 @@ const DRAFTS: Draft[] = [
   { id: 'appk', status: 'ok', date: '19.12.2025', version: 3 },
 ]
 
+/**
+ * История версий. sections — сколько разделов пакета было готово на тот
+ * момент: ранняя редакция обрывается на пояснительной записке, поздняя
+ * доходит до журнала аудита. Выбор версии подставляет её состав в оглавление.
+ */
 const VERSIONS = [
-  { no: 4, date: '12.02.2026', note: 'ver4' },
-  { no: 3, date: '03.02.2026', note: 'ver3' },
-  { no: 2, date: '21.01.2026', note: 'ver2' },
-  { no: 1, date: '15.01.2026', note: 'ver1' },
+  { no: 4, date: '12.02.2026', note: 'ver4', sections: 13 },
+  { no: 3, date: '03.02.2026', note: 'ver3', sections: 11 },
+  { no: 2, date: '21.01.2026', note: 'ver2', sections: 8 },
+  { no: 1, date: '15.01.2026', note: 'ver1', sections: 4 },
 ]
 
 const dict = {
@@ -240,9 +257,9 @@ const dict = {
   /* Результат */
   packHead: { ru: 'Пакет документов', kz: 'Құжаттар топтамасы', en: 'Document package' },
   packLead: {
-    ru: 'Тринадцать разделов по требованиям нормотворческой процедуры. Раскройте раздел, чтобы прочитать текст.',
-    kz: 'Нормашығармашылық рәсім талаптары бойынша он үш бөлім. Мәтінді оқу үшін бөлімді ашыңыз.',
-    en: 'Thirteen sections required by the law-making procedure. Open a section to read its text.',
+    ru: 'Разделы по требованиям нормотворческой процедуры. Раскройте раздел, чтобы прочитать текст.',
+    kz: 'Нормашығармашылық рәсім талаптары бойынша бөлімдер. Мәтінді оқу үшін бөлімді ашыңыз.',
+    en: 'Sections required by the law-making procedure. Open a section to read its text.',
   },
   secOk: { ru: 'Готов', kz: 'Дайын', en: 'Ready' },
   secWarn: { ru: 'На проверке', kz: 'Тексеруде', en: 'Under review' },
@@ -387,6 +404,21 @@ const dict = {
     kz: 'Дайындау хронологиясы: бастамашы, қатысушылар, енгізілген түзетулер және әр өзгерістің уақыты. Журнал өзгертілмейді және енгізу кезінде топтамаға кіреді.',
     en: 'Chronology of preparation: initiator, participants, edits made and the time of each change. The log is immutable and travels with the package.',
   },
+
+  expandAll: { ru: 'Раскрыть все', kz: 'Барлығын жаю', en: 'Expand all' },
+  collapseAll: { ru: 'Свернуть все', kz: 'Барлығын жию', en: 'Collapse all' },
+  generating: {
+    ru: 'Собираем пакет документов по инициативе…',
+    kz: 'Бастама бойынша құжаттар топтамасы жиналуда…',
+    en: 'Assembling the document package for the initiative…',
+  },
+  exportDone: { ru: 'Файл подготовлен', kz: 'Файл дайындалды', en: 'File prepared' },
+  versionShown: { ru: 'показана', kz: 'көрсетілген', en: 'shown' },
+  versionHint: {
+    ru: 'Нажмите версию, чтобы увидеть состав пакета на тот момент',
+    kz: 'Сол кездегі топтама құрамын көру үшін нұсқаны басыңыз',
+    en: 'Press a version to see the package as it stood then',
+  },
 } satisfies Dict
 
 type Key = keyof typeof dict
@@ -424,6 +456,7 @@ const emptyForm: Form = { title: '', reason: '', subject: '', acts: '' }
 export function LawsPage() {
   const t = useT(dict)
   const { lang } = useLang()
+  const toast = useToast()
 
   const [selected, setSelected] = useState<string | null>('procurement')
   /* Форма редактируется пользователем, поэтому язык берётся только при первом
@@ -435,21 +468,36 @@ export function LawsPage() {
     acts: dict.aProcurement[lang],
   }))
   const [built, setBuilt] = useState(true)
-  const [open, setOpen] = useState<string | null>('explanatory_note')
+  const [busy, setBusy] = useState(false)
+  const [run, setRun] = useState(0)
+  const [open, setOpen] = useState<string[]>(['explanatory_note'])
+  const [version, setVersion] = useState(VERSIONS[0].no)
+
+  const timer = useRef<number>(0)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  const shownVersion = VERSIONS.find((v) => v.no === version) ?? VERSIONS[0]
+  const sections = SECTIONS.slice(0, shownVersion.sections)
 
   function pick(id: string) {
     const f = draftFields[id]
     setSelected(id)
     setForm({ title: t(f.title), reason: t(f.reason), subject: t(f.subject), acts: t(f.acts) })
     setBuilt(true)
-    setOpen(null)
+    setBusy(false)
+    setOpen([])
+    setVersion(VERSIONS[0].no)
+    setRun((n) => n + 1)
   }
 
   function startNew() {
     setSelected(null)
     setForm(emptyForm)
     setBuilt(false)
-    setOpen(null)
+    setBusy(false)
+    setOpen([])
+    setVersion(VERSIONS[0].no)
+    setRun((n) => n + 1)
   }
 
   function set<K extends keyof Form>(key: K, value: string) {
@@ -457,6 +505,40 @@ export function LawsPage() {
   }
 
   const canBuild = form.title.trim().length > 0
+
+  /** Формирование пакета: имитация работы генератора, затем лента разделов. */
+  function generate() {
+    if (!canBuild) return
+    /* built не сбрасываем: подпись кнопки не должна прыгать, пока идёт работа —
+       ход показывает полоса набора ниже, а не исчезнувший результат. */
+    setOpen([])
+    setVersion(VERSIONS[0].no)
+    setBusy(true)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      setBusy(false)
+      setBuilt(true)
+      setRun((n) => n + 1)
+    }, GEN_MS)
+  }
+
+  function toggle(id: string) {
+    setOpen((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const allOpen = sections.length > 0 && open.length >= sections.length
+
+  function exportAs(format: string) {
+    const name = `${selected ?? 'draft'}-v${shownVersion.no}.${format.toLowerCase()}`
+    toast(`${t('exportDone')}: ${name}`, 'ok')
+  }
+
+  function pickVersion(no: number) {
+    if (no === version) return
+    setVersion(no)
+    setOpen([])
+    setRun((n) => n + 1)
+  }
 
   return (
     <div className="page">
@@ -502,46 +584,54 @@ export function LawsPage() {
         <section>
           <Label as="div">{t('formHead')}</Label>
 
-          <div className="laws-form">
-            <div className="laws-form__wide">
-              <Input
-                label={t('fTitle')}
-                placeholder={t('fTitlePh')}
-                value={form.title}
-                onChange={(e) => set('title', e.target.value)}
-              />
-            </div>
-            <Textarea
-              label={t('fReason')}
-              placeholder={t('fReasonPh')}
-              value={form.reason}
-              onChange={(e) => set('reason', e.target.value)}
-            />
-            <Textarea
-              label={t('fSubject')}
-              placeholder={t('fSubjectPh')}
-              value={form.subject}
-              onChange={(e) => set('subject', e.target.value)}
-            />
-            <div className="laws-form__wide">
+          {/* key по инициативе: форма именно подставляется, а не меняется молча */}
+          <div className="swap" key={selected ?? 'new'}>
+            <div className="laws-form">
+              <div className="laws-form__wide">
+                <Input
+                  label={t('fTitle')}
+                  placeholder={t('fTitlePh')}
+                  value={form.title}
+                  onChange={(e) => set('title', e.target.value)}
+                />
+              </div>
               <Textarea
-                label={t('fActs')}
-                placeholder={t('fActsPh')}
-                value={form.acts}
-                onChange={(e) => set('acts', e.target.value)}
+                label={t('fReason')}
+                placeholder={t('fReasonPh')}
+                value={form.reason}
+                onChange={(e) => set('reason', e.target.value)}
               />
+              <Textarea
+                label={t('fSubject')}
+                placeholder={t('fSubjectPh')}
+                value={form.subject}
+                onChange={(e) => set('subject', e.target.value)}
+              />
+              <div className="laws-form__wide">
+                <Textarea
+                  label={t('fActs')}
+                  placeholder={t('fActsPh')}
+                  value={form.acts}
+                  onChange={(e) => set('acts', e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
           <div className="laws-actions">
-            <Button variant="primary" disabled={!canBuild} onClick={() => setBuilt(true)}>
+            <Button variant="primary" disabled={!canBuild || busy} onClick={generate}>
               {built ? t('regenerate') : t('generate')}
             </Button>
             {!canBuild ? <Caption tone="mute">{t('needTitle')}</Caption> : null}
           </div>
 
           {/* ---------- Результат: оглавление пакета ---------- */}
-          {built ? (
+          {busy ? (
+            <div className="lawm-run">
+              <Loading label={t('generating')} />
+              <Caption tone="mute">{t('generating')}</Caption>
+            </div>
+          ) : built ? (
             <>
               <div className="laws-block">
                 <div className="laws-block__head">
@@ -551,25 +641,44 @@ export function LawsPage() {
                   </div>
                   <div className="laws-actions">
                     <Label as="span">{t('export')}</Label>
-                    <Button variant="secondary">{t('pdf')}</Button>
-                    <Button variant="secondary">{t('docx')}</Button>
-                    <Button variant="secondary">{t('xlsx')}</Button>
+                    <Button variant="secondary" onClick={() => exportAs('PDF')}>
+                      {t('pdf')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => exportAs('DOCX')}>
+                      {t('docx')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => exportAs('XLSX')}>
+                      {t('xlsx')}
+                    </Button>
                   </div>
                 </div>
 
-                <div className="laws-toc">
-                  {SECTIONS.map((s, i) => {
-                    const isOpen = open === s.id
+                <div className="lawm-tools">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setOpen(allOpen ? [] : sections.map((s) => s.id))}
+                  >
+                    {allOpen ? t('collapseAll') : t('expandAll')}
+                  </Button>
+                  <Caption tone="mute">
+                    {t('ver')} {shownVersion.no} · {shownVersion.date}
+                  </Caption>
+                </div>
+
+                {/* key по версии: оглавление подставляется целиком */}
+                <div className="laws-toc swap" key={`${shownVersion.no}-${run}`}>
+                  {sections.map((s, i) => {
+                    const isOpen = open.includes(s.id)
                     const nameKey = `sec_${s.id}` as Key
                     const bodyKey = `body_${s.id}` as Key
                     return (
-                      <div className="laws-sec" key={s.id}>
+                      <div className="laws-sec enter-item" style={step(i)} key={s.id}>
                         <button
                           type="button"
                           className="laws-sec__head"
                           aria-expanded={isOpen}
                           aria-label={isOpen ? t('collapse') : t('expand')}
-                          onClick={() => setOpen(isOpen ? null : s.id)}
+                          onClick={() => toggle(s.id)}
                         >
                           <span className="laws-sec__num">{roman(i + 1)}.</span>
                           <span className="laws-sec__name">{t(nameKey)}</span>
@@ -581,7 +690,7 @@ export function LawsPage() {
                           </span>
                         </button>
                         {isOpen ? (
-                          <div className="laws-sec__body">
+                          <div className="laws-sec__body unfold">
                             <Legal className="laws-sec__text">{t(bodyKey)}</Legal>
                           </div>
                         ) : null}
@@ -595,10 +704,19 @@ export function LawsPage() {
               <div className="laws-block">
                 <div className="laws-block__head">
                   <H2>{t('historyHead')}</H2>
+                  <Caption tone="mute">{t('versionHint')}</Caption>
                 </div>
                 <div className="laws-versions">
                   {VERSIONS.map((v) => (
-                    <div className="laws-version" key={v.no}>
+                    <button
+                      type="button"
+                      key={v.no}
+                      aria-current={v.no === version ? 'true' : undefined}
+                      className={['laws-version', 'lawm-version', v.no === version ? 'lawm-version--on' : '']
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => pickVersion(v.no)}
+                    >
                       <span className="laws-version__no">
                         {t('ver')} {v.no}
                       </span>
@@ -606,7 +724,12 @@ export function LawsPage() {
                       <UIText tone="ink2" className="laws-version__note">
                         {t(v.note as Key)}
                       </UIText>
-                    </div>
+                      {v.no === version ? (
+                        <Caption tone="seal" className="lawm-version__mark">
+                          {t('versionShown')}
+                        </Caption>
+                      ) : null}
+                    </button>
                   ))}
                 </div>
               </div>

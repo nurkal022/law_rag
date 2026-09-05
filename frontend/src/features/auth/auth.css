@@ -127,7 +127,9 @@
     padding: var(--s-8) var(--s-5);
   }
   .auth__mark-narrow {
-    display: block;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     margin-bottom: var(--s-8);
     font-size: var(--t-h1-size);
     line-height: var(--t-h1-lh);

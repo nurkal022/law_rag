@@ -1,11 +1,32 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Link } from '../../shared/nav'
-import { Body, Button, Caption, Cite, Display, Input, Label, Legal, UIText } from '../../shared/ui'
-import { useLang, useT } from '../../i18n'
+import {
+  Body,
+  Button,
+  Caption,
+  Cite,
+  Display,
+  Input,
+  Label,
+  Legal,
+  Loading,
+  UIText,
+} from '../../shared/ui'
+import { useLang, useT, withLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import './auth.css'
+import './auth.motion.css'
+
+/**
+ * Вход.
+ *
+ * Отправка занимает время: кнопка гаснет, подписывается «Проверяем…» и под ней
+ * идёт тонкая линия ожидания — иначе нажатие выглядит проигнорированным.
+ * Ошибки поля не выскакивают рывком, а раскрываются (.unfold).
+ */
 
 const dict: Dict = {
   claim: {
@@ -39,6 +60,12 @@ const dict: Dict = {
     en: 'Check the email format: name@domain',
   },
   errPassEmpty: { ru: 'Введите пароль', kz: 'Құпиясөзді енгізіңіз', en: 'Enter your password' },
+  checking: { ru: 'Проверяем…', kz: 'Тексерудеміз…', en: 'Checking…' },
+  waitNote: {
+    ru: 'Проверяем данные и открываем консультанта',
+    kz: 'Деректерді тексеріп, кеңесшіні ашып жатырмыз',
+    en: 'Checking your details and opening the assistant',
+  },
   errPassShort: {
     ru: 'Пароль не короче восьми знаков',
     kz: 'Құпиясөз сегіз таңбадан қысқа болмауы тиіс',
@@ -48,6 +75,9 @@ const dict: Dict = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
+/** Ожидание перед переходом: столько система тратит на проверку данных. */
+const SUBMIT_MS = 900
+
 export function LoginPage() {
   const { lang } = useLang()
   const t = useT(dict)
@@ -55,19 +85,43 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [errEmail, setErrEmail] = useState<string | null>(null)
   const [errPassword, setErrPassword] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  /** Номер попытки: по нему ошибка перерисовывается и раскрытие играет заново. */
+  const [attempt, setAttempt] = useState(0)
+  const navigate = useNavigate()
+  const timer = useRef<number | null>(null)
+
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
+
+  function unfold(text: string | null): ReactNode {
+    if (!text) return undefined
+    return (
+      <span className="unfold" key={attempt}>
+        {text}
+      </span>
+    )
+  }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (pending) return
     const value = email.trim()
     const eEmail = !value ? t('errEmailEmpty') : !EMAIL_RE.test(value) ? t('errEmailBad') : null
     const ePass = !password ? t('errPassEmpty') : password.length < 8 ? t('errPassShort') : null
     setErrEmail(eEmail)
     setErrPassword(ePass)
+    setAttempt((n) => n + 1)
+    if (eEmail || ePass) return
+
+    setPending(true)
+    timer.current = window.setTimeout(() => {
+      navigate(withLang('/chat', lang))
+    }, SUBMIT_MS)
   }
 
   return (
     <div className="auth">
-      <aside className="auth__aside">
+      <aside className="auth__aside enter">
         <div>
           <Link to="/" className="auth__mark">
             TURA
@@ -84,7 +138,12 @@ export function LoginPage() {
       </aside>
 
       <main className="auth__pane">
-        <form className="auth__form" onSubmit={onSubmit} noValidate>
+        <form
+          className="auth__form enter"
+          onSubmit={onSubmit}
+          noValidate
+          style={{ animationDelay: 'calc(var(--stagger) * 1)' }}
+        >
           <Link to="/" className="auth__mark auth__mark-narrow">
             TURA
           </Link>
@@ -103,7 +162,8 @@ export function LoginPage() {
               inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              error={errEmail ?? undefined}
+              error={unfold(errEmail)}
+              disabled={pending}
             />
             <Input
               label={t('password')}
@@ -112,21 +172,39 @@ export function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              error={errPassword ?? undefined}
+              error={unfold(errPassword)}
+              disabled={pending}
             />
           </div>
 
           <div className="auth__submit">
-            <Button type="submit" variant="primary" size="lg" className="auth__wide">
-              {t('submit')}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="auth__wide"
+              disabled={pending}
+              aria-busy={pending || undefined}
+            >
+              <span className="swap" key={pending ? 'wait' : 'idle'}>
+                {pending ? t('checking') : t('submit')}
+              </span>
             </Button>
+            {pending ? (
+              <div className="auth__wait unfold">
+                <Loading label={t('checking')} />
+                <Caption tone="mute" className="auth__wait-note">
+                  {t('waitNote')}
+                </Caption>
+              </div>
+            ) : null}
           </div>
 
           <div className="auth__or">
             <Caption tone="mute">{t('or')}</Caption>
           </div>
 
-          <Button type="button" variant="secondary" size="lg" className="auth__wide">
+          <Button type="button" variant="secondary" size="lg" className="auth__wide" disabled={pending}>
             {t('google')}
           </Button>
 

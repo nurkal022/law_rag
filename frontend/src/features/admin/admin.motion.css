@@ -1,0 +1,102 @@
+/* ============================================================
+   TURA — движение и действия административной панели.
+
+   Дополняет admin.css, не переписывая его. Здесь только то, что
+   отвечает на действие: сортировка, поиск, отбор, создание и отзыв
+   ключа. Длительности и кривые — из tokens.css.
+   ============================================================ */
+
+/* ---------- Заголовок-сортировка ---------- */
+.admm-sort {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-1);
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  transition: color var(--motion);
+}
+.admm-sort:hover { color: var(--ink); }
+.admm-sort__mark {
+  font-family: var(--font-mono);
+  font-size: var(--t-label-size);
+  color: var(--seal);
+  visibility: hidden;
+}
+.admm-sort--on .admm-sort__mark { visibility: visible; }
+.adm-num .admm-sort { justify-content: flex-end; }
+
+/* ---------- Полоса управления над таблицей ---------- */
+.admm-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-bottom: var(--s-3);
+}
+.admm-bar .field { min-width: 30ch; }
+.admm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* ---------- Ключи ---------- */
+.admm-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-4);
+  padding: var(--s-4) 0;
+  border-top: var(--border);
+  border-bottom: var(--border);
+  margin-bottom: var(--s-4);
+}
+.admm-form__field { min-width: 24ch; }
+.admm-form__actions { display: flex; gap: var(--s-2); }
+
+/* Новый ключ показывается целиком ровно один раз: строка держится
+   на охряной насечке, чтобы её нельзя было пролистать. */
+.admm-row--new td { background: var(--surface); }
+.admm-row--new td:first-child { box-shadow: none; border-left: 2px solid var(--ochre); }
+
+.admm-reveal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+.admm-secret {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+/* Отзыв: строка гаснет и уходит вверх, а не исчезает мгновенно —
+   видно, какая именно запись покинула реестр. */
+@keyframes admm-leave {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(calc(var(--enter-shift) * -1)); }
+}
+.admm-leaving { animation: admm-leave var(--motion-state) both; pointer-events: none; }
+
+.admm-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  animation: tura-unfold var(--motion-state) var(--ease) both;
+}
+
+/* ---------- Пустой результат поиска ---------- */
+.admm-none { padding: var(--s-8) 0; }
+
+@media (max-width: 620px) {
+  .admm-bar .field { min-width: 0; width: 100%; }
+  .admm-bar { align-items: stretch; }
+}

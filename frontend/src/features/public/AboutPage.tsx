@@ -1,10 +1,14 @@
+import { useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Link } from '../../shared/nav'
-import { Body, Cite, H2, Label, Legal } from '../../shared/ui'
+import { Reveal } from '../../shared/motion'
+import { Body, Caption, Cite, H2, Label, Legal } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { PublicPage } from './PublicChrome'
 import './public.css'
+import './public.motion.css'
 
 /**
  * «О проекте» — спокойная типографическая страница.
@@ -138,6 +142,112 @@ const dict: Dict = {
     en: 'The project develops in the open to correction: if the system gets a norm wrong, write in — fixing the source matters more than any turn of phrase.',
   },
 
+
+  /* ---- Условия использования ---- */
+  termsTitle: { ru: 'Условия использования', kz: 'Пайдалану шарттары', en: 'Terms of use' },
+  termsLede: {
+    ru: 'Коротко и без мелкого шрифта: чем является сервис, чего от него ждать нельзя и что остаётся вашим. Пользуясь TURA, вы принимаете эти условия.',
+    kz: 'Қысқа әрі ұсақ қаріпсіз: сервис не болып табылады, одан нені күтуге болмайды және не сіздікі болып қалады. TURA-ны пайдалана отырып, сіз осы шарттарды қабылдайсыз.',
+    en: 'Short, and with no fine print: what the service is, what it must not be expected to do, and what stays yours. By using TURA you accept these terms.',
+  },
+  tm1k: { ru: 'Что это за сервис.', kz: 'Бұл қандай сервис.', en: 'What the service is.' },
+  tm1d: {
+    ru: 'TURA — информационная система: она готовит справку по действующим правовым актам Республики Казахстан и указывает источник каждого утверждения. Это инструмент работы с текстами права, а не оказание юридической помощи.',
+    kz: 'TURA — ақпараттық жүйе: ол Қазақстан Республикасының қолданыстағы құқықтық актілері бойынша анықтама дайындап, әрбір тұжырымның дереккөзін көрсетеді. Бұл құқық мәтіндерімен жұмыс істеу құралы, заң көмегін көрсету емес.',
+    en: 'TURA is an information system: it prepares a summary from the legal acts of the Republic of Kazakhstan in force and names the source of every statement. It is a tool for working with legal texts, not the provision of legal assistance.',
+  },
+  tm2k: { ru: 'Ответ требует проверки человеком.', kz: 'Жауапты адам тексеруі керек.', en: 'The answer needs a human check.' },
+  tm2d: {
+    ru: 'Ответ системы не является юридической консультацией и не заменяет решение суда или уполномоченного органа. Перед применением сверяйте норму с официальной редакцией документа, а в спорной ситуации обращайтесь к юристу. Решение, принятое на основании ответа, остаётся вашим решением.',
+    kz: 'Жүйенің жауабы заң консультациясы болып табылмайды және соттың не уәкілетті органның шешімін алмастырмайды. Қолданар алдында норманы құжаттың ресми редакциясымен салыстырыңыз, ал даулы жағдайда заңгерге жүгініңіз. Жауап негізінде қабылданған шешім сіздің шешіміңіз болып қала береді.',
+    en: 'An answer from the system is not legal advice and does not replace a decision of a court or a competent authority. Check the norm against the official wording before you rely on it, and consult a lawyer where the matter is contested. A decision taken on the basis of an answer remains your decision.',
+  },
+  tm3k: { ru: 'Учётная запись.', kz: 'Тіркелгі.', en: 'Your account.' },
+  tm3d: {
+    ru: 'Одна учётная запись принадлежит одному человеку. Вы отвечаете за сохранность пароля и за действия, совершённые под вашей учётной записью; о доступе посторонних сообщите нам.',
+    kz: 'Бір тіркелгі бір адамға тиесілі. Құпиясөздің сақталуына және тіркелгіңіз арқылы жасалған әрекеттерге сіз жауап бересіз; бөгде адамның кіргені туралы бізге хабарлаңыз.',
+    en: 'One account belongs to one person. You are responsible for keeping the password safe and for what is done under your account; tell us if someone else gains access.',
+  },
+  tm4k: { ru: 'Чего делать нельзя.', kz: 'Не істеуге болмайды.', en: 'What is not allowed.' },
+  tm4d: {
+    ru: 'Загружать материалы, права на которые вам не принадлежат; использовать сервис для нарушения закона; выгружать базу автоматическими средствами и создавать нагрузку, мешающую работе других пользователей.',
+    kz: 'Құқығы сізге тиесілі емес материалдарды жүктеу; сервисті заңды бұзу үшін пайдалану; базаны автоматты құралдармен жүктеп алу және басқа пайдаланушылардың жұмысына кедергі келтіретін жүктеме тудыру.',
+    en: 'Uploading material you hold no rights to; using the service to break the law; harvesting the base by automated means or creating a load that disrupts other users.',
+  },
+  tm5k: { ru: 'Ваши документы остаются вашими.', kz: 'Құжаттарыңыз өзіңізде қалады.', en: 'Your documents stay yours.' },
+  tm5d: {
+    ru: 'Мы не приобретаем прав на загруженные вами файлы и переписку и не передаём их третьим лицам. Подробности — в политике конфиденциальности ниже.',
+    kz: 'Сіз жүктеген файлдар мен хат алмасуға біз құқық иеленбейміз және оларды үшінші тұлғаларға бермейміз. Егжей-тегжейі — төмендегі құпиялылық саясатында.',
+    en: 'We acquire no rights over the files and conversations you upload, and we do not pass them to third parties. The detail is in the privacy policy below.',
+  },
+  tm6k: { ru: 'Доступность и изменения.', kz: 'Қолжетімділік және өзгерістер.', en: 'Availability and changes.' },
+  tm6d: {
+    ru: 'Сервис развивается: разделы могут меняться, а работа — прерываться на обслуживание. Существенные изменения условий публикуются на этой странице; дата редакции указана в конце раздела.',
+    kz: 'Сервис дамып отырады: бөлімдер өзгеруі, ал жұмыс техникалық қызмет көрсетуге үзілуі мүмкін. Шарттардың елеулі өзгерістері осы бетте жарияланады; редакция күні бөлімнің соңында көрсетілген.',
+    en: 'The service keeps developing: sections may change and the service may pause for maintenance. Material changes to these terms are published on this page; the revision date is given at the end of the section.',
+  },
+  tm7k: { ru: 'Применимое право.', kz: 'Қолданылатын құқық.', en: 'Governing law.' },
+  tm7d: {
+    ru: 'К настоящим условиям применяется право Республики Казахстан. Споры разрешаются в судах Республики Казахстан.',
+    kz: 'Осы шарттарға Қазақстан Республикасының құқығы қолданылады. Даулар Қазақстан Республикасының соттарында шешіледі.',
+    en: 'These terms are governed by the law of the Republic of Kazakhstan. Disputes are heard in the courts of the Republic of Kazakhstan.',
+  },
+
+  /* ---- Политика конфиденциальности ---- */
+  privTitle: { ru: 'Политика конфиденциальности', kz: 'Құпиялылық саясаты', en: 'Privacy policy' },
+  privLede: {
+    ru: 'Главное в одном предложении: ваши вопросы и документы обрабатываются в инфраструктуре проекта и не передаются третьим лицам.',
+    kz: 'Ең бастысы бір сөйлеммен: сіздің сұрақтарыңыз бен құжаттарыңыз жобаның инфрақұрылымында өңделеді және үшінші тұлғаларға берілмейді.',
+    en: 'The essential point in one sentence: your questions and documents are processed inside the project’s own infrastructure and are not passed to third parties.',
+  },
+  pv1k: { ru: 'Какие данные собираются.', kz: 'Қандай деректер жиналады.', en: 'What is collected.' },
+  pv1d: {
+    ru: 'Имя и адрес почты при регистрации; содержание ваших запросов и загруженных документов; технические записи о работе сервиса — время обращения, ошибки, сведения о сеансе. Файлы cookie используются только для входа и сохранения языка, рекламных счётчиков нет.',
+    kz: 'Тіркелу кезіндегі аты-жөні мен пошта мекенжайы; сұрауларыңыз бен жүктелген құжаттардың мазмұны; сервистің жұмысы туралы техникалық жазбалар — жүгіну уақыты, қателер, сеанс туралы мәліметтер. Cookie файлдары тек кіру мен тілді сақтау үшін пайдаланылады, жарнамалық санауыштар жоқ.',
+    en: 'Your name and email at registration; the content of your queries and uploaded documents; technical records of the service — request time, errors, session data. Cookies are used only for signing in and remembering the language; there are no advertising trackers.',
+  },
+  pv2k: { ru: 'Зачем они нужны.', kz: 'Олар не үшін қажет.', en: 'Why they are needed.' },
+  pv2d: {
+    ru: 'Чтобы отвечать на ваши вопросы, хранить вашу переписку, документы и дела между сеансами и поддерживать работоспособность и безопасность сервиса. Для других целей данные не используются.',
+    kz: 'Сұрақтарыңызға жауап беру, хат алмасуыңызды, құжаттарыңыз бен істеріңізді сеанстар арасында сақтау және сервистің жұмысы мен қауіпсіздігін қамтамасыз ету үшін. Басқа мақсатта деректер пайдаланылмайды.',
+    en: 'To answer your questions, to keep your conversations, documents and matters between sessions, and to keep the service running and secure. The data is not used for anything else.',
+  },
+  pv3k: { ru: 'Где идёт обработка.', kz: 'Өңдеу қайда жүреді.', en: 'Where processing happens.' },
+  pv3d: {
+    ru: 'Запросы и документы обрабатываются в инфраструктуре проекта — на собственных серверах, и не передаются третьим лицам. Мы не отправляем ваши тексты во внешние облачные сервисы обработки: модель работает внутри контура.',
+    kz: 'Сұраулар мен құжаттар жобаның инфрақұрылымында — меншікті серверлерде өңделеді және үшінші тұлғаларға берілмейді. Мәтіндеріңізді сыртқы бұлттық өңдеу сервистеріне жібермейміз: модель контурдың ішінде жұмыс істейді.',
+    en: 'Queries and documents are processed inside the project’s infrastructure — on our own servers — and are not passed to third parties. We do not send your texts to external cloud processing services: the model runs inside the perimeter.',
+  },
+  pv4k: { ru: 'Обучение модели.', kz: 'Модельді оқыту.', en: 'Training the model.' },
+  pv4d: {
+    ru: 'Содержимое ваших документов и переписки не используется для дообучения модели без вашего отдельного согласия, данного явно.',
+    kz: 'Құжаттарыңыз бен хат алмасуыңыздың мазмұны айқын білдірілген жеке келісіміңізсіз модельді қосымша оқыту үшін пайдаланылмайды.',
+    en: 'The content of your documents and conversations is not used to train the model without your separate, explicit consent.',
+  },
+  pv5k: { ru: 'Сколько хранится.', kz: 'Қанша уақыт сақталады.', en: 'How long it is kept.' },
+  pv5d: {
+    ru: 'Пока существует ваша учётная запись. Удалённые документы, дела и переписка убираются из базы сразу, из резервных копий — в течение тридцати дней.',
+    kz: 'Тіркелгіңіз болғанша. Жойылған құжаттар, істер мен хат алмасу базадан бірден, сақтық көшірмелерден отыз күн ішінде алынады.',
+    en: 'For as long as your account exists. Deleted documents, matters and conversations leave the database at once and the backups within thirty days.',
+  },
+  pv6k: { ru: 'Ваши права.', kz: 'Сіздің құқықтарыңыз.', en: 'Your rights.' },
+  pv6d: {
+    ru: 'Вы можете получить копию своих данных, исправить их или удалить учётную запись вместе с содержимым — напишите на hello@tura.kz, ответ приходит в течение рабочей недели.',
+    kz: 'Деректеріңіздің көшірмесін алуға, оларды түзетуге немесе тіркелгіні мазмұнымен бірге жоюға болады — hello@tura.kz мекенжайына жазыңыз, жауап бір жұмыс аптасы ішінде келеді.',
+    en: 'You may obtain a copy of your data, correct it, or delete your account together with its content — write to hello@tura.kz and we answer within a working week.',
+  },
+  pv7k: { ru: 'Когда данные могут быть раскрыты.', kz: 'Деректер қашан ашылуы мүмкін.', en: 'When data may be disclosed.' },
+  pv7d: {
+    ru: 'Только по мотивированному требованию уполномоченного органа в порядке, предусмотренном законодательством Республики Казахстан. О таком требовании мы уведомляем пользователя, если закон это позволяет.',
+    kz: 'Тек уәкілетті органның Қазақстан Республикасының заңнамасында көзделген тәртіппен қойған дәлелді талабы бойынша. Заң рұқсат етсе, мұндай талап туралы пайдаланушыны хабардар етеміз.',
+    en: 'Only on a reasoned demand from a competent authority in the manner provided by the law of the Republic of Kazakhstan. Where the law permits, we notify the user of such a demand.',
+  },
+  revDate: {
+    ru: 'Редакция от 5 сентября 2026 года',
+    kz: '2026 жылғы 5 қыркүйектегі редакция',
+    en: 'Revision of 5 September 2026',
+  },
+
   /* ---- Оговорка ---- */
   discTitle: { ru: 'Оговорка', kz: 'Ескертпе', en: 'Disclaimer' },
   disc: {
@@ -168,22 +278,75 @@ const dict: Dict = {
   ctaBack: { ru: 'На главную', kz: 'Басты бетке', en: 'Back to home' },
 }
 
+const TERMS = [
+  { k: 'tm1k', d: 'tm1d' },
+  { k: 'tm2k', d: 'tm2d' },
+  { k: 'tm3k', d: 'tm3d' },
+  { k: 'tm4k', d: 'tm4d' },
+  { k: 'tm5k', d: 'tm5d' },
+  { k: 'tm6k', d: 'tm6d' },
+  { k: 'tm7k', d: 'tm7d' },
+] as const
+
+const PRIVACY = [
+  { k: 'pv1k', d: 'pv1d' },
+  { k: 'pv2k', d: 'pv2d' },
+  { k: 'pv3k', d: 'pv3d' },
+  { k: 'pv4k', d: 'pv4d' },
+  { k: 'pv5k', d: 'pv5d' },
+  { k: 'pv6k', d: 'pv6d' },
+  { k: 'pv7k', d: 'pv7d' },
+] as const
+
+/** Порядковый номер пункта: 01, 02 — той же формы, что и шаги технологии. */
+function num(i: number) {
+  return String(i + 1).padStart(2, '0')
+}
+
 export function AboutPage() {
   const { lang } = useLang()
   const t = useT(dict)
+  const { hash } = useLocation()
+  const landed = useRef(false)
+
+  /**
+   * Ссылки подвала ведут на /about#terms и /about#privacy. Маршрутизатор сам к
+   * якорю не прокручивает — без этого ссылка внешне срабатывает, а страница
+   * остаётся на месте.
+   */
+  useEffect(() => {
+    if (!hash) return
+    const el = document.getElementById(hash.slice(1))
+    if (!el) return
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    /* Приход по ссылке снаружи — сразу на месте; переход внутри страницы —
+       прокруткой, чтобы было видно, куда именно уехали. */
+    const smooth = landed.current && !reduced
+    landed.current = true
+    el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+  }, [hash])
 
   return (
     <PublicPage>
       <section className="pub-wrap about__head" aria-labelledby="about-title">
-        <Label>{t('eyebrow')}</Label>
-        <h1 className="pub-display about__title" id="about-title">
+        <Label className="enter">{t('eyebrow')}</Label>
+        <h1
+          className="pub-display about__title enter"
+          id="about-title"
+          style={{ animationDelay: 'calc(var(--stagger) * 1)' }}
+        >
           {t('title')}
         </h1>
-        <p className="t-legal about__lede">{t('lede')}</p>
+        <p className="t-legal about__lede enter" style={{ animationDelay: 'calc(var(--stagger) * 2)' }}>
+          {t('lede')}
+        </p>
       </section>
 
       {/* ---------- Задача ---------- */}
-      <section className="pub-wrap about-sec" aria-labelledby="task-title">
+      <Reveal as="section" className="pub-wrap about-sec" aria-labelledby="task-title">
         <H2 className="about-sec__title" id="task-title">
           {t('taskTitle')}
         </H2>
@@ -192,10 +355,10 @@ export function AboutPage() {
           <Legal as="p">{t('task2')}</Legal>
           <Legal as="p">{t('task3')}</Legal>
         </div>
-      </section>
+      </Reveal>
 
       {/* ---------- Технология ---------- */}
-      <section className="pub-wrap about-sec" aria-labelledby="tech-title">
+      <Reveal as="section" className="pub-wrap about-sec" aria-labelledby="tech-title">
         <H2 className="about-sec__title" id="tech-title">
           {t('techTitle')}
         </H2>
@@ -231,10 +394,10 @@ export function AboutPage() {
             {t('tech4post')}
           </Legal>
         </div>
-      </section>
+      </Reveal>
 
       {/* ---------- Коротко о системе ---------- */}
-      <section className="pub-wrap about-sec" aria-labelledby="facts-title">
+      <Reveal as="section" className="pub-wrap about-sec" aria-labelledby="facts-title">
         <H2 className="about-sec__title" id="facts-title">
           {t('factsTitle')}
         </H2>
@@ -262,10 +425,10 @@ export function AboutPage() {
             </tr>
           </tbody>
         </table>
-      </section>
+      </Reveal>
 
       {/* ---------- Кто делает ---------- */}
-      <section className="pub-wrap about-sec" aria-labelledby="team-title">
+      <Reveal as="section" className="pub-wrap about-sec" aria-labelledby="team-title">
         <H2 className="about-sec__title" id="team-title">
           {t('teamTitle')}
         </H2>
@@ -273,20 +436,66 @@ export function AboutPage() {
           <Legal as="p">{t('team1')}</Legal>
           <Legal as="p">{t('team2')}</Legal>
         </div>
-      </section>
+      </Reveal>
+
+      {/* ---------- Условия использования ---------- */}
+      <Reveal as="section" className="pub-wrap about-sec" id="terms" aria-labelledby="terms-title">
+        <H2 className="about-sec__title" id="terms-title">
+          {t('termsTitle')}
+        </H2>
+        <div className="about-sec__body">
+          <Legal as="p">{t('termsLede')}</Legal>
+        </div>
+
+        <ol className="about-flow">
+          {TERMS.map((it, i) => (
+            <li key={it.k}>
+              <span className="about-flow__step">{num(i)}</span>
+              <Body as="span">
+                <strong>{t(it.k)}</strong> {t(it.d)}
+              </Body>
+            </li>
+          ))}
+        </ol>
+
+        <Caption tone="mute">{t('revDate')}</Caption>
+      </Reveal>
+
+      {/* ---------- Политика конфиденциальности ---------- */}
+      <Reveal as="section" className="pub-wrap about-sec" id="privacy" aria-labelledby="privacy-title">
+        <H2 className="about-sec__title" id="privacy-title">
+          {t('privTitle')}
+        </H2>
+        <div className="about-sec__body">
+          <Legal as="p">{t('privLede')}</Legal>
+        </div>
+
+        <ol className="about-flow">
+          {PRIVACY.map((it, i) => (
+            <li key={it.k}>
+              <span className="about-flow__step">{num(i)}</span>
+              <Body as="span">
+                <strong>{t(it.k)}</strong> {t(it.d)}
+              </Body>
+            </li>
+          ))}
+        </ol>
+
+        <Caption tone="mute">{t('revDate')}</Caption>
+      </Reveal>
 
       {/* ---------- Оговорка ---------- */}
-      <section className="pub-wrap about-sec" id="disclaimer" aria-labelledby="disc-title">
+      <Reveal as="section" className="pub-wrap about-sec" id="disclaimer" aria-labelledby="disc-title">
         <H2 className="about-sec__title" id="disc-title">
           {t('discTitle')}
         </H2>
         <div className="about-sec__body">
           <Legal as="p">{t('disc')}</Legal>
         </div>
-      </section>
+      </Reveal>
 
       {/* ---------- Контакты ---------- */}
-      <section className="pub-wrap about-sec" id="contacts" aria-labelledby="contacts-title">
+      <Reveal as="section" className="pub-wrap about-sec" id="contacts" aria-labelledby="contacts-title">
         <H2 className="about-sec__title" id="contacts-title">
           {t('contactsTitle')}
         </H2>
@@ -316,10 +525,10 @@ export function AboutPage() {
             </Body>
           </li>
         </ul>
-      </section>
+      </Reveal>
 
       {/* ---------- Призыв ---------- */}
-      <section className="pub-wrap final" aria-labelledby="about-cta">
+      <Reveal as="section" className="pub-wrap final" aria-labelledby="about-cta">
         <h2 className="final__title" id="about-cta">
           {t('ctaTitle')}
         </h2>
@@ -331,7 +540,7 @@ export function AboutPage() {
             {t('ctaBack')}
           </Link>
         </div>
-      </section>
+      </Reveal>
     </PublicPage>
   )
 }

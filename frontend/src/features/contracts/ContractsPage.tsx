@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import type { DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, ClipboardEvent, DragEvent } from 'react'
 
 import {
   Body,
@@ -11,6 +11,7 @@ import {
   Empty,
   Input,
   Label,
+  Loading,
   Select,
   Status,
   Tabs,
@@ -19,11 +20,13 @@ import {
   useToast,
 } from '../../shared/ui'
 import type { StatusKind, TabItem } from '../../shared/ui'
+import { useCountUpInt } from '../../shared/motion'
 import { useLang, useT } from '../../i18n'
 import type { Dict, Lang } from '../../i18n'
 import { citeCode } from '../legal/cite'
 
 import './contracts.css'
+import './contracts.motion.css'
 import {
   CONTRACT_TYPES,
   COMMON_FIELDS,
@@ -59,6 +62,7 @@ const dict: Dict = {
     en: 'Nine types supported by the system',
   },
   build: { ru: 'Составить договор', kz: 'Шартты жасау', en: 'Draft the contract' },
+  rebuild: { ru: 'Составить заново', kz: 'Қайта жасау', en: 'Draft again' },
   saveToMatter: { ru: 'Сохранить в дело', kz: 'Іске сақтау', en: 'Save to matter' },
   saved: {
     ru: 'Проект договора сохранён в дело',
@@ -70,6 +74,27 @@ const dict: Dict = {
     kz: 'Міндетті өріс',
     en: 'Required field',
   },
+  requiredErr: {
+    ru: 'Заполните это поле',
+    kz: 'Бұл өрісті толтырыңыз',
+    en: 'Fill in this field',
+  },
+  requiredToast: {
+    ru: 'Не заполнены обязательные поля',
+    kz: 'Міндетті өрістер толтырылмаған',
+    en: 'Required fields are not filled in',
+  },
+  building: {
+    ru: 'Составляем договор по выбранному типу…',
+    kz: 'Таңдалған түр бойынша шарт жасалуда…',
+    en: 'Assembling the contract for the chosen type…',
+  },
+
+  exportLabel: { ru: 'Экспорт', kz: 'Экспорт', en: 'Export' },
+  exportCancel: { ru: 'Отменить', kz: 'Бас тарту', en: 'Cancel' },
+  exportDone: { ru: 'Файл подготовлен', kz: 'Файл дайындалды', en: 'File prepared' },
+  pdf: { ru: 'PDF', kz: 'PDF', en: 'PDF' },
+  docx: { ru: 'DOCX', kz: 'DOCX', en: 'DOCX' },
 
   previewLabel: { ru: 'Предпросмотр', kz: 'Алдын ала қарау', en: 'Preview' },
   previewEmptyTitle: { ru: 'Договор не составлен', kz: 'Шарт жасалмаған', en: 'No contract yet' },
@@ -109,6 +134,12 @@ const dict: Dict = {
   },
   positionLabel: { ru: 'Позиция', kz: 'Ұстаным', en: 'Position' },
   run: { ru: 'Проверить договор', kz: 'Шартты тексеру', en: 'Review the contract' },
+  rerun: { ru: 'Проверить заново', kz: 'Қайта тексеру', en: 'Review again' },
+  checking: {
+    ru: 'Читаем текст и сверяем условия с нормами…',
+    kz: 'Мәтінді оқып, шарттарды нормалармен салыстырудамыз…',
+    en: 'Reading the text and matching the clauses against the norms…',
+  },
   reviewEmptyTitle: { ru: 'Договор не проверен', kz: 'Шарт тексерілмеген', en: 'Nothing reviewed' },
   reviewEmptyBody: {
     ru: 'Загрузите файл или вставьте текст, выберите позицию и запустите проверку. Найденное разбирается по пунктам с указанием нормы.',
@@ -120,6 +151,8 @@ const dict: Dict = {
   clean: { ru: 'Без замечаний', kz: 'Ескертусіз', en: 'Clean' },
   found: { ru: 'Найдено', kz: 'Табылды', en: 'Findings' },
   advice: { ru: 'Рекомендация', kz: 'Ұсыным', en: 'Recommendation' },
+  expand: { ru: 'Развернуть', kz: 'Жаю', en: 'Expand' },
+  collapse: { ru: 'Свернуть', kz: 'Жию', en: 'Collapse' },
   levelErr: { ru: 'критично', kz: 'сыни', en: 'critical' },
   levelWarn: { ru: 'замечание', kz: 'ескерту', en: 'remark' },
   levelOk: { ru: 'в порядке', kz: 'ретінде', en: 'in order' },
@@ -131,12 +164,27 @@ const dict: Dict = {
 
 type Values = Record<string, string>
 
+/** Задержка соседа в ленте: индекс уезжает в CSS, длительность — в токенах. */
+function step(i: number): CSSProperties {
+  return { ['--i' as string]: i } as CSSProperties
+}
+
 function fill(template: string, subs: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => subs[key] ?? '—')
 }
 
 function fieldsOf(type: ContractType): FieldDef[] {
   return [...COMMON_FIELDS, ...type.fields]
+}
+
+/** Имитация работы, которую в бою делает сервер. */
+const BUILD_MS = 1200
+const CHECK_MS = 1500
+
+/** Число-показатель: набегает до значения табличными знаками. */
+function Count({ value, tone }: { value: number; tone: string }) {
+  const shown = useCountUpInt(value)
+  return <span className={`ct-summary__value tabular ${tone}`}>{shown}</span>
 }
 
 /* ------------------------------------------------------------
@@ -149,22 +197,25 @@ function FormField({
   value,
   onChange,
   requiredHint,
+  error,
 }: {
   field: FieldDef
   lang: Lang
   value: string
   onChange: (name: string, v: string) => void
   requiredHint: string
+  error?: string
 }) {
   const label = tr(field.label, lang)
   const hint = field.required ? requiredHint : undefined
 
   if (field.kind === 'textarea') {
     return (
-      <div className="ct-grid__wide">
+      <div className="ct-grid__wide" data-field={field.name}>
         <Textarea
           label={label}
           hint={hint}
+          error={error}
           value={value}
           onChange={(e) => onChange(field.name, e.target.value)}
         />
@@ -174,30 +225,36 @@ function FormField({
 
   if (field.kind === 'select') {
     return (
-      <Select
-        label={label}
-        hint={hint}
-        value={value}
-        onChange={(e) => onChange(field.name, e.target.value)}
-      >
-        <option value="">—</option>
-        {(field.options ?? []).map((o) => (
-          <option key={o.value} value={o.value}>
-            {tr(o.label, lang)}
-          </option>
-        ))}
-      </Select>
+      <div data-field={field.name}>
+        <Select
+          label={label}
+          hint={hint}
+          error={error}
+          value={value}
+          onChange={(e) => onChange(field.name, e.target.value)}
+        >
+          <option value="">—</option>
+          {(field.options ?? []).map((o) => (
+            <option key={o.value} value={o.value}>
+              {tr(o.label, lang)}
+            </option>
+          ))}
+        </Select>
+      </div>
     )
   }
 
   return (
-    <Input
-      type={field.kind === 'number' ? 'number' : field.kind === 'date' ? 'date' : 'text'}
-      label={label}
-      hint={hint}
-      value={value}
-      onChange={(e) => onChange(field.name, e.target.value)}
-    />
+    <div data-field={field.name}>
+      <Input
+        type={field.kind === 'number' ? 'number' : field.kind === 'date' ? 'date' : 'text'}
+        label={label}
+        hint={hint}
+        error={error}
+        value={value}
+        onChange={(e) => onChange(field.name, e.target.value)}
+      />
+    </div>
   )
 }
 
@@ -242,7 +299,7 @@ function Preview({
   }
 
   return (
-    <div className="ct-doc">
+    <div className="ct-doc enter">
       <div className="ct-doc__head">
         <Label>{t('docKind')}</Label>
         <div className="ct-doc__title">{tr(type.name, lang)}</div>
@@ -259,7 +316,7 @@ function Preview({
         const section = SECTIONS[key]
         if (!section) return null
         return (
-          <section className="ct-sec" key={key}>
+          <section className="ct-sec enter-item" style={step(i)} key={key}>
             <h3 className="ct-sec__title">
               <span className="ct-sec__num">{i + 1}.</span>
               {tr(section.title, lang)}
@@ -273,8 +330,8 @@ function Preview({
         <div style={{ paddingTop: 'var(--s-4)' }}>
           <Label>{t('norms')}</Label>
         </div>
-        {type.norms.map((n) => (
-          <div className="ct-norm" key={n.code}>
+        {type.norms.map((n, i) => (
+          <div className="ct-norm enter-item" style={step(type.sections.length + i)} key={n.code}>
             <Cite code={citeCode(n.code, lang)} />
             <span className="ct-norm__note">{tr(n.note, lang)}</span>
           </div>
@@ -294,12 +351,22 @@ function DraftTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
   // и не даёт понять, что тут вообще происходит.
   const [typeId, setTypeId] = useState<string>('supply')
   const [values, setValues] = useState<Values>({})
+  const [errors, setErrors] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
   const [built, setBuilt] = useState(false)
+  const [run, setRun] = useState(0)
+  const [exporting, setExporting] = useState(false)
+
+  const formRef = useRef<HTMLDivElement | null>(null)
+  const timer = useRef<number>(0)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
 
   const type = useMemo(() => CONTRACT_TYPES.find((c) => c.id === typeId), [typeId])
 
   const setValue = useCallback((name: string, v: string) => {
     setValues((prev) => ({ ...prev, [name]: v }))
+    // Ошибка снимается по мере заполнения, а не только при следующей попытке
+    setErrors((prev) => (prev.includes(name) && v.trim() ? prev.filter((n) => n !== name) : prev))
   }, [])
 
   const grouped = useMemo(() => {
@@ -309,6 +376,51 @@ function DraftTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
       (g) => g.fields.length > 0,
     )
   }, [type])
+
+  /**
+   * Смена типа перестраивает форму, но не стирает работу: значения хранятся
+   * по имени поля, и совпадающие имена переезжают в новый набор как есть.
+   */
+  function pickType(id: string) {
+    if (id === typeId) return
+    setTypeId(id)
+    setErrors([])
+    setBuilt(false)
+    setExporting(false)
+  }
+
+  function build() {
+    if (!type) return
+    const missing = fieldsOf(type)
+      .filter((f) => f.required && !(values[f.name] ?? '').trim())
+      .map((f) => f.name)
+
+    if (missing.length > 0) {
+      setErrors(missing)
+      toast(t('requiredToast'), 'err')
+      const node = formRef.current?.querySelector(`[data-field="${missing[0]}"]`)
+      node?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const control = node?.querySelector<HTMLElement>('input, textarea, select')
+      window.setTimeout(() => control?.focus({ preventScroll: true }), 300)
+      return
+    }
+
+    setErrors([])
+    /* built не сбрасываем: подпись кнопки не должна прыгать, пока идёт работа —
+       ход показывает полоса набора в предпросмотре. */
+    setBusy(true)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      setBusy(false)
+      setBuilt(true)
+      setRun((n) => n + 1)
+    }, BUILD_MS)
+  }
+
+  function exportAs(format: string) {
+    setExporting(false)
+    toast(`${t('exportDone')}: ${typeId}-${new Date().getFullYear()}.${format.toLowerCase()}`, 'ok')
+  }
 
   return (
     <div className="ct-split">
@@ -323,10 +435,7 @@ function DraftTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
               key={c.id}
               className={['ct-type', c.id === typeId ? 'ct-type--on' : ''].filter(Boolean).join(' ')}
               aria-pressed={c.id === typeId}
-              onClick={() => {
-                setTypeId(c.id)
-                setBuilt(false)
-              }}
+              onClick={() => pickType(c.id)}
             >
               <span className="ct-type__name">{tr(c.name, lang)}</span>
               <span className="ct-type__desc">{tr(c.description, lang)}</span>
@@ -335,7 +444,8 @@ function DraftTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
         </div>
 
         {type ? (
-          <>
+          /* key по типу: форма именно перестраивается, а не перерисовывается молча */
+          <div className="swap" key={type.id} ref={formRef}>
             {grouped.map((g) => (
               <div className="ct-group" key={g.id}>
                 <div className="ct-group__head">
@@ -351,6 +461,7 @@ function DraftTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
                       value={values[f.name] ?? ''}
                       onChange={setValue}
                       requiredHint={t('requiredHint')}
+                      error={errors.includes(f.name) ? t('requiredErr') : undefined}
                     />
                   ))}
                 </div>
@@ -358,26 +469,119 @@ function DraftTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
             ))}
 
             <div className="ct-actions">
-              <Button variant="primary" onClick={() => setBuilt(true)}>
-                {t('build')}
+              <Button variant="primary" onClick={build} disabled={busy}>
+                {built ? t('rebuild') : t('build')}
               </Button>
-              <Button onClick={() => toast(t('saved'), 'ok')}>{t('saveToMatter')}</Button>
+              <Button disabled={!built} onClick={() => toast(t('saved'), 'ok')}>
+                {t('saveToMatter')}
+              </Button>
+
+              {exporting ? (
+                <span className="ctm-export swap">
+                  <Chip onClick={() => exportAs('PDF')}>{t('pdf')}</Chip>
+                  <Chip onClick={() => exportAs('DOCX')}>{t('docx')}</Chip>
+                  <Button variant="ghost" onClick={() => setExporting(false)}>
+                    {t('exportCancel')}
+                  </Button>
+                </span>
+              ) : (
+                <Button disabled={!built} onClick={() => setExporting(true)}>
+                  {t('exportLabel')}
+                </Button>
+              )}
             </div>
-          </>
+          </div>
         ) : null}
       </div>
 
       <aside className="ct-split__aside">
         <Label>{t('previewLabel')}</Label>
         <div style={{ marginTop: 'var(--s-4)' }}>
-          {type && built ? (
-            <Preview type={type} values={values} lang={lang} t={t} />
+          {busy ? (
+            <div className="ctm-run">
+              <Loading label={t('building')} />
+              <Caption tone="mute">{t('building')}</Caption>
+            </div>
+          ) : type && built ? (
+            <Preview key={run} type={type} values={values} lang={lang} t={t} />
           ) : (
             <Empty title={t('previewEmptyTitle')}>{t('previewEmptyBody')}</Empty>
           )}
         </div>
       </aside>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------
+   Находка проверки
+   ------------------------------------------------------------ */
+
+function Finding({
+  id,
+  index,
+  level,
+  levelWord,
+  where,
+  problem,
+  quote,
+  cite,
+  citeNote,
+  advice,
+  adviceLabel,
+  open,
+  onToggle,
+  expandLabel,
+}: {
+  id: string
+  index: number
+  level: StatusKind
+  levelWord: string
+  where: string
+  problem: string
+  quote: string
+  cite: string
+  citeNote: string
+  advice: string
+  adviceLabel: string
+  open: boolean
+  onToggle: (id: string) => void
+  expandLabel: string
+}) {
+  return (
+    <article className="ct-finding enter-item" style={step(index)}>
+      <button
+        type="button"
+        className="ctm-toggle"
+        aria-expanded={open}
+        aria-label={expandLabel}
+        onClick={() => onToggle(id)}
+      >
+        <span className="ctm-head">
+          <Status kind={level}>{levelWord}</Status>
+          <Caption tone="mute">{where}</Caption>
+          <span className="ctm-mark" aria-hidden="true">
+            {open ? '−' : '+'}
+          </span>
+        </span>
+        <span className="ct-finding__problem">{problem}</span>
+      </button>
+
+      {open ? (
+        <div className="ctm-body unfold">
+          <p className="ct-finding__quote">{quote}</p>
+
+          <div className="ct-finding__norm">
+            <Cite code={cite} />
+            <Caption tone="mute">{citeNote}</Caption>
+          </div>
+
+          <p className="ct-finding__advice">
+            {adviceLabel}. {advice}
+          </p>
+        </div>
+      ) : null}
+    </article>
   )
 }
 
@@ -391,14 +595,37 @@ function ReviewTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
   const [over, setOver] = useState(false)
   const [position, setPosition] = useState<Position>('neutral')
   const [checked, setChecked] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [run, setRun] = useState(0)
+  const [open, setOpen] = useState<string | null>(null)
 
-  const accept = useCallback((file: File) => {
-    setFileName(file.name)
-    file
-      .text()
-      .then((v) => setText(v.slice(0, 20000)))
-      .catch(() => setText(''))
+  const timer = useRef<number>(0)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  const check = useCallback(() => {
+    setChecked(false)
+    setOpen(null)
+    setBusy(true)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      setBusy(false)
+      setChecked(true)
+      setRun((n) => n + 1)
+    }, CHECK_MS)
   }, [])
+
+  const accept = useCallback(
+    (file: File) => {
+      setFileName(file.name)
+      file
+        .text()
+        .then((v) => setText(v.slice(0, 20000)))
+        .catch(() => setText(''))
+      // Файл принесли — проверка запускается сама, отдельного нажатия не нужно
+      check()
+    },
+    [check],
+  )
 
   const onDrop = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
@@ -408,6 +635,14 @@ function ReviewTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
       if (file) accept(file)
     },
     [accept],
+  )
+
+  /** Вставка текста — такое же начало работы, как и принесённый файл. */
+  const onPaste = useCallback(
+    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+      if (e.clipboardData.getData('text').trim()) check()
+    },
+    [check],
   )
 
   const levelWord: Record<StatusKind, string> = {
@@ -445,7 +680,7 @@ function ReviewTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
           onDrop={onDrop}
         >
           {fileName ? (
-            <div className="ct-drop__file">
+            <div className="ct-drop__file swap">
               <UIText>
                 {t('dropFile')}: {fileName}
               </UIText>
@@ -473,6 +708,7 @@ function ReviewTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
           placeholder={t('textPlaceholder')}
           value={text}
           rows={10}
+          onPaste={onPaste}
           onChange={(e) => {
             setText(e.target.value)
             setChecked(false)
@@ -489,60 +725,62 @@ function ReviewTab({ lang, t }: { lang: Lang; t: (k: string) => string }) {
         </div>
 
         <div className="ct-actions">
-          <Button variant="primary" disabled={!ready} onClick={() => setChecked(true)}>
-            {t('run')}
+          <Button variant="primary" disabled={!ready || busy} onClick={check}>
+            {checked ? t('rerun') : t('run')}
           </Button>
         </div>
       </div>
 
       <aside className="ct-split__aside">
-        {checked ? (
-          <>
+        {busy ? (
+          <div className="ctm-run">
+            <Loading label={t('checking')} />
+            <Caption tone="mute">{t('checking')}</Caption>
+          </div>
+        ) : checked ? (
+          /* key по позиции: смена стороны пересобирает и счётчики, и уровни */
+          <div className="swap" key={`${position}-${run}`}>
             <div className="ct-summary">
               <div className="ct-summary__item">
                 <Label>{t('critical')}</Label>
-                <span className={`ct-summary__value ${counts.err > 0 ? 'tone-err' : 'tone-mute'}`}>
-                  {counts.err}
-                </span>
+                <Count value={counts.err} tone={counts.err > 0 ? 'tone-err' : 'tone-mute'} />
               </div>
               <div className="ct-summary__item">
                 <Label>{t('remarks')}</Label>
-                <span className={`ct-summary__value ${counts.warn > 0 ? 'tone-warn' : 'tone-mute'}`}>
-                  {counts.warn}
-                </span>
+                <Count value={counts.warn} tone={counts.warn > 0 ? 'tone-warn' : 'tone-mute'} />
               </div>
               <div className="ct-summary__item">
                 <Label>{t('clean')}</Label>
-                <span className="ct-summary__value tone-ok">{counts.ok}</span>
+                <Count value={counts.ok} tone="tone-ok" />
               </div>
             </div>
 
             <div className="ct-findings">
-              {FINDINGS.map((f) => {
+              {FINDINGS.map((f, i) => {
                 const level = f.level[position]
+                const isOpen = open === f.id
                 return (
-                  <article className="ct-finding" key={f.id}>
-                    <div className="ct-finding__head">
-                      <Status kind={level}>{levelWord[level]}</Status>
-                      <Caption tone="mute">{tr(f.where, lang)}</Caption>
-                    </div>
-
-                    <p className="ct-finding__problem">{tr(f.problem, lang)}</p>
-                    <p className="ct-finding__quote">{tr(f.quote, lang)}</p>
-
-                    <div className="ct-finding__norm">
-                      <Cite code={citeCode(f.cite, lang)} />
-                      <Caption tone="mute">{tr(f.citeNote, lang)}</Caption>
-                    </div>
-
-                    <p className="ct-finding__advice">
-                      {t('advice')}. {tr(f.advice, lang)}
-                    </p>
-                  </article>
+                  <Finding
+                    key={f.id}
+                    id={f.id}
+                    index={i}
+                    level={level}
+                    levelWord={levelWord[level]}
+                    where={tr(f.where, lang)}
+                    problem={tr(f.problem, lang)}
+                    quote={tr(f.quote, lang)}
+                    cite={citeCode(f.cite, lang)}
+                    citeNote={tr(f.citeNote, lang)}
+                    advice={tr(f.advice, lang)}
+                    adviceLabel={t('advice')}
+                    open={isOpen}
+                    onToggle={(id) => setOpen(isOpen ? null : id)}
+                    expandLabel={isOpen ? t('collapse') : t('expand')}
+                  />
                 )
               })}
             </div>
-          </>
+          </div>
         ) : (
           <>
             <Label>{t('found')}</Label>
@@ -581,7 +819,9 @@ export function ContractsPage() {
 
       <Tabs items={tabs} value={tab} onChange={setTab} />
 
-      {tab === 'draft' ? <DraftTab lang={lang} t={t} /> : <ReviewTab lang={lang} t={t} />}
+      <div className="swap" key={tab}>
+        {tab === 'draft' ? <DraftTab lang={lang} t={t} /> : <ReviewTab lang={lang} t={t} />}
+      </div>
     </div>
   )
 }

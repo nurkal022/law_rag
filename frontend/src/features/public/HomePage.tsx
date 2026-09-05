@@ -1,17 +1,26 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties, MouseEvent } from 'react'
 import { Link } from '../../shared/nav'
-import { Body, Caption, Cite, H2, H3, Label, Legal, UIText } from '../../shared/ui'
+import { Reveal } from '../../shared/motion'
+import { Body, Caption, Cite, H2, H3, Label, Legal, Mono, UIText } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { PublicPage } from './PublicChrome'
 import './public.css'
+import './public.motion.css'
 
 /**
  * Главная — лендинг направления «Документ».
  *
- * Героем страницы служит не иллюстрация, а живой пример работы системы:
- * вопрос, ответ и правовые координаты источника. Иллюстраций и карточек нет,
- * композицию держат типографика, линии и пространство.
+ * Героем страницы служит не иллюстрация, а живая выписка: вопрос, ответ и
+ * правовые координаты источника. Выписку можно переключать между делами, а
+ * каждая координата раскрывается в текст нормы прямо под ответом — лендинг
+ * показывает работу системы, а не рассказывает о ней.
+ *
+ * Движение: первый экран появляется сразу с небольшими задержками, разделы
+ * ниже — по мере прокрутки, по одному разу. Все длительности из tokens.css,
+ * поэтому системная настройка «меньше движения» гасит слой целиком.
  */
 
 const dict: Dict = {
@@ -33,43 +42,219 @@ const dict: Dict = {
   ctaMain: { ru: 'Задать вопрос', kz: 'Сұрақ қою', en: 'Ask a question' },
   ctaSecond: { ru: 'Как это работает', kz: 'Қалай жұмыс істейді', en: 'How it works' },
 
-  /* ---- Живой пример ---- */
+  /* ---- Живая выписка ---- */
+  specPick: { ru: 'Дело', kz: 'Іс', en: 'Matter' },
   specQLabel: { ru: 'Вопрос', kz: 'Сұрақ', en: 'Question' },
-  specQ: {
+  specALabel: { ru: 'Ответ TURA', kz: 'TURA жауабы', en: 'TURA answers' },
+  specSrcLabel: { ru: 'Источники', kz: 'Дереккөздер', en: 'Sources' },
+  specHint: {
+    ru: 'Нажмите на координату — под ответом раскроется текст нормы',
+    kz: 'Координатаны басыңыз — жауаптың астында норманың мәтіні ашылады',
+    en: 'Click a coordinate — the text of the norm opens under the answer',
+  },
+  specOpen: { ru: 'Открыть норму', kz: 'Норманы ашу', en: 'Open the norm' },
+  specClose: { ru: 'Свернуть', kz: 'Жию', en: 'Close' },
+
+  /* Дело 1 — исковая давность */
+  q1tab: { ru: 'Сделка', kz: 'Мәміле', en: 'Transaction' },
+  q1q: {
     ru: 'Я купил квартиру, а через два года выяснилось, что продавец не имел права её продавать. Сколько у меня времени, чтобы оспорить сделку?',
     kz: 'Пәтер сатып алдым, ал екі жылдан кейін сатушының оны сатуға құқығы болмағаны белгілі болды. Мәмілені даулауға қанша уақытым бар?',
     en: 'I bought a flat, and two years later it turned out the seller had no right to sell it. How long do I have to challenge the transaction?',
   },
-  specALabel: { ru: 'Ответ TURA', kz: 'TURA жауабы', en: 'TURA answers' },
-  specA1pre: {
+  q1a1: {
     ru: 'Общий срок исковой давности — три года ',
     kz: 'Талап қоюдың жалпы мерзімі — үш жыл ',
     en: 'The general limitation period is three years ',
   },
-  specA1post: {
+  q1a2: {
     ru: '. Он отсчитывается не со дня сделки, а со дня, когда вы узнали или должны были узнать о нарушении права ',
     kz: '. Ол мәміле жасалған күннен емес, құқығыңыздың бұзылғанын білген немесе білуге тиіс болған күннен басталады ',
     en: '. It runs not from the day of the transaction but from the day you learned, or should have learned, that your right was violated ',
   },
-  specA1end: {
+  q1a3: {
     ru: '. В вашем случае отсчёт начался два года назад, значит срок не истёк.',
     kz: '. Сіздің жағдайыңызда есеп екі жыл бұрын басталған, демек мерзім өткен жоқ.',
     en: '. In your case the clock started two years ago, so the period has not expired.',
   },
-  specA2pre: {
+  q1b1: {
     ru: 'Сделка, совершённая лицом без надлежащих полномочий, оспорима в судебном порядке ',
     kz: 'Тиісті өкілеттігі жоқ адам жасаған мәміле сот тәртібімен дауланады ',
     en: 'A transaction made by a person without proper authority is voidable in court ',
   },
-  specA2end: {
+  q1b2: {
     ru: '. Иск подаётся по месту нахождения недвижимости.',
-    kz: '. Талап қоюдың орны — жылжымайтын мүліктің орналасқан жері.',
+    kz: '. Талап жылжымайтын мүліктің орналасқан жері бойынша қойылады.',
     en: '. The claim is filed at the location of the property.',
   },
-  specSrcLabel: { ru: 'Источники', kz: 'Дереккөздер', en: 'Sources' },
-  specSrc1: { ru: 'Гражданский кодекс РК', kz: 'ҚР Азаматтық кодексі', en: 'Civil Code of the RK' },
-  specSrc2: { ru: 'Гражданский кодекс РК', kz: 'ҚР Азаматтық кодексі', en: 'Civil Code of the RK' },
-  specSrc3: { ru: 'ГПК РК', kz: 'ҚР АПК', en: 'Civil Procedure Code' },
+
+  /* Дело 2 — сокращение */
+  q2tab: { ru: 'Сокращение', kz: 'Қысқарту', en: 'Redundancy' },
+  q2q: {
+    ru: 'Мне сообщили, что мою должность сокращают. Обязаны ли предупредить заранее и что положено при расчёте?',
+    kz: 'Лауазымым қысқартылатынын хабарлады. Алдын ала ескертуге міндетті ме және есеп айырысу кезінде не тиесілі?',
+    en: 'I was told my position is being made redundant. Must they warn me in advance, and what am I owed on the final settlement?',
+  },
+  q2a1: {
+    ru: 'Сокращение численности или штата — законное основание расторгнуть договор по инициативе работодателя ',
+    kz: 'Санды немесе штатты қысқарту — жұмыс берушінің бастамасымен шартты бұзудың заңды негізі ',
+    en: 'A reduction in headcount or staff is a lawful ground for the employer to end the contract ',
+  },
+  q2a2: {
+    ru: ', но при двух условиях. Первое: письменное уведомление не менее чем за один месяц, если договором не установлен более длительный срок ',
+    kz: ', бірақ екі шартпен. Біріншісі: шартта ұзағырақ мерзім белгіленбесе, кемінде бір ай бұрын жазбаша ескерту ',
+    en: ', but on two conditions. First, written notice at least one month ahead, unless the contract sets a longer term ',
+  },
+  q2a3: {
+    ru: '. Второе: при расчёте выплачивается компенсация в размере среднемесячной заработной платы ',
+    kz: '. Екіншісі: есеп айырысу кезінде орташа айлық жалақы мөлшерінде өтемақы төленеді ',
+    en: '. Second, on the final settlement you are paid compensation equal to one average monthly wage ',
+  },
+  q2a4: {
+    ru: '. Нарушение срока уведомления само по себе сокращение не отменяет, но даёт основание требовать возмещения.',
+    kz: '. Ескерту мерзімінің бұзылуы қысқартудың өзін жоққа шығармайды, бірақ өтем талап етуге негіз береді.',
+    en: '. A missed notice period does not undo the redundancy, but it does give ground to claim compensation.',
+  },
+
+  /* Дело 3 — отказ государственного органа */
+  q3tab: { ru: 'Отказ органа', kz: 'Органның бас тартуы', en: 'Public refusal' },
+  q3q: {
+    ru: 'Государственный орган отказал в услуге. Сколько у меня времени на обжалование и куда подавать жалобу?',
+    kz: 'Мемлекеттік орган қызмет көрсетуден бас тартты. Шағымдануға қанша уақытым бар және шағымды қайда беремін?',
+    en: 'A public body refused me a service. How long do I have to appeal, and where do I file the complaint?',
+  },
+  q3a1: {
+    ru: 'Срок — три месяца со дня, когда вам стало известно об отказе ',
+    kz: 'Мерзімі — бас тарту туралы білген күннен бастап үш ай ',
+    en: 'The period is three months from the day you learned of the refusal ',
+  },
+  q3a2: {
+    ru: '. Жалоба подаётся не сразу в суд и не сразу наверх, а в тот орган, который принял решение: он обязан передать её вместе с материалами дела в вышестоящий орган ',
+    kz: '. Шағым бірден сотқа да, жоғарыға да емес, шешім қабылдаған органға беріледі: ол шағымды іс материалдарымен бірге жоғары тұрған органға жіберуге міндетті ',
+    en: '. The complaint goes neither straight to court nor straight upward, but to the body that made the decision: it must pass the complaint with the case file to the superior body ',
+  },
+  q3a3: {
+    ru: '. Досудебный порядок здесь обязателен: заявление, поданное в обход него, суд вернёт.',
+    kz: '. Мұнда сотқа дейінгі тәртіп міндетті: оны айналып өтіп берілген өтінішті сот қайтарады.',
+    en: '. The pre-court stage is mandatory here: a court will return an application that skips it.',
+  },
+
+  /* Дело 4 — аренда */
+  q4tab: { ru: 'Аренда', kz: 'Жалдау', en: 'Lease' },
+  q4q: {
+    ru: 'Арендодатель поднял плату посреди срока договора. Может ли он сделать это в одностороннем порядке?',
+    kz: 'Жалға беруші шарт мерзімінің ортасында ақыны көтерді. Ол мұны біржақты тәртіппен жасай ала ма?',
+    en: 'My landlord raised the rent in the middle of the term. Can they do that unilaterally?',
+  },
+  q4a1: {
+    ru: 'Размер платы за пользование имуществом определяется договором ',
+    kz: 'Мүлікті пайдаланғаны үшін ақының мөлшері шартпен айқындалады ',
+    en: 'The amount payable for the use of the property is fixed by the contract ',
+  },
+  q4a2: {
+    ru: ', а изменить договор можно по соглашению сторон, если сам договор или закон не допускают иного ',
+    kz: ', ал шартты өзгерту тараптардың келісімі бойынша мүмкін, егер шарттың өзінде немесе заңда өзгеше көзделмесе ',
+    en: ', and a contract is changed by agreement of the parties unless the contract or the law allows otherwise ',
+  },
+  q4a3: {
+    ru: '. Значит одностороннее повышение действует только тогда, когда такая возможность прямо записана в договоре. Если её нет, вы вправе платить прежнюю сумму.',
+    kz: '. Демек, біржақты көтеру мұндай мүмкіндік шартта тікелей жазылған жағдайда ғана жарамды. Ол болмаса, бұрынғы соманы төлеуге құқығыңыз бар.',
+    en: '. So a unilateral increase holds only where the contract expressly provides for one. If it does not, you may keep paying the agreed amount.',
+  },
+
+  /* ---- Тексты норм, раскрываемых из выписки ---- */
+  n178t: {
+    ru: 'Общий срок исковой давности',
+    kz: 'Талап қоюдың жалпы мерзімі',
+    en: 'General limitation period',
+  },
+  n178: {
+    ru: 'Общий срок исковой давности устанавливается в три года.',
+    kz: 'Талап қоюдың жалпы мерзімі үш жыл болып белгіленеді.',
+    en: 'The general limitation period is set at three years.',
+  },
+  n180t: {
+    ru: 'Начало течения срока исковой давности',
+    kz: 'Талап қою мерзімінің басталуы',
+    en: 'Start of the limitation period',
+  },
+  n180: {
+    ru: 'Течение срока исковой давности начинается со дня, когда лицо узнало или должно было узнать о нарушении своего права.',
+    kz: 'Талап қою мерзімінің өтуі адам өз құқығының бұзылғанын білген немесе білуге тиіс болған күннен басталады.',
+    en: 'The limitation period starts to run on the day the person learned, or should have learned, that their right was violated.',
+  },
+  n159t: {
+    ru: 'Сделка, совершённая без надлежащих полномочий',
+    kz: 'Тиісті өкілеттіксіз жасалған мәміле',
+    en: 'Transaction made without proper authority',
+  },
+  n159: {
+    ru: 'Сделка, совершённая представителем без полномочий либо с превышением полномочий, может быть признана судом недействительной по иску представляемого.',
+    kz: 'Өкілеттігінсіз немесе өкілеттігінен асыра отырып өкіл жасаған мәміле өкілдік беруші тұлғаның талабы бойынша сот жарамсыз деп тануы мүмкін.',
+    en: 'A transaction made by a representative without authority, or in excess of it, may be declared invalid by a court on the claim of the person represented.',
+  },
+  n531t: {
+    ru: 'Расторжение договора по инициативе работодателя',
+    kz: 'Жұмыс берушінің бастамасымен шартты бұзу',
+    en: 'Termination at the employer’s initiative',
+  },
+  n531: {
+    ru: 'Трудовой договор может быть расторгнут по инициативе работодателя, в том числе при сокращении численности или штата работников.',
+    kz: 'Еңбек шарты жұмыс берушінің бастамасы бойынша, оның ішінде жұмыскерлер санын немесе штатын қысқарту кезінде бұзылуы мүмкін.',
+    en: 'An employment contract may be terminated at the employer’s initiative, including on a reduction in headcount or staff.',
+  },
+  n532t: {
+    ru: 'Уведомление о сокращении',
+    kz: 'Қысқарту туралы ескерту',
+    en: 'Notice of redundancy',
+  },
+  n532: {
+    ru: 'О расторжении трудового договора при сокращении численности или штата работодатель письменно уведомляет работника не менее чем за один месяц, если трудовым или коллективным договором не установлен более длительный срок.',
+    kz: 'Санды немесе штатты қысқартуға байланысты еңбек шартының бұзылатыны туралы жұмыс беруші жұмыскерді кемінде бір ай бұрын жазбаша хабардар етеді, егер еңбек немесе ұжымдық шартта ұзағырақ мерзім белгіленбесе.',
+    en: 'The employer notifies the employee in writing of termination on redundancy at least one month in advance, unless the employment or collective agreement sets a longer term.',
+  },
+  n131t: {
+    ru: 'Компенсационная выплата при сокращении',
+    kz: 'Қысқарту кезіндегі өтемақы төлемі',
+    en: 'Compensation on redundancy',
+  },
+  n131: {
+    ru: 'При расторжении трудового договора в связи с сокращением численности или штата работнику производится компенсационная выплата в размере среднемесячной заработной платы.',
+    kz: 'Жұмыскерлер санын немесе штатын қысқартуға байланысты еңбек шарты бұзылған кезде жұмыскерге орташа айлық жалақы мөлшерінде өтемақы төлемі жүргізіледі.',
+    en: 'Where the contract ends because of a reduction in headcount or staff, the employee receives a compensation payment equal to one average monthly wage.',
+  },
+  n91t: { ru: 'Срок подачи жалобы', kz: 'Шағым беру мерзімі', en: 'Deadline for a complaint' },
+  n91: {
+    ru: 'Жалоба на административный акт подаётся в течение трёх месяцев со дня, когда лицу стало известно о принятом акте или совершённом административном действии.',
+    kz: 'Әкімшілік актіге шағым қабылданған акт немесе жасалған әкімшілік әрекет туралы адамға белгілі болған күннен бастап үш ай ішінде беріледі.',
+    en: 'A complaint against an administrative act is filed within three months of the day the person learned of the act or of the administrative action taken.',
+  },
+  n92t: { ru: 'Порядок подачи жалобы', kz: 'Шағым беру тәртібі', en: 'How a complaint is filed' },
+  n92: {
+    ru: 'Жалоба подаётся в орган, принявший административный акт. Этот орган направляет жалобу вместе с материалами дела в вышестоящий орган.',
+    kz: 'Шағым әкімшілік актіні қабылдаған органға беріледі. Бұл орган шағымды іс материалдарымен бірге жоғары тұрған органға жібереді.',
+    en: 'The complaint is filed with the body that issued the administrative act. That body forwards it, together with the case file, to the superior body.',
+  },
+  n544t: {
+    ru: 'Плата за пользование имуществом',
+    kz: 'Мүлікті пайдаланғаны үшін ақы',
+    en: 'Payment for the use of property',
+  },
+  n544: {
+    ru: 'Плата за пользование нанятым имуществом устанавливается договором имущественного найма.',
+    kz: 'Жалға алынған мүлікті пайдаланғаны үшін ақы мүліктік жалдау шартымен белгіленеді.',
+    en: 'The charge for the use of leased property is set by the lease contract.',
+  },
+  n401t: {
+    ru: 'Изменение и расторжение договора',
+    kz: 'Шартты өзгерту және бұзу',
+    en: 'Amendment and termination of a contract',
+  },
+  n401: {
+    ru: 'Изменение и расторжение договора возможны по соглашению сторон, если иное не предусмотрено законом или договором.',
+    kz: 'Шартты өзгерту және бұзу тараптардың келісімі бойынша мүмкін, егер заңда немесе шартта өзгеше көзделмесе.',
+    en: 'A contract may be amended or terminated by agreement of the parties, unless the law or the contract provides otherwise.',
+  },
 
   /* ---- Возможности ---- */
   modsTitle: { ru: 'Четыре модуля', kz: 'Төрт модуль', en: 'Four modules' },
@@ -205,6 +390,256 @@ const dict: Dict = {
   finalAbout: { ru: 'Как устроена технология', kz: 'Технология қалай құрылған', en: 'How the technology works' },
 }
 
+/* ============================================================
+   Живая выписка: данные
+   ============================================================ */
+
+/** Кусок ответа: либо ключ словаря, либо правовая координата. */
+type Seg = string | { cite: string }
+
+interface SpecCase {
+  id: string
+  tab: string
+  q: string
+  a: Seg[][]
+}
+
+const SPECS: SpecCase[] = [
+  {
+    id: 'q1',
+    tab: 'q1tab',
+    q: 'q1q',
+    a: [
+      ['q1a1', { cite: 'ГК РК 178.1' }, 'q1a2', { cite: 'ГК РК 180.1' }, 'q1a3'],
+      ['q1b1', { cite: 'ГК РК 159.11' }, 'q1b2'],
+    ],
+  },
+  {
+    id: 'q2',
+    tab: 'q2tab',
+    q: 'q2q',
+    a: [
+      [
+        'q2a1',
+        { cite: 'ТК РК 53.1' },
+        'q2a2',
+        { cite: 'ТК РК 53.2' },
+        'q2a3',
+        { cite: 'ТК РК 131.1' },
+        'q2a4',
+      ],
+    ],
+  },
+  {
+    id: 'q3',
+    tab: 'q3tab',
+    q: 'q3q',
+    a: [['q3a1', { cite: 'АППК РК 91.1' }, 'q3a2', { cite: 'АППК РК 92.1' }, 'q3a3']],
+  },
+  {
+    id: 'q4',
+    tab: 'q4tab',
+    q: 'q4q',
+    a: [['q4a1', { cite: 'ГК РК 544.1' }, 'q4a2', { cite: 'ГК РК 401.1' }, 'q4a3']],
+  },
+]
+
+/** Норма, раскрываемая по нажатию на координату: заголовок и текст. */
+const NORMS: Record<string, { title: string; text: string }> = {
+  'ГК РК 178.1': { title: 'n178t', text: 'n178' },
+  'ГК РК 180.1': { title: 'n180t', text: 'n180' },
+  'ГК РК 159.11': { title: 'n159t', text: 'n159' },
+  'ТК РК 53.1': { title: 'n531t', text: 'n531' },
+  'ТК РК 53.2': { title: 'n532t', text: 'n532' },
+  'ТК РК 131.1': { title: 'n131t', text: 'n131' },
+  'АППК РК 91.1': { title: 'n91t', text: 'n91' },
+  'АППК РК 92.1': { title: 'n92t', text: 'n92' },
+  'ГК РК 544.1': { title: 'n544t', text: 'n544' },
+  'ГК РК 401.1': { title: 'n401t', text: 'n401' },
+}
+
+/** Координаты выписки в порядке появления — из них собирается список источников. */
+function citesOf(spec: SpecCase): string[] {
+  const out: string[] = []
+  for (const para of spec.a) {
+    for (const seg of para) {
+      if (typeof seg !== 'string' && !out.includes(seg.cite)) out.push(seg.cite)
+    }
+  }
+  return out
+}
+
+/** Смена дела сама по себе, пока читатель не взялся за переключатель. */
+const ROTATE_MS = 9000
+
+function reducedMotion() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/**
+ * Появление списка при прокрутке — с состоянием наружу.
+ *
+ * <Reveal> держит своё состояние внутри, а ленте нужно знать, дошла ли она до
+ * экрана: иначе элементы отыграют появление, пока раздел ещё не виден, и
+ * очередь пропадёт.
+ */
+function useOnScreen<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null)
+  const [shown, setShown] = useState(() => reducedMotion())
+
+  useEffect(() => {
+    if (shown) return
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setShown(true)
+      return
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setShown(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: '0px 0px -12% 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [shown])
+
+  return [ref, shown] as const
+}
+
+/** Задержка появления, кратная шагу ленты: гаснет вместе с --stagger. */
+function step(i: number): CSSProperties {
+  return { animationDelay: `calc(var(--stagger) * ${i})` }
+}
+
+/* ============================================================
+   Живая выписка: разметка
+   ============================================================ */
+
+function LiveSpec() {
+  const { lang } = useLang()
+  const t = useT(dict)
+  const [active, setActive] = useState(0)
+  const [norm, setNorm] = useState<string | null>(null)
+  /** Читатель взялся за выписку — самостоятельная смена дел прекращается. */
+  const [held, setHeld] = useState(false)
+
+  useEffect(() => {
+    if (held || reducedMotion()) return
+    const id = window.setInterval(() => {
+      setActive((i) => (i + 1) % SPECS.length)
+      setNorm(null)
+    }, ROTATE_MS)
+    return () => window.clearInterval(id)
+  }, [held])
+
+  const pick = useCallback((i: number) => {
+    setHeld(true)
+    setActive(i)
+    setNorm(null)
+  }, [])
+
+  const spec = SPECS[active]
+  const opened = norm ? NORMS[norm] : null
+
+  return (
+    <figure className="spec">
+      <div className="spec__row">
+        <Label className="spec__label">{t('specPick')}</Label>
+        <div className="spec__pick" role="tablist" aria-label={t('specPick')}>
+          {SPECS.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={i === active}
+              className={['spec__tab', i === active ? 'spec__tab--on' : ''].filter(Boolean).join(' ')}
+              onClick={() => pick(i)}
+            >
+              {t(s.tab)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="spec__row">
+        <Label className="spec__label">{t('specQLabel')}</Label>
+        <p className="spec__q swap" key={`q-${spec.id}`}>
+          {t(spec.q)}
+        </p>
+      </div>
+
+      <div className="spec__row" aria-live="polite">
+        <Label className="spec__label">{t('specALabel')}</Label>
+        <div className="swap" key={`a-${spec.id}`}>
+          {spec.a.map((para, pi) => (
+            <Legal as="p" className="spec__a" key={pi}>
+              {para.map((seg, si) =>
+                typeof seg === 'string' ? (
+                  t(seg)
+                ) : (
+                  <Cite
+                    key={si}
+                    code={citeCode(seg.cite, lang)}
+                    title={`${t('specOpen')}: ${citeCode(seg.cite, lang)}`}
+                    aria-expanded={norm === seg.cite}
+                    onClick={() => {
+                      setHeld(true)
+                      setNorm((cur) => (cur === seg.cite ? null : seg.cite))
+                    }}
+                  />
+                ),
+              )}
+            </Legal>
+          ))}
+
+          {opened && norm ? (
+            <div className="spec__norm unfold" key={norm}>
+              <div className="spec__norm-head">
+                <Mono>{citeCode(norm, lang)}</Mono>
+                <Caption tone="mute">{t(opened.title)}</Caption>
+                <button type="button" className="spec__norm-close" onClick={() => setNorm(null)}>
+                  {t('specClose')}
+                </button>
+              </div>
+              <Legal as="p" className="spec__norm-text">
+                {t(opened.text)}
+              </Legal>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <figcaption className="spec__row">
+        <Label className="spec__label">{t('specSrcLabel')}</Label>
+        <div className="spec__srcs swap" key={`s-${spec.id}`}>
+          {citesOf(spec).map((code) => (
+            <span className="spec__src" key={code}>
+              <Cite
+                code={citeCode(code, lang)}
+                title={`${t('specOpen')}: ${citeCode(code, lang)}`}
+                aria-expanded={norm === code}
+                onClick={() => {
+                  setHeld(true)
+                  setNorm((cur) => (cur === code ? null : code))
+                }}
+              />
+              <Caption tone="mute">{t(NORMS[code].title)}</Caption>
+            </span>
+          ))}
+        </div>
+        <Caption tone="mute" className="spec__hint">
+          {t('specHint')}
+        </Caption>
+      </figcaption>
+    </figure>
+  )
+}
+
 const MODULES = [
   { n: '01', name: 'mod1', body: 'mod1d' },
   { n: '02', name: 'mod2', body: 'mod2d' },
@@ -232,75 +667,51 @@ const TRUST = [
   { term: 'trust4', def: 'trust4d' },
 ] as const
 
+/* ============================================================
+   Страница
+   ============================================================ */
+
 export function HomePage() {
-  const { lang } = useLang()
   const t = useT(dict)
+  const [modsRef, modsShown] = useOnScreen<HTMLDivElement>()
+  const [stepsRef, stepsShown] = useOnScreen<HTMLOListElement>()
+
+  /** Якорь «Как это работает» ведёт к разделу, а не только меняет адрес. */
+  const toHow = useCallback((e: MouseEvent<HTMLAnchorElement>) => {
+    const el = document.getElementById('how')
+    if (!el) return
+    e.preventDefault()
+    el.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
+  }, [])
 
   return (
     <PublicPage>
-      {/* ---------- Первый экран ---------- */}
+      {/* ---------- Первый экран: появляется сразу, лентой ---------- */}
       <section className="pub-wrap hero" aria-labelledby="hero-title">
-        <Label className="hero__label">{t('eyebrow')}</Label>
-        <h1 className="pub-display" id="hero-title">
+        <Label className="hero__label enter">{t('eyebrow')}</Label>
+        <h1 className="pub-display enter" id="hero-title" style={step(1)}>
           {t('h1')}
         </h1>
-        <p className="t-legal hero__lede">{t('lede')}</p>
-        <div className="hero__actions">
+        <p className="t-legal hero__lede enter" style={step(2)}>
+          {t('lede')}
+        </p>
+        <div className="hero__actions enter" style={step(3)}>
           <Link to="/chat" className="pub-cta pub-cta--wide">
             {t('ctaMain')}
           </Link>
-          <a href="#how" className="pub-link">
+          <a href="#how" className="pub-link" onClick={toHow}>
             {t('ctaSecond')}
           </a>
         </div>
       </section>
 
-      {/* ---------- Живой пример вместо иллюстрации ---------- */}
-      <section className="pub-wrap" aria-label={t('specALabel')}>
-        <figure className="spec">
-          <div className="spec__row">
-            <Label className="spec__label">{t('specQLabel')}</Label>
-            <p className="spec__q">{t('specQ')}</p>
-          </div>
-
-          <div className="spec__row">
-            <Label className="spec__label">{t('specALabel')}</Label>
-            <Legal as="p" className="spec__a">
-              {t('specA1pre')}
-              <Cite code={citeCode('ГК РК 178.1', lang)} />
-              {t('specA1post')}
-              <Cite code={citeCode('ГК РК 180.1', lang)} />
-              {t('specA1end')}
-            </Legal>
-            <Legal as="p" className="spec__a">
-              {t('specA2pre')}
-              <Cite code={citeCode('ГК РК 159.11', lang)} />
-              {t('specA2end')}
-            </Legal>
-          </div>
-
-          <figcaption className="spec__row">
-            <Label className="spec__label">{t('specSrcLabel')}</Label>
-            <div className="spec__srcs">
-              <span className="spec__src">
-                <Cite code={citeCode('ГК РК 178.1', lang)} />
-                <Caption tone="mute">{t('specSrc1')}</Caption>
-              </span>
-              <span className="spec__src">
-                <Cite code={citeCode('ГК РК 180.1', lang)} />
-                <Caption tone="mute">{t('specSrc2')}</Caption>
-              </span>
-              <span className="spec__src">
-                <Cite code={citeCode('ГПК РК 30.1', lang)} />
-                <Caption tone="mute">{t('specSrc3')}</Caption>
-              </span>
-            </div>
-          </figcaption>
-        </figure>
+      {/* ---------- Живая выписка вместо иллюстрации ---------- */}
+      <section className="pub-wrap enter" aria-label={t('specALabel')} style={step(4)}>
+        <LiveSpec />
       </section>
 
       {/* ---------- Возможности ---------- */}
-      <section className="pub-wrap pub-sec" aria-labelledby="mods-title">
+      <Reveal as="section" className="pub-wrap pub-sec" aria-labelledby="mods-title">
         <div className="pub-sec__head">
           <H2 className="pub-sec__title" id="mods-title">
             {t('modsTitle')}
@@ -310,9 +721,13 @@ export function HomePage() {
           </Body>
         </div>
 
-        <div className="mods">
-          {MODULES.map((m) => (
-            <article className="mod" key={m.n}>
+        <div className="mods" ref={modsRef}>
+          {MODULES.map((m, i) => (
+            <article
+              className={['mod', modsShown ? 'enter-item' : 'pre-enter'].join(' ')}
+              style={{ ['--i' as string]: i } as CSSProperties}
+              key={m.n}
+            >
               <span className="mod__num t-mono">{m.n}</span>
               <H3 as="h3" className="mod__name">
                 {t(m.name)}
@@ -321,10 +736,10 @@ export function HomePage() {
             </article>
           ))}
         </div>
-      </section>
+      </Reveal>
 
       {/* ---------- Как это работает ---------- */}
-      <section className="pub-wrap pub-sec" id="how" aria-labelledby="how-title">
+      <Reveal as="section" className="pub-wrap pub-sec" id="how" aria-labelledby="how-title">
         <div className="pub-sec__head">
           <H2 className="pub-sec__title" id="how-title">
             {t('howTitle')}
@@ -334,9 +749,13 @@ export function HomePage() {
           </Body>
         </div>
 
-        <ol className="steps">
-          {STEPS.map((s) => (
-            <li className="step" key={s.n}>
+        <ol className="steps" ref={stepsRef}>
+          {STEPS.map((s, i) => (
+            <li
+              className={['step', stepsShown ? 'enter-item' : 'pre-enter'].join(' ')}
+              style={{ ['--i' as string]: i } as CSSProperties}
+              key={s.n}
+            >
               <span className="step__num" aria-hidden="true">
                 {s.n}
               </span>
@@ -347,10 +766,10 @@ export function HomePage() {
             </li>
           ))}
         </ol>
-      </section>
+      </Reveal>
 
       {/* ---------- Для кого ---------- */}
-      <section className="pub-wrap pub-sec" aria-labelledby="who-title">
+      <Reveal as="section" className="pub-wrap pub-sec" aria-labelledby="who-title">
         <div className="pub-sec__head">
           <H2 className="pub-sec__title" id="who-title">
             {t('whoTitle')}
@@ -373,10 +792,10 @@ export function HomePage() {
             ))}
           </tbody>
         </table>
-      </section>
+      </Reveal>
 
       {/* ---------- Доверие ---------- */}
-      <section className="pub-wrap pub-sec" aria-labelledby="trust-title">
+      <Reveal as="section" className="pub-wrap pub-sec" aria-labelledby="trust-title">
         <div className="pub-sec__head">
           <H2 className="pub-sec__title" id="trust-title">
             {t('trustTitle')}
@@ -394,10 +813,10 @@ export function HomePage() {
             ))}
           </ul>
         </div>
-      </section>
+      </Reveal>
 
       {/* ---------- Призыв в конце ---------- */}
-      <section className="pub-wrap final" aria-labelledby="final-title">
+      <Reveal as="section" className="pub-wrap final" aria-labelledby="final-title">
         <h2 className="final__title" id="final-title">
           {t('finalTitle')}
         </h2>
@@ -410,7 +829,7 @@ export function HomePage() {
             {t('finalAbout')}
           </Link>
         </div>
-      </section>
+      </Reveal>
     </PublicPage>
   )
 }

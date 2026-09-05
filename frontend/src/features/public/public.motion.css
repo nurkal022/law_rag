@@ -1,0 +1,79 @@
+/* ============================================================
+   TURA — публичные страницы: движение и живая выписка.
+
+   Отдельный файл от public.css: там каркас и ритм, здесь только то,
+   что появляется, переключается и раскрывается. Все значения — токены
+   из tokens.css, поэтому системная настройка «меньше движения»
+   гасит слой целиком.
+   ============================================================ */
+
+/* ---------- Шапка ----------
+   В самом верху страницы линия не нужна: шапка стоит на той же бумаге,
+   что и заголовок. Линия появляется, когда под шапку уходит содержимое —
+   и объясняет, что там что-то есть. */
+.pub-hdr { transition: border-color var(--motion-state); }
+.pub-hdr.pub-hdr--top { border-bottom-color: transparent; }
+
+/* ---------- Живая выписка: переключатель вопросов ---------- */
+.spec__pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-5);
+}
+.spec__tab {
+  border: 0;
+  background: none;
+  padding: var(--s-1) 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  line-height: var(--t-ui-lh);
+  color: var(--mute);
+  border-bottom: 1px solid transparent;
+  transition: color var(--motion), border-color var(--motion);
+}
+.spec__tab:hover { color: var(--ink); }
+.spec__tab--on { color: var(--ink); border-bottom-color: var(--seal); }
+
+/* ---------- Раскрытая норма ----------
+   Не карточка: вставная линия печати слева, как у активного пункта. */
+.spec__norm {
+  margin-top: var(--s-5);
+  padding-left: var(--s-5);
+  border-left: 2px solid var(--seal);
+}
+.spec__norm-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+.spec__norm-text {
+  margin-top: var(--s-2);
+  max-width: var(--measure);
+  color: var(--ink-2);
+}
+.spec__norm-close {
+  border: 0;
+  background: none;
+  margin-left: var(--s-2);
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  color: var(--mute);
+  border-bottom: 1px solid transparent;
+  transition: color var(--motion), border-color var(--motion);
+}
+.spec__norm-close:hover { color: var(--ink); border-bottom-color: var(--rule); }
+
+/* Раскрытая координата держит цвет печати, пока норма показана */
+.spec__a .cite[aria-expanded='true'] { color: var(--seal); }
+.spec__a .cite[aria-expanded='true']::after { transform: scaleX(1); }
+
+/* ---------- Якорь с прокруткой ----------
+   Раздел не должен упираться в липкую шапку при переходе по ссылке. */
+.pub__main [id] { scroll-margin-top: calc(var(--header-h) + var(--s-6)); }
+
+/* Подсказка под источниками — тише самой выписки */
+.spec__hint { display: block; margin-top: var(--s-4); }

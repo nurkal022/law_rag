@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from '../../shared/nav'
 import { Caption, Label, UIText } from '../../shared/ui'
 import { LANGS, useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import './public.css'
+import './public.motion.css'
 
 /**
  * Обвязка публичных страниц.
@@ -84,10 +86,26 @@ function Langs() {
   )
 }
 
+/**
+ * Шапка публичных страниц.
+ *
+ * В самом верху страницы нижней линии нет: шапка стоит на той же бумаге,
+ * что и заголовок. Как только под неё уходит содержимое, линия проявляется —
+ * деталь, которая объясняет, что страница прокручена, без всякой тени.
+ */
 export function PublicHeader() {
   const t = useT(dict)
+  const [atTop, setAtTop] = useState(true)
+
+  useEffect(() => {
+    const onScroll = () => setAtTop(window.scrollY < 4)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
-    <header className="pub-hdr">
+    <header className={['pub-hdr', atTop ? 'pub-hdr--top' : ''].filter(Boolean).join(' ')}>
       <div className="pub-wrap pub-hdr__in">
         <Link to="/" className="pub-wordmark">
           TURA

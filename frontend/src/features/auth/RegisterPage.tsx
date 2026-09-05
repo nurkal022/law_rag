@@ -1,11 +1,31 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Link } from '../../shared/nav'
-import { Body, Button, Caption, Cite, Display, Input, Label, Legal, UIText } from '../../shared/ui'
-import { useLang, useT } from '../../i18n'
+import {
+  Body,
+  Button,
+  Caption,
+  Cite,
+  Display,
+  Input,
+  Label,
+  Legal,
+  Loading,
+  UIText,
+} from '../../shared/ui'
+import { useLang, useT, withLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import './auth.css'
+import './auth.motion.css'
+
+/**
+ * Регистрация.
+ *
+ * Поведение то же, что у входа: кнопка показывает ожидание, ошибки полей
+ * раскрываются, после проверки открывается консультант.
+ */
 
 const dict: Dict = {
   claim: {
@@ -68,9 +88,18 @@ const dict: Dict = {
     en: 'Repeat the password',
   },
   errConfirmDiff: { ru: 'Пароли не совпадают', kz: 'Құпиясөздер сәйкес келмейді', en: 'The passwords do not match' },
+  checking: { ru: 'Проверяем…', kz: 'Тексерудеміз…', en: 'Checking…' },
+  waitNote: {
+    ru: 'Создаём учётную запись и открываем консультанта',
+    kz: 'Тіркелгі жасап, кеңесшіні ашып жатырмыз',
+    en: 'Creating the account and opening the assistant',
+  },
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+/** Ожидание перед переходом: столько система тратит на проверку данных. */
+const SUBMIT_MS = 900
 
 export function RegisterPage() {
   const { lang } = useLang()
@@ -83,21 +112,51 @@ export function RegisterPage() {
   const [errEmail, setErrEmail] = useState<string | null>(null)
   const [errPassword, setErrPassword] = useState<string | null>(null)
   const [errConfirm, setErrConfirm] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  /** Номер попытки: по нему ошибка перерисовывается и раскрытие играет заново. */
+  const [attempt, setAttempt] = useState(0)
+  const navigate = useNavigate()
+  const timer = useRef<number | null>(null)
+
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
+
+  function unfold(text: string | null): ReactNode {
+    if (!text) return undefined
+    return (
+      <span className="unfold" key={attempt}>
+        {text}
+      </span>
+    )
+  }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (pending) return
     const mail = email.trim()
-    setErrName(name.trim() ? null : t('errNameEmpty'))
-    setErrEmail(!mail ? t('errEmailEmpty') : !EMAIL_RE.test(mail) ? t('errEmailBad') : null)
-    setErrPassword(!password ? t('errPassEmpty') : password.length < 8 ? t('errPassShort') : null)
-    setErrConfirm(
-      !confirm ? t('errConfirmEmpty') : confirm !== password ? t('errConfirmDiff') : null,
-    )
+    const eName = name.trim() ? null : t('errNameEmpty')
+    const eMail = !mail ? t('errEmailEmpty') : !EMAIL_RE.test(mail) ? t('errEmailBad') : null
+    const ePass = !password ? t('errPassEmpty') : password.length < 8 ? t('errPassShort') : null
+    const eConf = !confirm
+      ? t('errConfirmEmpty')
+      : confirm !== password
+        ? t('errConfirmDiff')
+        : null
+    setErrName(eName)
+    setErrEmail(eMail)
+    setErrPassword(ePass)
+    setErrConfirm(eConf)
+    setAttempt((n) => n + 1)
+    if (eName || eMail || ePass || eConf) return
+
+    setPending(true)
+    timer.current = window.setTimeout(() => {
+      navigate(withLang('/chat', lang))
+    }, SUBMIT_MS)
   }
 
   return (
     <div className="auth">
-      <aside className="auth__aside">
+      <aside className="auth__aside enter">
         <div>
           <Link to="/" className="auth__mark">
             TURA
@@ -114,7 +173,12 @@ export function RegisterPage() {
       </aside>
 
       <main className="auth__pane">
-        <form className="auth__form" onSubmit={onSubmit} noValidate>
+        <form
+          className="auth__form enter"
+          onSubmit={onSubmit}
+          noValidate
+          style={{ animationDelay: 'calc(var(--stagger) * 1)' }}
+        >
           <Link to="/" className="auth__mark auth__mark-narrow">
             TURA
           </Link>
@@ -132,7 +196,8 @@ export function RegisterPage() {
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              error={errName ?? undefined}
+              error={unfold(errName)}
+              disabled={pending}
             />
             <Input
               label={t('email')}
@@ -142,7 +207,8 @@ export function RegisterPage() {
               inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              error={errEmail ?? undefined}
+              error={unfold(errEmail)}
+              disabled={pending}
             />
             <Input
               label={t('password')}
@@ -152,7 +218,8 @@ export function RegisterPage() {
               hint={t('passHint')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              error={errPassword ?? undefined}
+              error={unfold(errPassword)}
+              disabled={pending}
             />
             <Input
               label={t('confirm')}
@@ -161,21 +228,39 @@ export function RegisterPage() {
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              error={errConfirm ?? undefined}
+              error={unfold(errConfirm)}
+              disabled={pending}
             />
           </div>
 
           <div className="auth__submit">
-            <Button type="submit" variant="primary" size="lg" className="auth__wide">
-              {t('submit')}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="auth__wide"
+              disabled={pending}
+              aria-busy={pending || undefined}
+            >
+              <span className="swap" key={pending ? 'wait' : 'idle'}>
+                {pending ? t('checking') : t('submit')}
+              </span>
             </Button>
+            {pending ? (
+              <div className="auth__wait unfold">
+                <Loading label={t('checking')} />
+                <Caption tone="mute" className="auth__wait-note">
+                  {t('waitNote')}
+                </Caption>
+              </div>
+            ) : null}
           </div>
 
           <div className="auth__or">
             <Caption tone="mute">{t('or')}</Caption>
           </div>
 
-          <Button type="button" variant="secondary" size="lg" className="auth__wide">
+          <Button type="button" variant="secondary" size="lg" className="auth__wide" disabled={pending}>
             {t('google')}
           </Button>
 
