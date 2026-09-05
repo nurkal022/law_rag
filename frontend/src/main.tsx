@@ -6,16 +6,10 @@ import './styles/tokens.css'
 import './styles/base.css'
 import './shared/ui/ui.css'
 
-import { LangProvider } from './i18n'
-import { ToastHost } from './shared/ui'
 import { router } from './app/routes'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <LangProvider>
-      <ToastHost>
-        <RouterProvider router={router} />
-      </ToastHost>
-    </LangProvider>
+    <RouterProvider router={router} />
   </StrictMode>,
 )

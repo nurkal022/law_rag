@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo } from 'react'
 import type { ReactNode } from 'react'
 
 export type Lang = 'ru' | 'kz' | 'en'
@@ -30,18 +30,31 @@ export function langFromPath(path: string): Lang {
   return 'ru'
 }
 
-export function LangProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() =>
-    typeof window === 'undefined' ? 'ru' : langFromPath(window.location.pathname),
-  )
+/** Путь без языкового префикса: /kk/chat → /chat, /en → /. */
+export function stripLang(path: string): string {
+  if (path === '/kk' || path === '/en') return '/'
+  if (path.startsWith('/kk/') || path.startsWith('/en/')) return path.slice(3)
+  return path
+}
 
-  const setLang = useCallback((l: Lang) => {
-    setLangState(l)
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = l === 'kz' ? 'kk' : l
-    }
-  }, [])
+/** Путь с префиксом нужного языка: (/chat, kz) → /kk/chat. Русский без префикса. */
+export function withLang(path: string, lang: Lang): string {
+  const clean = stripLang(path)
+  if (lang === 'ru') return clean
+  const prefix = lang === 'kz' ? '/kk' : '/en'
+  return clean === '/' ? prefix : prefix + clean
+}
 
+/**
+ * Язык — производная от адреса, а не отдельное состояние: иначе он теряется
+ * при перезагрузке, а на казахскую версию невозможно дать ссылку.
+ * Значения поставляет Root, который живёт внутри маршрутизатора.
+ */
+export function LangProvider({
+  lang,
+  setLang,
+  children,
+}: Ctx & { children: ReactNode }) {
   const value = useMemo(() => ({ lang, setLang }), [lang, setLang])
   return <LangCtx.Provider value={value}>{children}</LangCtx.Provider>
 }
