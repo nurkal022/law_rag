@@ -55,6 +55,12 @@ def settings():
     return render_template('admin/settings.html', active='settings')
 
 
+@admin_bp.route('/admin/api-keys')
+@require_admin
+def api_keys_page():
+    return render_template('admin/api_keys.html', active='api_keys')
+
+
 @admin_bp.route('/admin/questions')
 @require_admin
 def questions():

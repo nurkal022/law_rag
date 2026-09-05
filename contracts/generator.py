@@ -13,6 +13,11 @@ class ContractGenerator:
 
     def generate(self, contract_type: str, data: dict, language: str = 'ru') -> dict:
         """Generate a contract using LLM"""
+        # Нормализация кода казахского: принимаем и 'kk' (ISO 639-1, как в анализе),
+        # и 'kz' (исторический код в шаблонах). Внутри используем 'kz'.
+        if language == 'kk':
+            language = 'kz'
+
         type_info = self.templates.get_type_info(contract_type)
         if not type_info:
             return {'success': False, 'error': f'Неизвестный тип договора: {contract_type}'}
@@ -103,7 +108,8 @@ class ContractGenerator:
                 }
             }
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            print(f"Ошибка генерации договора: {e}")
+            return {'success': False, 'error': 'Извините, сервис временно не работает. Попробуйте позже.'}
 
     def get_available_types(self) -> list:
         return self.templates.get_all_types()

@@ -292,9 +292,10 @@ def api_settings_get():
     try:
         from config import Config
         import os
-        provider_type = os.getenv('LLM_PROVIDER_TYPE', 'ollama')
+        provider_type = os.getenv('LLM_PROVIDER_TYPE', 'local')
         model = os.getenv('LLM_MODEL', '')
         ollama_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+        local_llm_url = os.getenv('LOCAL_LLM_BASE_URL', 'http://localhost:8000/v1')
         finetuned_url = os.getenv('FINETUNED_API_URL', 'http://localhost:8000')
         has_openai_key = bool(os.getenv('OPENAI_API_KEY', ''))
         temperature = float(os.getenv('TEMPERATURE', 0.1))
@@ -311,11 +312,17 @@ def api_settings_get():
                     import requests as req
                     r = req.get(f'{ollama_url}/api/tags', timeout=3)
                     available_models = [m['name'] for m in r.json().get('models', [])]
+                elif provider_type in ('local', 'openai'):
+                    try:
+                        available_models = gen.provider.get_available_models()
+                    except Exception:
+                        available_models = []
         except Exception:
             pass
 
         return jsonify({'success': True, 'settings': {
             'provider_type': provider_type, 'model': model,
+            'local_llm_base_url': local_llm_url,
             'ollama_base_url': ollama_url, 'finetuned_api_url': finetuned_url,
             'has_openai_key': has_openai_key, 'available': available,
             'available_models': available_models,
@@ -333,8 +340,8 @@ def api_settings_save():
         _write_env_settings(data)
 
         # Reinit generator
-        from rag.generator import LLMGenerator
-        gen = LLMGenerator()
+        from rag.generator import ResponseGenerator
+        gen = ResponseGenerator()
         current_app.generator = gen
         return jsonify({'success': True, 'message': 'Настройки сохранены'})
     except Exception as e:
@@ -345,10 +352,10 @@ def api_settings_save():
 @require_admin
 def api_settings_test():
     try:
-        from rag.generator import LLMGenerator
+        from rag.generator import ResponseGenerator
         data = request.get_json()
         _write_env_settings(data)
-        gen = LLMGenerator()
+        gen = ResponseGenerator()
         if gen.is_available():
             return jsonify({'success': True, 'model_used': data.get('model', '—')})
         else:
@@ -363,6 +370,7 @@ def _write_env_settings(data):
     updates = {}
     if 'provider_type' in data: updates['LLM_PROVIDER_TYPE'] = data['provider_type']
     if 'model' in data: updates['LLM_MODEL'] = data['model']
+    if 'local_llm_base_url' in data: updates['LOCAL_LLM_BASE_URL'] = data['local_llm_base_url']
     if 'ollama_base_url' in data: updates['OLLAMA_BASE_URL'] = data['ollama_base_url']
     if 'finetuned_api_url' in data: updates['FINETUNED_API_URL'] = data['finetuned_api_url']
     if 'openai_api_key' in data and data['openai_api_key']: updates['OPENAI_API_KEY'] = data['openai_api_key']
@@ -394,6 +402,17 @@ def _write_env_settings(data):
 
     with open(env_path, 'w') as f:
         f.writelines(result)
+
+    # Синхронизируем Config-атрибуты (читаются один раз при импорте) —
+    # иначе пересозданный ResponseGenerator подхватит старый провайдер/модель.
+    from config import Config
+    for key, val in updates.items():
+        if key in ('TEMPERATURE',):
+            setattr(Config, key, float(val))
+        elif key in ('MAX_TOKENS', 'TOP_K_RESULTS'):
+            setattr(Config, key, int(val))
+        else:
+            setattr(Config, key, val)
 
 
 # ───────────────────── Usage analytics: events + users ─────────────────────
@@ -585,3 +604,65 @@ def api_usage_detail(event_id: int):
     }
 
     return jsonify(payload)
+
+
+# ─── API-ключи (публичный API для сторонних программ) ────────────────────────
+
+@admin_bp.route('/api/admin/api-keys', methods=['GET'])
+@require_admin
+def api_keys_list():
+    """Список всех API-ключей со счётчиками (без самих ключей — только префиксы)."""
+    from database.models import ApiKey
+    keys = ApiKey.query.order_by(ApiKey.created_at.desc()).all()
+    total_requests = sum(k.request_count for k in keys)
+    return jsonify({
+        'success': True,
+        'keys': [k.to_dict() for k in keys],
+        'total_requests': total_requests,
+    })
+
+
+@admin_bp.route('/api/admin/api-keys', methods=['POST'])
+@require_admin
+def api_keys_create():
+    """Создать новый ключ. Возвращает raw_key ОДИН РАЗ — больше не покажем."""
+    from database.models import db, ApiKey
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Укажите название клиента'}), 400
+    obj, raw_key = ApiKey.generate(name)
+    db.session.add(obj)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'api_key': raw_key,         # показать пользователю один раз
+        'key': obj.to_dict(),
+        'message': 'Ключ создан. Скопируйте его сейчас — он больше не будет показан.',
+    })
+
+
+@admin_bp.route('/api/admin/api-keys/<int:key_id>/toggle', methods=['POST'])
+@require_admin
+def api_keys_toggle(key_id):
+    """Активировать / отозвать ключ."""
+    from database.models import db, ApiKey
+    k = ApiKey.query.get(key_id)
+    if not k:
+        return jsonify({'success': False, 'error': 'Ключ не найден'}), 404
+    k.is_active = not k.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'key': k.to_dict()})
+
+
+@admin_bp.route('/api/admin/api-keys/<int:key_id>', methods=['DELETE'])
+@require_admin
+def api_keys_delete(key_id):
+    """Удалить ключ полностью."""
+    from database.models import db, ApiKey
+    k = ApiKey.query.get(key_id)
+    if not k:
+        return jsonify({'success': False, 'error': 'Ключ не найден'}), 404
+    db.session.delete(k)
+    db.session.commit()
+    return jsonify({'success': True})

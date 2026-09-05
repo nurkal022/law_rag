@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Юридический консультант — LawVision{% endblock %}
+{% block title %}{{ t('page.chat.title') }}{% endblock %}
+{% block meta_description %}{{ t('page.chat.description') }}{% endblock %}
 {% block nav_chat %}active{% endblock %}
 {% block main_class %}p-0 m-0{% endblock %}
 
@@ -930,9 +931,10 @@ $(document).ready(function () {
                          + ` <span class="ab-sep">·</span>`
                          + ` <a href="/logout" title="Выйти">Выйти</a>`;
         } else {
-            const left = (authState.guest_remaining ?? 5);
+            const limit = authState.guest_limit ?? 2;
+            const left = authState.guest_remaining ?? limit;
             el.className = 'auth-badge guest';
-            el.innerHTML = `<i class="fas fa-user-clock"></i> Гость · осталось ${left} из ${authState.guest_limit ?? 5}`
+            el.innerHTML = `<i class="fas fa-user-clock"></i> Гость · осталось ${left} из ${limit}`
                          + ` <span class="ab-sep">·</span>`
                          + ` <a href="/login?next=/chat">Войти</a>`;
         }
@@ -1206,7 +1208,7 @@ $(document).ready(function () {
             appendAiBubble(answerText, data.sources, data.confidence, data.chat_history_id);
             // обновим оставшийся лимит для гостя
             if (authState && !authState.authenticated) {
-                authState.guest_remaining = Math.max(0, (authState.guest_remaining ?? 5) - 1);
+                authState.guest_remaining = Math.max(0, (authState.guest_remaining ?? (authState.guest_limit ?? 2)) - 1);
                 renderAuthBadge();
             }
             currentMessages.push({

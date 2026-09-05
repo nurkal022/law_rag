@@ -1,68 +1,20 @@
 import numpy as np
-import torch
 from typing import List, Dict, Tuple
-from sentence_transformers import SentenceTransformer
 from database.models import DatabaseManager
 from config import Config
+from embeddings.client import EmbeddingClient
 
 class DocumentRetriever:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self.embedding_model = None
         self._chunks_cache = None
-        self.device = self._get_device()
 
-        # Пытаемся загрузить модель embeddings
-        # Офлайн режим: используем только локальный кеш
-        import os
-        os.environ['HF_HUB_OFFLINE'] = '1'
-        os.environ['TRANSFORMERS_OFFLINE'] = '1'
-
-        try:
-            self.embedding_model = SentenceTransformer(
-                Config.EMBEDDING_MODEL,
-                device=self.device,
-                local_files_only=True  # Только локальные файлы
-            )
-            print(f"✅ Retriever: Модель загружена {Config.EMBEDDING_MODEL}")
-            print(f"   📱 Устройство: {self.device}")
-        except Exception as e:
-            try:
-                self.embedding_model = SentenceTransformer(
-                    Config.EMBEDDING_MODEL_OFFLINE,
-                    device=self.device,
-                    local_files_only=True  # Только локальные файлы
-                )
-                print(f"✅ Retriever: Альтернативная модель загружена {Config.EMBEDDING_MODEL_OFFLINE}")
-                print(f"   📱 Устройство: {self.device}")
-            except Exception as e2:
-                print(f"⚠️  Retriever: Работаем без семантического поиска")
-                self.embedding_model = None
-
-    def _get_device(self) -> str:
-        """Определяет устройство для вычислений (CPU или GPU)"""
-        use_gpu = Config.USE_GPU_FOR_EMBEDDINGS
-
-        if use_gpu == 'false':
-            return 'cpu'
-        elif use_gpu == 'true' or use_gpu == 'auto':
-            if torch.cuda.is_available():
-                # Проверяем совместимость GPU с PyTorch
-                try:
-                    test_tensor = torch.zeros(1, device='cuda')
-                    del test_tensor
-                    return 'cuda'
-                except RuntimeError as e:
-                    if "no kernel image" in str(e) or "not compatible" in str(e):
-                        print("⚠️  Retriever: GPU не совместим с PyTorch, используется CPU")
-                        return 'cpu'
-                    raise
-            else:
-                if use_gpu == 'true':
-                    print("⚠️  Retriever: GPU запрошен, но недоступен. Используется CPU.")
-                return 'cpu'
+        # Эмбеддинги и rerank — на централизованном сервисе (BGE-M3)
+        self.embedding_model = EmbeddingClient()
+        if self.embedding_model.is_available():
+            print(f"✅ Retriever: сервис эмбеддингов доступен {Config.EMBEDDING_MODEL} @ {Config.EMBEDDING_BASE_URL}")
         else:
-            return 'cpu'
+            print(f"⚠️  Retriever: сервис эмбеддингов недоступен {Config.EMBEDDING_BASE_URL}")
 
     def _load_chunks_for_keyword_search(self):
         """Загрузка чанков для поиска по ключевым словам (без embeddings)"""
@@ -205,6 +157,23 @@ class DocumentRetriever:
         # Сортируем по финальной оценке
         final_results = list(combined_results.values())
         final_results = sorted(final_results, key=lambda x: x['final_score'], reverse=True)
+
+        # Rerank: переупорядочиваем кандидатов кросс-энкодером BGE-M3 по
+        # релевантности к запросу. Берём с запасом (до top_k*4), reranker
+        # сам поднимает самые релевантные наверх. При недоступности — fallback
+        # на исходный порядок по final_score.
+        if Config.USE_RERANK and len(final_results) > 1:
+            candidates = final_results[:top_k * 4]
+            ranked = self.embedding_model.rerank(
+                query, [c['content'] for c in candidates]
+            )
+            if ranked:
+                reordered = []
+                for r in ranked:
+                    c = candidates[r['index']]
+                    c['rerank_score'] = r['relevance_score']
+                    reordered.append(c)
+                final_results = reordered
 
         # Дедупликация: убираем перекрывающиеся чанки из одного документа
         deduplicated = []

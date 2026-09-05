@@ -2,79 +2,25 @@ import os
 import re
 import numpy as np
 from typing import List, Dict, Tuple
-from sentence_transformers import SentenceTransformer
 import tiktoken
-import torch
 from config import Config
 from database.models import DatabaseManager
+from embeddings.client import EmbeddingClient
 
 class DocumentProcessor:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self.embedding_model = None
-        self.device = self._get_device()
-        
-        # Пытаемся загрузить основную модель
-        try:
-            # Офлайн режим: используем только локальный кеш
-            import os
-            os.environ['HF_HUB_OFFLINE'] = '1'
-            os.environ['TRANSFORMERS_OFFLINE'] = '1'
-            
-            self.embedding_model = SentenceTransformer(
-                Config.EMBEDDING_MODEL, 
-                device=self.device,
-                local_files_only=True  # Только локальные файлы
-            )
-            print(f"✅ Модель эмбеддингов загружена: {Config.EMBEDDING_MODEL}")
-            print(f"   📱 Устройство: {self.device}")
-        except Exception as e:
-            print(f"❌ Ошибка загрузки основной модели: {e}")
-            
-            # Пытаемся загрузить альтернативную модель
-            try:
-                print("🔄 Пытаемся загрузить альтернативную модель...")
-                self.embedding_model = SentenceTransformer(
-                    Config.EMBEDDING_MODEL_OFFLINE, 
-                    device=self.device,
-                    local_files_only=True  # Только локальные файлы
-                )
-                print(f"✅ Альтернативная модель загружена: {Config.EMBEDDING_MODEL_OFFLINE}")
-                print(f"   📱 Устройство: {self.device}")
-            except Exception as e2:
-                print(f"❌ Ошибка загрузки альтернативной модели: {e2}")
-                print("⚠️  Система будет работать без создания эмбеддингов")
-                self.embedding_model = None
-        self.tokenizer = tiktoken.get_encoding("cl100k_base")
-    
-    def _get_device(self) -> str:
-        """Определяет устройство для вычислений (CPU или GPU)"""
-        use_gpu = Config.USE_GPU_FOR_EMBEDDINGS
-        
-        if use_gpu == 'false':
-            return 'cpu'
-        elif use_gpu == 'true' or use_gpu == 'auto':
-            if torch.cuda.is_available():
-                # Проверяем совместимость GPU с PyTorch
-                try:
-                    # Пробуем создать тестовый тензор на GPU
-                    test_tensor = torch.zeros(1, device='cuda')
-                    del test_tensor
-                    print(f"🚀 GPU обнаружен и совместим: {torch.cuda.get_device_name(0)}")
-                    return 'cuda'
-                except RuntimeError as e:
-                    if "no kernel image" in str(e) or "not compatible" in str(e):
-                        print(f"⚠️  GPU {torch.cuda.get_device_name(0)} не совместим с текущей версией PyTorch")
-                        print("   Используется CPU для эмбеддингов")
-                        return 'cpu'
-                    raise
-            else:
-                if use_gpu == 'true':
-                    print("⚠️  GPU запрошен, но недоступен. Используется CPU.")
-                return 'cpu'
+
+        # Эмбеддинги считаются на централизованном сервисе (BGE-M3).
+        # Клиент создаётся всегда; реальная доступность проверяется при вызовах.
+        self.embedding_model = EmbeddingClient()
+        if self.embedding_model.is_available():
+            print(f"✅ Сервис эмбеддингов доступен: {Config.EMBEDDING_MODEL} @ {Config.EMBEDDING_BASE_URL}")
         else:
-            return 'cpu'
-        
+            print(f"⚠️  Сервис эмбеддингов недоступен: {Config.EMBEDDING_BASE_URL} (запросы будут падать)")
+
+        self.tokenizer = tiktoken.get_encoding("cl100k_base")
+
     def extract_text_from_pdf(self, filepath: str) -> str:
         """Extract text from PDF file using pdfplumber"""
         import pdfplumber

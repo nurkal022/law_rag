@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}LawVision — Юридическая платформа{% endblock %}
+{% block title %}{{ t('page.home.title') }}{% endblock %}
+{% block meta_description %}{{ t('page.home.description') }}{% endblock %}
 {% block nav_home %}active{% endblock %}
 {% block main_class %}{% endblock %}
 
@@ -436,11 +437,11 @@
                     <span class="pulse-dot"></span>
                     Платформа на базе ИИ
                 </div>
-                <h1 data-i18n="hero.title">Юридическая<br>платформа<br><span class="text-accent-hero">нового поколения</span></h1>
-                <p data-i18n="hero.subtitle">Работайте с законодательством Республики Казахстан при поддержке искусственного интеллекта — быстро, точно и удобно</p>
+                <h1>{{ t('home.hero.title_line1') }}<br>{{ t('home.hero.title_line2') }}<br><span class="text-accent-hero">{{ t('home.hero.title_line3') }}</span></h1>
+                <p>{{ t('hero.subtitle') }}</p>
                 <div class="hero-actions">
-                    <a href="/tools" class="btn-hero-dark" data-i18n="hero.start">Начать работу <i class="fas fa-arrow-right"></i></a>
-                    <a href="/about" class="btn-hero-outline" data-i18n="hero.learn_more">Узнать больше</a>
+                    <a href="{{ lang_url_prefix }}/tools" class="btn-hero-dark">{{ t('hero.start') }} <i class="fas fa-arrow-right"></i></a>
+                    <a href="{{ lang_url_prefix }}/about" class="btn-hero-outline">{{ t('hero.learn_more') }}</a>
                 </div>
             </div>
             <div class="hero-right">
@@ -497,9 +498,9 @@
 <!-- Features — Bento Grid -->
 <section class="home-section">
     <div class="container">
-        <div class="section-pill"><i class="fas fa-sparkles"></i> Возможности</div>
-        <h2 class="section-title">Всё для работы с правом</h2>
-        <p class="section-subtitle">Современные AI-инструменты для юристов, госорганов и граждан Казахстана</p>
+        <div class="section-pill"><i class="fas fa-sparkles"></i> {{ t('home.capabilities.pill') }}</div>
+        <h2 class="section-title">{{ t('home.capabilities.title') }}</h2>
+        <p class="section-subtitle">{{ t('home.capabilities.subtitle') }}</p>
 
         <div class="bento-grid">
             <div class="bento-card span-2 highlight">
@@ -539,9 +540,9 @@
 <!-- Tools -->
 <section class="home-section alt-bg">
     <div class="container">
-        <div class="section-pill"><i class="fas fa-tools"></i> Инструменты</div>
-        <h2 class="section-title">Четыре ключевых инструмента</h2>
-        <p class="section-subtitle">Каждый решает конкретную задачу юриста</p>
+        <div class="section-pill"><i class="fas fa-tools"></i> {{ t('home.tools.pill') }}</div>
+        <h2 class="section-title">{{ t('home.tools.title') }}</h2>
+        <p class="section-subtitle">{{ t('home.tools.subtitle') }}</p>
 
         <div class="row g-4">
             <div class="col-md-3">

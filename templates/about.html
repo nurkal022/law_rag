@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}О нас — LawVision{% endblock %}
+{% block title %}{{ t('page.about.title') }}{% endblock %}
+{% block meta_description %}{{ t('page.about.description') }}{% endblock %}
 {% block nav_about %}active{% endblock %}
 {% block main_class %}{% endblock %}
 
@@ -349,8 +350,25 @@
     </div>
 </section>
 
-<!-- Audience -->
+<!-- Research project / grant -->
 <section class="about-section alt-bg">
+    <div class="container">
+        <div class="section-pill"><i class="fas fa-flask"></i> <span data-i18n="about.project.pill">Научный проект</span></div>
+        <h2 class="section-title" data-i18n="about.project.title">Программно-целевое финансирование</h2>
+        <p class="section-subtitle" data-i18n="about.project.subtitle">Платформа развивается в рамках научно-исследовательского проекта</p>
+
+        <div class="mission-item dark" style="display:block;">
+            <div class="mi-icon"><i class="fas fa-award"></i></div>
+            <div style="font-size:0.8125rem; font-weight:700; letter-spacing:0.04em; color:#93c5fd; margin-bottom:0.5rem;">
+                <span data-i18n="about.project.code_label">Регистрационный номер</span>: BR27101389
+            </div>
+            <h4 style="color:white; font-size:1.125rem; line-height:1.5;" data-i18n="about.project.name">Внедрение инструментов искусственного интеллекта в законотворческий процесс Республики Казахстан для оптимизации и повышения эффективности, прозрачности законодательства</h4>
+        </div>
+    </div>
+</section>
+
+<!-- Audience -->
+<section class="about-section">
     <div class="container">
         <div class="section-pill"><i class="fas fa-users"></i> Для кого</div>
         <h2 class="section-title">Кому подходит LawVision</h2>
@@ -389,7 +407,7 @@
 </section>
 
 <!-- Approach -->
-<section class="about-section">
+<section class="about-section alt-bg">
     <div class="container">
         <div class="section-pill"><i class="fas fa-microchip"></i> Подход</div>
         <h2 class="section-title">Как это работает</h2>

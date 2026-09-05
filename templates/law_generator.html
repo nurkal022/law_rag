@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Генератор законопроектов — LawVision{% endblock %}
+{% block title %}{{ t('page.law_generator.title') }}{% endblock %}
+{% block meta_description %}{{ t('page.law_generator.description') }}{% endblock %}
 {% block nav_generator %}active{% endblock %}
 
 {% block extra_css %}
@@ -123,6 +124,23 @@
 {% endblock %}
 
 {% block content %}
+<div class="gate-wrapper">
+{% if not auth_user %}
+<div class="gate-overlay">
+    <div class="gate-card">
+        <div class="gate-icon"><i class="fas fa-lock"></i></div>
+        <h2 class="gate-title" data-i18n="gate.title">Доступно после регистрации</h2>
+        <p class="gate-text" data-i18n="gate.text">Этот инструмент доступен только зарегистрированным пользователям. Регистрация бесплатна и займёт меньше минуты.</p>
+        <div class="gate-actions">
+            <a href="/register?next=/law-generator" class="gate-btn gate-btn-primary">
+                <i class="fas fa-user-plus"></i> <span data-i18n="gate.register">Создать аккаунт</span>
+            </a>
+            <a href="/login?next=/law-generator" class="gate-btn gate-btn-secondary" data-i18n="gate.login">Уже есть аккаунт? Войти</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+<div class="{% if not auth_user %}gate-blur{% endif %}">
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 style="font-size: 1.375rem; font-weight: 700; margin: 0;" data-i18n="gen.title">Генератор законопроектов</h1>
@@ -301,6 +319,8 @@
         </div>
     </div></div>
 </div>
+</div><!-- /gate-blur inner -->
+</div><!-- /gate-wrapper -->
 
 <!-- Sections data -->
 <script type="application/json" id="sections-data">{{ questions | tojson | safe }}</script>

@@ -21,8 +21,16 @@ class LLMProviderFactory:
             Экземпляр провайдера или None
         """
         provider_type = provider_type or Config.LLM_PROVIDER_TYPE
-        
-        # OpenAI провайдер (deprecated для локальной конфигурации)
+
+        # Локальный централизованный LLM-сервис (OpenAI-совместимый vLLM) —
+        # основной провайдер. Переиспользуем OpenAIProvider с base_url.
+        if provider_type == 'local':
+            base_url = kwargs.get('base_url') or Config.LOCAL_LLM_BASE_URL
+            api_key = kwargs.get('api_key') or Config.LOCAL_LLM_API_KEY or 'not-needed'
+            model = kwargs.get('model') or Config.LLM_MODEL
+            return OpenAIProvider(api_key=api_key, default_model=model, base_url=base_url)
+
+        # OpenAI провайдер (облачный)
         if provider_type == 'openai':
             api_key = kwargs.get('api_key') or Config.OPENAI_API_KEY
             model = kwargs.get('model') or Config.LLM_MODEL
@@ -43,7 +51,7 @@ class LLMProviderFactory:
             return FineTunedModelProvider(base_url=base_url)
         
         else:
-            raise ValueError(f"Неизвестный тип провайдера: {provider_type}. Используйте 'ollama' или 'finetuned' для локальной работы")
+            raise ValueError(f"Неизвестный тип провайдера: {provider_type}. Используйте 'local' (централизованный vLLM), 'openai', 'ollama' или 'finetuned'")
     
     @staticmethod
     def get_current_provider() -> Optional[LLMProvider]:

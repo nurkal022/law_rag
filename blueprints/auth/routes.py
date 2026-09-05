@@ -4,10 +4,14 @@
 после этого фронтенд показывает модал с предложением зарегистрироваться.
 Сама проверка лимита живёт в /api/chat (см. app.py).
 
+Договоры, генератор законопроектов и правовая аналитика закрыты для
+гостей полностью — см. декоратор login_required ниже.
+
 Архитектура учитывает Google OAuth — поле users.google_id уже есть,
 маршруты /login/google* добавим, когда подключим клиент.
 """
 from datetime import datetime
+from functools import wraps
 import re
 
 from flask import (
@@ -18,7 +22,7 @@ from database.models import db, User
 from . import auth_bp
 
 
-GUEST_FREE_QUESTIONS = 5
+GUEST_FREE_QUESTIONS = 2
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
@@ -80,6 +84,35 @@ def log_usage(module: str, action: str, details: dict = None):
         except Exception:
             pass
         print(f"⚠️  log_usage failed ({module}/{action}): {e}")
+
+
+def login_required(view):
+    """Закрывает endpoint для гостей.
+
+    Для API (path начинается с /api/) возвращает 401 JSON — фронтенд
+    показывает модал. Для GET-страниц редиректит на /login?next=<path>,
+    но если запрос — это AJAX (XHR / Accept: application/json), всё равно
+    отдаёт 401 JSON, чтобы клиент сам обработал.
+    """
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if current_user():
+            return view(*args, **kwargs)
+
+        wants_json = (
+            request.path.startswith('/api/')
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or 'application/json' in (request.headers.get('Accept') or '')
+        )
+        if wants_json:
+            return jsonify({
+                'success': False,
+                'error': 'auth_required',
+                'error_type': 'auth_required',
+                'message': 'Эта функция доступна только зарегистрированным пользователям',
+            }), 401
+        return redirect(url_for('auth.login', next=request.path))
+    return wrapper
 
 
 # ───────────────────── routes ─────────────────────

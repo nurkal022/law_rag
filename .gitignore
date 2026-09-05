@@ -299,4 +299,13 @@ docker-compose.override.yml
 
 # Kubernetes
 *.yaml.local
-*.yml.local 
+*.yml.local
+
+# Claude Code local settings
+.claude/
+
+# Local exports (chat history, eval data)
+exports/
+
+# Google Search Console site verification
+googlea*.html 

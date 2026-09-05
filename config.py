@@ -8,13 +8,22 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 class Config:
     # LLM Provider настройки
-    LLM_PROVIDER_TYPE = os.getenv('LLM_PROVIDER_TYPE', 'ollama')
-    LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-oss:20b')
+    # 'local' — централизованный OpenAI-совместимый сервис (vLLM на сервере с GPU)
+    # 'openai' — облачный OpenAI; 'ollama' — устаревший локальный Ollama
+    LLM_PROVIDER_TYPE = os.getenv('LLM_PROVIDER_TYPE', 'local')
+    LLM_MODEL = os.getenv('LLM_MODEL', 'gemma4')
 
     # OpenAI настройки
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
-    # Ollama настройки
+    # Локальный централизованный LLM-сервис (OpenAI-совместимый, vLLM)
+    # С самого сервера: http://localhost:8000/v1
+    # С других машин в сети: http://10.1.17.61:8000/v1
+    LOCAL_LLM_BASE_URL = os.getenv('LOCAL_LLM_BASE_URL', 'http://localhost:8000/v1')
+    # API-ключ vLLM не проверяет, но OpenAI SDK требует непустую строку
+    LOCAL_LLM_API_KEY = os.getenv('LOCAL_LLM_API_KEY', 'not-needed')
+
+    # Ollama настройки (устарело)
     OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 
     # Fine-tuned модель настройки
@@ -57,6 +66,8 @@ class Config:
             'LLM_PROVIDER_TYPE': 'LLM_PROVIDER_TYPE',
             'LLM_MODEL': 'LLM_MODEL',
             'OPENAI_API_KEY': 'OPENAI_API_KEY',
+            'LOCAL_LLM_BASE_URL': 'LOCAL_LLM_BASE_URL',
+            'LOCAL_LLM_API_KEY': 'LOCAL_LLM_API_KEY',
             'OLLAMA_BASE_URL': 'OLLAMA_BASE_URL',
             'FINETUNED_API_URL': 'FINETUNED_API_URL',
             'TEMPERATURE': 'TEMPERATURE',
@@ -95,13 +106,15 @@ class Config:
     TEMPERATURE = 0.1  # Температура для более точных ответов
     TOP_K_RESULTS = 5  # Количество релевантных чанков для контекста
     
-    # Embeddings
-    EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
-    EMBEDDING_MODEL_OFFLINE = os.getenv('EMBEDDING_MODEL_OFFLINE', 'all-MiniLM-L6-v2')  # Альтернативная модель
-    EMBEDDING_DIMENSION = 384
-    # Использование GPU для эмбеддингов
-    # RTX 5090 (sm_120) пока не поддерживается PyTorch, используем CPU по умолчанию
-    USE_GPU_FOR_EMBEDDINGS = os.getenv('USE_GPU_FOR_EMBEDDINGS', 'false').lower()  # 'auto', 'true', 'false'
+    # Embeddings — централизованный сервис (OpenAI-совместимый, BGE-M3 на сервере с GPU)
+    # С самого сервера: http://localhost:8002/v1; с других машин: http://10.1.17.61:8002/v1
+    EMBEDDING_BASE_URL = os.getenv('EMBEDDING_BASE_URL', 'http://localhost:8002/v1')
+    EMBEDDING_API_KEY = os.getenv('EMBEDDING_API_KEY', 'not-needed')
+    EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'bge-m3')
+    EMBEDDING_DIMENSION = 1024  # BGE-M3 → 1024
+    # Rerank того же сервиса (BGE-M3 умеет /v1/rerank) — переупорядочивает кандидатов
+    EMBEDDING_RERANK_MODEL = os.getenv('EMBEDDING_RERANK_MODEL', 'bge-m3')
+    USE_RERANK = os.getenv('USE_RERANK', 'true').lower() == 'true'
     
     # Flask настройки
     SECRET_KEY = os.getenv('SECRET_KEY', 'lawai-secret-key')

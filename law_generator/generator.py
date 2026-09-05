@@ -182,9 +182,10 @@ class LawProjectGenerator:
             }
             
         except Exception as e:
+            print(f"Ошибка генерации документа: {e}")
             return {
                 "success": False,
-                "error": f"Ошибка генерации документа: {str(e)}",
+                "error": "Извините, сервис временно не работает. Попробуйте позже.",
                 "project_id": project_id
             }
     

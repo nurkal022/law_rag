@@ -3,22 +3,29 @@ from typing import List, Dict, Optional
 from .base import LLMProvider
 
 class OpenAIProvider(LLMProvider):
-    """Провайдер для OpenAI API (облачные модели)"""
-    
-    def __init__(self, api_key: str, default_model: str = "gpt-4o"):
+    """Провайдер для OpenAI API и OpenAI-совместимых серверов (vLLM и др.)"""
+
+    def __init__(self, api_key: str, default_model: str = "gpt-4o", base_url: str = None):
         """
-        Инициализация OpenAI провайдера
-        
+        Инициализация OpenAI(-совместимого) провайдера
+
         Args:
-            api_key: API ключ OpenAI
+            api_key: API ключ. Для облачного OpenAI обязателен; для локального
+                vLLM ключ не проверяется, но SDK требует непустую строку.
             default_model: Модель по умолчанию
+            base_url: URL OpenAI-совместимого эндпоинта (напр. http://localhost:8000/v1).
+                Если не задан — используется облачный OpenAI.
         """
         if not api_key:
             raise ValueError("OpenAI API ключ обязателен")
-        
-        self.client = openai.OpenAI(api_key=api_key)
+
+        client_kwargs = {'api_key': api_key}
+        if base_url:
+            client_kwargs['base_url'] = base_url
+        self.client = openai.OpenAI(**client_kwargs)
         self.default_model = default_model
         self.api_key = api_key
+        self.base_url = base_url
     
     def chat_completion(self, messages: List[Dict[str, str]], 
                       model: str = None,
@@ -74,7 +81,15 @@ class OpenAIProvider(LLMProvider):
             return False
     
     def get_available_models(self) -> List[str]:
-        """Возвращает список доступных моделей OpenAI"""
+        """Возвращает список доступных моделей"""
+        # Локальный OpenAI-совместимый сервер (vLLM): отдаёт свои модели
+        # (gemma4 и т.п.) — берём их как есть, без фильтра по "gpt".
+        if self.base_url:
+            try:
+                models = self.client.models.list()
+                return [m.id for m in models.data]
+            except Exception:
+                return [self.default_model]
         try:
             models = self.client.models.list()
             # Фильтруем только chat модели

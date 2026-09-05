@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Правовая аналитика — LawVision{% endblock %}
+{% block title %}{{ t('page.analytics.title') }}{% endblock %}
+{% block meta_description %}{{ t('page.analytics.description') }}{% endblock %}
 {% block nav_analytics %}active{% endblock %}
 
 {% block extra_css %}
@@ -181,7 +182,23 @@
 {% endblock %}
 
 {% block content %}
-<div class="analytics-page">
+<div class="gate-wrapper">
+{% if not auth_user %}
+<div class="gate-overlay">
+    <div class="gate-card">
+        <div class="gate-icon"><i class="fas fa-lock"></i></div>
+        <h2 class="gate-title" data-i18n="gate.title">Доступно после регистрации</h2>
+        <p class="gate-text" data-i18n="gate.text">Этот инструмент доступен только зарегистрированным пользователям. Регистрация бесплатна и займёт меньше минуты.</p>
+        <div class="gate-actions">
+            <a href="/register?next=/legal-analytics" class="gate-btn gate-btn-primary">
+                <i class="fas fa-user-plus"></i> <span data-i18n="gate.register">Создать аккаунт</span>
+            </a>
+            <a href="/login?next=/legal-analytics" class="gate-btn gate-btn-secondary" data-i18n="gate.login">Уже есть аккаунт? Войти</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+<div class="analytics-page{% if not auth_user %} gate-blur{% endif %}">
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="text-center text-white">
@@ -527,6 +544,7 @@
         </div>
     </div>
 </div>
+</div><!-- /gate-wrapper -->
 {% endblock %}
 
 {% block extra_js %}

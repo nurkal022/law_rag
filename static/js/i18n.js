@@ -1,30 +1,37 @@
+// Клиентский i18n — теперь только read-only утилита.
+// Язык определяется СЕРВЕРОМ (по URL: /, /kk, /en) и приходит в <html lang>.
+// JS-переключения нет — все три языка имеют свои URL.
+//
+// Эта утилита остаётся для динамического контента, который рендерится JS:
+//  - карточки договоров (CONTRACT_TYPES.name_ru / name_kz / name_en)
+//  - alert-сообщения
+//  - placeholder'ы динамически создаваемых полей
+//
+// `I18n.currentLang` — внутренний код ('ru' | 'kz' | 'en'). 'kk' (URL/HTML)
+// маппится на 'kz' (имя JSON-файла), потому что файл исторически называется kz.json.
+
 const I18n = {
-    currentLang: localStorage.getItem('lang') || 'ru',
+    currentLang: (function() {
+        const htmlLang = document.documentElement.getAttribute('lang') || 'ru';
+        return htmlLang === 'kk' ? 'kz' : htmlLang;
+    })(),
     translations: {},
 
     async init() {
         await this.loadLanguage(this.currentLang);
         this.applyTranslations();
-        this.updateLangSwitcher();
+        this.markActiveSwitcher();
         document.documentElement.style.visibility = '';
+        document.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang: this.currentLang } }));
     },
 
     async loadLanguage(lang) {
         try {
             const resp = await fetch(`/static/i18n/${lang}.json`);
             this.translations = await resp.json();
-            this.currentLang = lang;
-            localStorage.setItem('lang', lang);
-            document.documentElement.setAttribute('lang', lang);
         } catch (e) {
             console.error('Failed to load language:', lang, e);
         }
-    },
-
-    async switchLanguage(lang) {
-        await this.loadLanguage(lang);
-        this.applyTranslations();
-        this.updateLangSwitcher();
     },
 
     applyTranslations() {
@@ -40,15 +47,11 @@ const I18n = {
         });
         document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
             const key = el.getAttribute('data-i18n-placeholder');
-            if (this.translations[key]) {
-                el.placeholder = this.translations[key];
-            }
+            if (this.translations[key]) el.placeholder = this.translations[key];
         });
         document.querySelectorAll('[data-i18n-title]').forEach(el => {
             const key = el.getAttribute('data-i18n-title');
-            if (this.translations[key]) {
-                el.title = this.translations[key];
-            }
+            if (this.translations[key]) el.title = this.translations[key];
         });
     },
 
@@ -56,11 +59,22 @@ const I18n = {
         return this.translations[key] || key;
     },
 
-    updateLangSwitcher() {
+    markActiveSwitcher() {
+        // Сервер уже сам ставит .active через Jinja — это страховка на случай
+        // если шаблон не обновился.
         document.querySelectorAll('.lang-option').forEach(el => {
-            el.classList.toggle('active', el.dataset.lang === this.currentLang);
+            const url = el.getAttribute('href') || '';
+            const isActive = (
+                (this.currentLang === 'ru' && !url.startsWith('/kk') && !url.startsWith('/en')) ||
+                (this.currentLang === 'kz' && url.startsWith('/kk')) ||
+                (this.currentLang === 'en' && url.startsWith('/en'))
+            );
+            el.classList.toggle('active', isActive);
         });
-    }
+    },
 };
+
+// `const` объявления не попадают на window — экспортируем явно.
+window.I18n = I18n;
 
 document.addEventListener('DOMContentLoaded', () => I18n.init());

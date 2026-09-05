@@ -78,17 +78,161 @@ legal_analyzer = LegalCommentAnalyzer()
 analytics_dashboard = AnalyticsDashboard()
 data_loader = DataLoader()
 
-_PAGE_PATHS = {'/', '/chat', '/chat-simple', '/tools', '/about', '/law-generator', '/legal-analytics'}
+_PAGE_PATHS = {'/', '/chat', '/chat-simple', '/tools', '/about', '/law-generator', '/legal-analytics', '/contracts'}
+
+# Нейтральное сообщение пользователю при недоступности LLM-сервиса —
+# без внутренних деталей (провайдер, порты, ссылки на админку).
+SERVICE_UNAVAILABLE_MESSAGE = (
+    "Извините, сервис временно не работает. "
+    "Пожалуйста, попробуйте повторить запрос через несколько минут."
+)
 
 # User-Agent подстроки внутренних клиентов (Docker healthcheck, мониторинг).
 # Такие запросы не учитываются в page_visits.
 _INTERNAL_UA_SUBSTRINGS = ('curl/', 'wget/', 'kube-probe', 'healthcheck')
+
+# Все три языка обслуживаются сервером — нужен правильный hreflang/SEO
+# для всех. URL-префиксы: '' (RU дефолт), '/kk' (казахский), '/en' (английский).
+# Внутренний код языка в i18n.json — kz (исторически), но в URL и hreflang
+# используем kk по ISO 639-1. Маппинг URL → внутренний код в middleware.
+SERVER_LANGS = ('ru', 'kk', 'en')
+LANG_URL_PREFIXES = {
+    '/kk': 'kk',
+    '/en': 'en',
+}
 
 
 @app.route('/healthz')
 def healthz():
     """Лёгкий health-check для Docker/K8s. Не пишется в page_visits."""
     return 'ok', 200
+
+
+# ─── SEO: robots.txt и sitemap.xml ─────────────────────────────────────────
+
+# Публичные страницы, которые попадают в sitemap. Каждая отдаётся
+# в двух языковых версиях через hreflang alternates.
+_SITEMAP_PUBLIC_PATHS = [
+    ('/',                  '1.0', 'weekly'),
+    ('/about',             '0.7', 'monthly'),
+    ('/tools',             '0.8', 'weekly'),
+    ('/chat',              '0.9', 'weekly'),
+    ('/contracts',         '0.9', 'weekly'),
+    ('/law-generator',     '0.9', 'weekly'),
+    ('/legal-analytics',   '0.8', 'weekly'),
+]
+
+
+# Google Search Console — HTML-метод верификации.
+# Google ожидает чтобы по корневому URL отдавалась строка с именем файла.
+# Имя файла должно ТОЧНО совпадать с тем, что выдаёт Google (он его проверяет).
+@app.route('/googlea6ae0179b9a2e148.html')
+def google_site_verification():
+    from flask import Response
+    return Response(
+        'google-site-verification: googlea6ae0179b9a2e148.html',
+        mimetype='text/html'
+    )
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    from flask import Response, url_for, request as _req
+    base = f"{_req.scheme}://{_req.host}"
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin\n"
+        "Disallow: /admin/\n"
+        "Disallow: /login\n"
+        "Disallow: /register\n"
+        "Disallow: /logout\n"
+        "Disallow: /auth/\n"
+        "Disallow: /api/\n"
+        "\n"
+        f"Sitemap: {base}/sitemap.xml\n"
+    )
+    return Response(body, mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    """Динамический sitemap с hreflang-alternates для RU/KK/EN.
+
+    Для каждой публичной страницы — 3 URL (без префикса = RU, /kk/ = KK, /en/ = EN),
+    и в каждой указываем alternate-ссылки на все 3 версии плюс x-default.
+    """
+    from flask import Response, request as _req
+    from datetime import date
+    base = f"{_req.scheme}://{_req.host}"
+    today = date.today().isoformat()
+
+    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
+             '        xmlns:xhtml="http://www.w3.org/1999/xhtml">']
+
+    def lang_url(prefix, path):
+        if not prefix:
+            return f"{base}{path}"
+        return f"{base}{prefix}" if path == '/' else f"{base}{prefix}{path}"
+
+    def add_url(loc, alternates, priority, changefreq):
+        parts.append('  <url>')
+        parts.append(f'    <loc>{loc}</loc>')
+        parts.append(f'    <lastmod>{today}</lastmod>')
+        parts.append(f'    <changefreq>{changefreq}</changefreq>')
+        parts.append(f'    <priority>{priority}</priority>')
+        for hreflang, href in alternates.items():
+            parts.append(f'    <xhtml:link rel="alternate" hreflang="{hreflang}" href="{href}"/>')
+        parts.append('  </url>')
+
+    for path, priority, changefreq in _SITEMAP_PUBLIC_PATHS:
+        ru_url = lang_url('', path)
+        kk_url = lang_url('/kk', path)
+        en_url = lang_url('/en', path)
+        alternates = {'ru': ru_url, 'kk': kk_url, 'en': en_url, 'x-default': ru_url}
+        for u in (ru_url, kk_url, en_url):
+            add_url(u, alternates, priority, changefreq)
+
+    parts.append('</urlset>')
+    return Response('\n'.join(parts), mimetype='application/xml')
+
+
+class _LangPrefixMiddleware:
+    """WSGI-middleware: переписывает PATH_INFO до того, как Flask URL-router
+    его увидит. Это критично — Flask matches роуты ДО before_request, так что
+    `/kk/contracts` без переписывания вернёт 404.
+
+    После переписывания внутри request handler:
+      - request.path == '/contracts'
+      - request.environ['lawvision.lang'] == 'kk' | 'en' | 'ru'
+      - request.environ['lawvision.url_lang_prefix'] == '/kk' | '/en' | ''
+    """
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        for prefix, lang in LANG_URL_PREFIXES.items():
+            if path == prefix or path.startswith(prefix + '/'):
+                environ['PATH_INFO'] = path[len(prefix):] or '/'
+                environ['lawvision.lang'] = lang
+                environ['lawvision.url_lang_prefix'] = prefix
+                return self.wsgi_app(environ, start_response)
+        environ['lawvision.lang'] = 'ru'
+        environ['lawvision.url_lang_prefix'] = ''
+        return self.wsgi_app(environ, start_response)
+
+
+app.wsgi_app = _LangPrefixMiddleware(app.wsgi_app)
+
+
+@app.before_request
+def detect_language():
+    """Копирует язык из WSGI environ в Flask g для удобства Jinja/handler'ов."""
+    from flask import g
+    g.lang = request.environ.get('lawvision.lang', 'ru')
+    g.url_lang_prefix = request.environ.get('lawvision.url_lang_prefix', '')
 
 
 @app.before_request
@@ -161,14 +305,75 @@ app.register_blueprint(admin_bp)
 
 # Регистрация auth blueprint (логин / регистрация / гостевой лимит)
 from blueprints.auth import auth_bp
-from blueprints.auth.routes import current_user, GUEST_FREE_QUESTIONS, log_usage
+from blueprints.auth.routes import current_user, GUEST_FREE_QUESTIONS, log_usage, login_required
 app.register_blueprint(auth_bp)
+
+# Регистрация публичного API для сторонних программ (/api/v1, аутентификация по ключу)
+from blueprints.public_api import public_api_bp
+app.register_blueprint(public_api_bp)
 
 
 # Делаем текущего пользователя доступным во всех шаблонах через {{ auth_user }}
 @app.context_processor
 def inject_auth_user():
     return {'auth_user': current_user()}
+
+
+# ─── Серверный i18n (для SEO) ──────────────────────────────────────────────
+# JSON-файлы переводов лежат в static/i18n/. Кэшируем в памяти на первый запрос.
+_TRANSLATIONS_CACHE = {}
+
+def _load_translations(lang: str) -> dict:
+    """Один раз грузит static/i18n/<lang>.json. lang здесь — внутренний код
+    (ru/kz/en); для серверного рендера мы маппим 'kk' (URL/SEO) → 'kz' (файл)."""
+    if lang in _TRANSLATIONS_CACHE:
+        return _TRANSLATIONS_CACHE[lang]
+    file_lang = 'kz' if lang == 'kk' else lang
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'static', 'i18n', f'{file_lang}.json')
+    try:
+        with open(path, encoding='utf-8') as f:
+            _TRANSLATIONS_CACHE[lang] = _json.load(f)
+    except Exception:
+        _TRANSLATIONS_CACHE[lang] = {}
+    return _TRANSLATIONS_CACHE[lang]
+
+
+def _server_t(key: str) -> str:
+    """Перевод на g.lang для использования в Jinja: {{ t('contracts.title') }}."""
+    from flask import g
+    lang = getattr(g, 'lang', 'ru')
+    return _load_translations(lang).get(key) or _load_translations('ru').get(key) or key
+
+
+_OG_LOCALES = {'ru': 'ru_RU', 'kk': 'kk_KZ', 'en': 'en_US'}
+
+
+@app.context_processor
+def inject_i18n():
+    """Делает t(), current_lang, lang_url_prefix доступными во всех шаблонах."""
+    from flask import g
+    lang = getattr(g, 'lang', 'ru')
+    return {
+        't': _server_t,
+        'current_lang': lang,
+        # html-атрибут: 'ru' / 'kk' / 'en'
+        'html_lang': lang,
+        # для построения языковых ссылок: '' (RU) или '/kk' / '/en'
+        'lang_url_prefix': getattr(g, 'url_lang_prefix', ''),
+        # для og:locale
+        'og_locale': _OG_LOCALES.get(lang, 'ru_RU'),
+    }
+
+
+@app.after_request
+def add_language_header(response):
+    """Content-Language помогает Cloudflare/CDN и поисковикам понять язык страницы."""
+    from flask import g
+    lang = getattr(g, 'lang', 'ru')
+    if response.content_type and response.content_type.startswith('text/html'):
+        response.headers.setdefault('Content-Language', lang)
+    return response
 
 # Создаём таблицу users если её ещё нет (db.create_all безопасен — не трогает существующие)
 with app.app_context():
@@ -180,6 +385,10 @@ app.doc_processor = doc_processor  # None until RAG initialized; updated in init
 app.retriever = retriever           # None until RAG initialized; updated in initialize_rag_system
 app.generator = generator
 app.ensure_rag_initialized = ensure_rag_initialized
+# Модуль договоров — для публичного API (/api/v1)
+app.contract_templates = contract_templates
+app.contract_analyzer = contract_analyzer
+app.contract_generator = contract_generator
 
 
 # Автоматическая инициализация RAG при старте приложения в фоне.
@@ -325,21 +534,9 @@ def chat():
             }), 400
         
         if not generator:
-            error_msg = """⚠️ **LLM провайдер не настроен**
-
-**Решения для локальной работы:**
-1. Убедитесь, что Ollama запущена (`ollama serve`)
-2. Установите модель: `ollama pull gpt-oss:20b`
-3. Настройте в `/admin` → Настройки моделей LLM
-
-**Быстрый старт:**
-```bash
-ollama serve
-ollama pull gpt-oss:20b
-```"""
             return jsonify({
                 'error': 'LLM провайдер не настроен',
-                'answer': error_msg,
+                'answer': SERVICE_UNAVAILABLE_MESSAGE,
                 'error_type': 'config_error'
             }), 500
         
@@ -360,7 +557,7 @@ ollama pull gpt-oss:20b
                     'guest_used': used,
                     'guest_limit': GUEST_FREE_QUESTIONS,
                     'answer': (
-                        'Вы использовали все 5 бесплатных вопросов. '
+                        f'Вы использовали все {GUEST_FREE_QUESTIONS} бесплатных вопросов. '
                         'Чтобы продолжить пользоваться LawVision, пожалуйста, '
                         'зарегистрируйтесь — это бесплатно и займёт меньше минуты.'
                     ),
@@ -634,8 +831,8 @@ def rag_status():
 def law_generator_page():
     """Страница генератора законопроектов"""
     if not law_generator:
-        return render_template('error.html', 
-                             error="LLM провайдер не настроен. Настройте Ollama в /admin"), 500
+        return render_template('error.html',
+                             error=SERVICE_UNAVAILABLE_MESSAGE), 500
     
     # Получаем вопросы для сбора данных
     questions = law_generator.get_data_collection_questions()
@@ -648,6 +845,7 @@ def law_generator_page():
                          law_stats=law_stats)
 
 @app.route('/api/law-generator/validate', methods=['POST'])
+@login_required
 def validate_law_data():
     """Валидация данных для генерации законопроекта"""
     try:
@@ -668,6 +866,7 @@ def validate_law_data():
         }), 400
 
 @app.route('/api/law-generator/generate', methods=['POST'])
+@login_required
 def generate_law_project():
     """Генерация полного законопроекта"""
     try:
@@ -708,6 +907,7 @@ def generate_law_project():
         }), 500
 
 @app.route('/api/law-generator/session', methods=['POST', 'PUT'])
+@login_required
 def manage_generation_session():
     """Управление сессией генерации"""
     try:
@@ -761,6 +961,7 @@ def manage_generation_session():
         }), 500
 
 @app.route('/api/law-generator/session/<session_id>')
+@login_required
 def get_generation_session(session_id):
     """Получение данных сессии генерации"""
     try:
@@ -784,6 +985,7 @@ def get_generation_session(session_id):
         }), 500
 
 @app.route('/api/law-projects')
+@login_required
 def get_law_projects():
     """Получение списка законопроектов"""
     try:
@@ -806,6 +1008,7 @@ def get_law_projects():
         }), 500
 
 @app.route('/api/law-projects/<project_id>')
+@login_required
 def get_law_project(project_id):
     """Получение конкретного законопроекта"""
     try:
@@ -829,6 +1032,7 @@ def get_law_project(project_id):
         }), 500
 
 @app.route('/api/law-projects/<project_id>/export')
+@login_required
 def export_law_project(project_id):
     """Экспорт законопроекта в различных форматах"""
     try:
@@ -926,6 +1130,7 @@ def legal_analytics_page():
     return render_template('legal_analytics.html')
 
 @app.route('/api/legal-analytics/upload', methods=['POST'])
+@login_required
 def upload_analytics_data():
     """Загрузка данных для анализа"""
     try:
@@ -999,6 +1204,7 @@ def convert_tuples_to_serializable(obj):
         return obj
 
 @app.route('/api/legal-analytics/demo')
+@login_required
 def get_demo_analytics():
     """Получение демо-аналитики"""
     try:
@@ -1031,6 +1237,7 @@ def get_demo_analytics():
         }), 500
 
 @app.route('/api/legal-analytics/export/<format_type>')
+@login_required
 def export_analytics_report(format_type):
     """Экспорт отчета аналитики"""
     try:
@@ -1100,6 +1307,7 @@ def export_analytics_report(format_type):
         }), 500
 
 @app.route('/api/legal-analytics/advanced-metrics')
+@login_required
 def get_advanced_metrics():
     """Получение расширенных метрик аналитики"""
     try:
@@ -1136,6 +1344,7 @@ def get_advanced_metrics():
         }), 500
 
 @app.route('/api/legal-analytics/ml-insights')
+@login_required
 def get_ml_insights():
     """Получение ML-инсайтов и предсказаний"""
     try:
@@ -1197,6 +1406,7 @@ def get_contract_types():
     return jsonify({'success': True, 'types': contract_templates.get_all_types()})
 
 @app.route('/api/contracts/fields/<contract_type>')
+@login_required
 def get_contract_fields(contract_type):
     """Поля формы для типа договора"""
     fields = contract_templates.get_fields(contract_type)
@@ -1207,6 +1417,7 @@ def get_contract_fields(contract_type):
     return jsonify({'success': True, 'fields': fields, 'sections': sections, 'type_info': type_info})
 
 @app.route('/api/contracts/generate', methods=['POST'])
+@login_required
 def generate_contract():
     """Генерация договора"""
     if not contract_generator:
@@ -1227,26 +1438,33 @@ def generate_contract():
     return jsonify(result)
 
 @app.route('/api/contracts/analyze', methods=['POST'])
+@login_required
 def analyze_contract():
     """Анализ договора"""
     if not contract_analyzer:
         return jsonify({'success': False, 'error': 'Анализатор договоров не инициализирован'}), 503
     text = ''
     contract_type = None
+    language = 'ru'
+    perspective = None
     if 'file' in request.files:
         file = request.files['file']
         if file.filename:
             text = contract_analyzer.extract_text_from_file(file)
             contract_type = request.form.get('contract_type')
+            language = request.form.get('language', 'ru')
+            perspective = request.form.get('perspective') or None
     else:
         data = request.get_json() or {}
         text = data.get('text', '')
         contract_type = data.get('contract_type')
+        language = data.get('language', 'ru')
+        perspective = data.get('perspective') or None
     if not text or len(text.strip()) < 50:
         return jsonify({'success': False, 'error': 'Текст договора слишком короткий или не удалось извлечь текст из файла'}), 400
     if rag_initialized and retriever:
         contract_analyzer.retriever = retriever
-    result = contract_analyzer.analyze(text, contract_type)
+    result = contract_analyzer.analyze(text, contract_type, language=language, perspective=perspective)
     if result.get('success'):
         log_usage('contracts', 'analyze', details={
             'type': contract_type,
@@ -1256,6 +1474,7 @@ def analyze_contract():
 
 
 @app.route('/api/contracts/export', methods=['POST'])
+@login_required
 def export_contract():
     """Экспорт сгенерированного договора в DOCX или PDF."""
     from contracts.exporter import to_docx, to_pdf

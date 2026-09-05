@@ -1,0 +1,135 @@
+{% extends "admin/layout.html" %}
+{% block title %}API-ключи{% endblock %}
+{% block page_title %}API-ключи{% endblock %}
+
+{% block extra_css %}
+.kc-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.kc-card table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.kc-card th { background: #f8fafc; text-align: left; padding: 0.6rem 0.875rem; font-size: 0.6875rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+.kc-card td { padding: 0.7rem 0.875rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.kc-card tr:last-child td { border-bottom: 0; }
+.kc-card tr:hover td { background: #fafbff; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.num-cell { text-align: right; font-feature-settings: "tnum"; font-weight: 600; }
+.badge-on { background: rgba(5,150,105,0.1); color: #059669; padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+.badge-off { background: rgba(148,163,184,0.15); color: #64748b; padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+.toolbar { display: flex; gap: 0.625rem; align-items: center; margin-bottom: 1rem; }
+.toolbar input { flex: 1; max-width: 320px; border: 1.5px solid var(--border); border-radius: 8px; padding: 0.5rem 0.875rem; font-size: 0.875rem; outline: none; }
+.toolbar input:focus { border-color: var(--primary); }
+.summary { color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.75rem; }
+.newkey-box { display:none; margin-bottom: 1rem; padding: 0.875rem 1rem; border-radius: var(--radius); background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); }
+.newkey-box .k { font-family: ui-monospace, monospace; font-weight: 700; word-break: break-all; color:#065f46; }
+.act-btn { border: none; background: none; cursor: pointer; font-size: 0.8125rem; padding: 0.25rem 0.5rem; border-radius: 6px; }
+.act-btn:hover { background: #eef2ff; }
+.act-del:hover { background: rgba(220,38,38,0.08); color:#dc2626; }
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="header-icon" style="background:rgba(79,110,247,0.08);"><i class="fas fa-key" style="color:var(--primary);"></i></div>
+        Ключи доступа к публичному API (/api/v1)
+    </div>
+    <div class="card-body">
+        <div class="summary" id="summary">Загрузка...</div>
+
+        <div class="newkey-box" id="newkeyBox">
+            <div style="font-size:.8125rem;font-weight:600;margin-bottom:.35rem;">
+                <i class="fas fa-check-circle me-1" style="color:#059669;"></i>Ключ создан — скопируйте сейчас, повторно он не покажется:
+            </div>
+            <div class="k" id="newkeyValue"></div>
+            <button class="btn btn-sm btn-outline-success mt-2" onclick="copyNewKey()"><i class="fas fa-copy me-1"></i>Скопировать</button>
+        </div>
+
+        <div class="toolbar">
+            <input type="text" id="newKeyName" placeholder="Название клиента (напр. CRM партнёра)">
+            <button class="btn btn-primary btn-sm" id="createBtn"><i class="fas fa-plus me-1"></i>Создать ключ</button>
+        </div>
+
+        <div class="kc-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Префикс</th>
+                        <th>Статус</th>
+                        <th class="num-cell">Запросов</th>
+                        <th>Последний вызов</th>
+                        <th>Создан</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="keysBody">
+                    <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fmtDate(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+
+function loadKeys() {
+    fetch('/api/admin/api-keys').then(r => r.json()).then(d => {
+        if (!d.success) { document.getElementById('summary').textContent = 'Ошибка: ' + d.error; return; }
+        document.getElementById('summary').innerHTML =
+            `Всего ключей: <b>${d.keys.length}</b> · суммарно запросов: <b>${d.total_requests.toLocaleString('ru-RU')}</b>`;
+        const tb = document.getElementById('keysBody');
+        if (!d.keys.length) {
+            tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);">Ключей пока нет</td></tr>';
+            return;
+        }
+        tb.innerHTML = d.keys.map(k => `
+            <tr>
+                <td style="font-weight:600;">${escapeHtml(k.name)}</td>
+                <td class="mono">${k.key_prefix}…</td>
+                <td>${k.is_active ? '<span class="badge-on">активен</span>' : '<span class="badge-off">отозван</span>'}</td>
+                <td class="num-cell">${k.request_count.toLocaleString('ru-RU')}</td>
+                <td>${fmtDate(k.last_used_at)}</td>
+                <td>${fmtDate(k.created_at)}</td>
+                <td style="white-space:nowrap;text-align:right;">
+                    <button class="act-btn" onclick="toggleKey(${k.id})">${k.is_active ? 'Отозвать' : 'Включить'}</button>
+                    <button class="act-btn act-del" onclick="deleteKey(${k.id}, '${escapeHtml(k.name)}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`).join('');
+    });
+}
+
+function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+document.getElementById('createBtn').addEventListener('click', function() {
+    const name = document.getElementById('newKeyName').value.trim();
+    if (!name) { alert('Укажите название клиента'); return; }
+    this.disabled = true;
+    fetch('/api/admin/api-keys', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({name})
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            document.getElementById('newkeyValue').textContent = d.api_key;
+            document.getElementById('newkeyBox').style.display = 'block';
+            document.getElementById('newKeyName').value = '';
+            loadKeys();
+        } else { alert('Ошибка: ' + d.error); }
+    }).finally(() => { this.disabled = false; });
+});
+
+function copyNewKey() {
+    navigator.clipboard.writeText(document.getElementById('newkeyValue').textContent);
+}
+
+function toggleKey(id) {
+    fetch(`/api/admin/api-keys/${id}/toggle`, {method:'POST'}).then(r => r.json()).then(() => loadKeys());
+}
+
+function deleteKey(id, name) {
+    if (!confirm(`Удалить ключ «${name}»? Это действие необратимо.`)) return;
+    fetch(`/api/admin/api-keys/${id}`, {method:'DELETE'}).then(r => r.json()).then(() => loadKeys());
+}
+
+loadKeys();
+</script>
+{% endblock %}

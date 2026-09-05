@@ -5,6 +5,13 @@ from config import Config
 from llm_providers.factory import LLMProviderFactory
 from llm_providers.base import LLMProvider
 
+# Единое нейтральное сообщение для пользователя при любой недоступности/ошибке
+# LLM-сервиса. Без внутренних деталей (провайдер, порты, ссылки на админку).
+_SERVICE_UNAVAILABLE_MESSAGE = (
+    "Извините, сервис временно не работает. "
+    "Пожалуйста, попробуйте повторить запрос через несколько минут."
+)
+
 
 # Identity-вопросы обрабатываем хардкод-ответом, чтобы:
 # 1) модель не подмешивала самопредставление случайно в обычные ответы
@@ -140,7 +147,11 @@ class ResponseGenerator:
         
         if not self.provider:
             raise ValueError("Не удалось инициализировать LLM провайдер. Проверьте настройки.")
-        
+
+    def is_available(self) -> bool:
+        """Доступен ли текущий LLM-провайдер (делегирует провайдеру)."""
+        return bool(self.provider) and self.provider.is_available()
+
     def _prepare_context(self, search_results: List[Dict]) -> str:
         """Подготовка контекста из найденных документов"""
         if not search_results:
@@ -285,47 +296,11 @@ class ResponseGenerator:
         except Exception as e:
             error_msg = str(e)
             print(f"Ошибка при генерации ответа: {e}")
-            
-            # Определяем тип ошибки и формируем понятное сообщение
-            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
-                user_message = """⚠️ **Проблема с подключением к LLM провайдеру**
 
-**Решения для локальной работы:**
-1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`)
-2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000
-3. Проверьте настройки в `/admin` → Настройки моделей LLM
-
-**Быстрый старт:**
-```bash
-# Для Ollama
-ollama serve
-ollama pull gpt-oss:20b
-
-# Для Fine-tuned API
-cd /home/kaznu2025/fine_tune_llm_2222
-./api_manager.sh start
-```"""
-            elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
-                user_message = """⚠️ **Превышен лимит запросов**
-
-**Решения:**
-1. Подождите несколько минут и попробуйте снова
-2. Для Ollama: лимитов нет, проверьте что сервер запущен
-3. Для Fine-tuned: проверьте статус API сервера"""
-            elif "connection" in error_msg.lower() or "недоступен" in error_msg.lower():
-                user_message = f"""⚠️ **Провайдер недоступен**
-
-**Ошибка:** {error_msg}
-
-**Решения:**
-1. Для Ollama: проверьте что `ollama serve` запущен
-2. Для Fine-tuned: проверьте что API запущен на {Config.FINETUNED_API_URL}
-3. Проверьте настройки в `/admin` → Настройки моделей LLM"""
-            else:
-                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}\n\nПроверьте настройки LLM провайдера в `/admin`"
-            
+            # Пользователю — нейтральное сообщение без внутренних деталей.
+            # Технический текст ошибки остаётся в поле 'error' (для логов/админки).
             return {
-                'answer': user_message,
+                'answer': _SERVICE_UNAVAILABLE_MESSAGE,
                 'sources': sources,
                 'confidence': 0.0,
                 'error': error_msg,
@@ -405,47 +380,9 @@ cd /home/kaznu2025/fine_tune_llm_2222
         except Exception as e:
             error_msg = str(e)
             print(f"Ошибка при генерации ответа (без RAG): {e}")
-            
-            # Определяем тип ошибки и формируем понятное сообщение
-            if "неверный api ключ" in error_msg.lower() or "invalid_api_key" in error_msg.lower() or "401" in error_msg:
-                user_message = """⚠️ **Проблема с подключением к LLM провайдеру**
 
-**Решения для локальной работы:**
-1. Для Ollama: убедитесь, что Ollama запущена (`ollama serve`)
-2. Для Fine-tuned: убедитесь, что API запущен на http://localhost:8000
-3. Проверьте настройки в `/admin` → Настройки моделей LLM
-
-**Быстрый старт:**
-```bash
-# Для Ollama
-ollama serve
-ollama pull gpt-oss:20b
-
-# Для Fine-tuned API
-cd /home/kaznu2025/fine_tune_llm_2222
-./api_manager.sh start
-```"""
-            elif "лимит" in error_msg.lower() or "rate limit" in error_msg.lower() or "429" in error_msg:
-                user_message = """⚠️ **Превышен лимит запросов**
-
-**Решения:**
-1. Подождите несколько минут и попробуйте снова
-2. Для Ollama: лимитов нет, проверьте что сервер запущен
-3. Для Fine-tuned: проверьте статус API сервера"""
-            elif "connection" in error_msg.lower() or "недоступен" in error_msg.lower():
-                user_message = f"""⚠️ **Провайдер недоступен**
-
-**Ошибка:** {error_msg}
-
-**Решения:**
-1. Для Ollama: проверьте что `ollama serve` запущен
-2. Для Fine-tuned: проверьте что API запущен на {Config.FINETUNED_API_URL}
-3. Проверьте настройки в `/admin` → Настройки моделей LLM"""
-            else:
-                user_message = f"Извините, произошла ошибка при генерации ответа: {error_msg}\n\nПроверьте настройки LLM провайдера в `/admin`"
-            
             return {
-                'answer': user_message,
+                'answer': _SERVICE_UNAVAILABLE_MESSAGE,
                 'sources': [],
                 'confidence': 0.0,
                 'error': error_msg,

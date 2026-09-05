@@ -5,11 +5,12 @@
 {% block extra_css %}
 .provider-cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 0.75rem;
     margin-bottom: 1.25rem;
 }
-@media (max-width: 700px) { .provider-cards { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .provider-cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .provider-cards { grid-template-columns: 1fr; } }
 
 .provider-card {
     border: 2px solid var(--border);
@@ -121,13 +122,21 @@
             <!-- Provider cards -->
             <div class="field-label">Провайдер</div>
             <div class="provider-cards">
-                <div class="provider-card" data-provider="ollama">
+                <div class="provider-card" data-provider="local">
                     <div class="pc-check"><i class="fas fa-check"></i></div>
                     <div class="pc-icon" style="background:rgba(79,110,247,0.08);color:var(--primary);">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="pc-name">Локальный сервис</div>
+                    <div class="pc-desc">Централизованный GPU-сервер (vLLM)</div>
+                </div>
+                <div class="provider-card" data-provider="ollama">
+                    <div class="pc-check"><i class="fas fa-check"></i></div>
+                    <div class="pc-icon" style="background:rgba(148,163,184,0.12);color:#64748b;">
                         <i class="fas fa-server"></i>
                     </div>
                     <div class="pc-name">Ollama</div>
-                    <div class="pc-desc">Локальный LLM сервер</div>
+                    <div class="pc-desc">Устарело</div>
                 </div>
                 <div class="provider-card" data-provider="openai">
                     <div class="pc-check"><i class="fas fa-check"></i></div>
@@ -148,6 +157,21 @@
             </div>
 
             <!-- Provider-specific fields -->
+            <div id="panel-local" class="provider-panel">
+                <div class="field-row">
+                    <div>
+                        <div class="field-label">URL сервиса</div>
+                        <input type="text" class="field-input" id="localBaseUrl" placeholder="http://localhost:8000/v1">
+                    </div>
+                    <div>
+                        <div class="field-label">Модель</div>
+                        <select class="field-input" id="localModel">
+                            <option value="">Загрузка...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div id="panel-ollama" class="provider-panel">
                 <div class="field-row">
                     <div>
@@ -235,7 +259,7 @@
 
 {% block extra_js %}
 <script>
-let currentProvider = 'ollama';
+let currentProvider = 'local';
 
 document.querySelectorAll('.provider-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -246,6 +270,7 @@ document.querySelectorAll('.provider-card').forEach(card => {
         const panel = document.getElementById('panel-' + currentProvider);
         if (panel) panel.classList.add('active');
         if (currentProvider === 'ollama') loadOllamaModels();
+        if (currentProvider === 'local') loadLocalModels();
     });
 });
 
@@ -277,9 +302,41 @@ document.getElementById('ollamaBaseUrl').addEventListener('input', function() {
     ollamaTimer = setTimeout(loadOllamaModels, 800);
 });
 
+// Список моделей локального сервиса (OpenAI-совместимый /v1/models).
+// Браузер может не достучаться до сервиса напрямую (другая сеть/CORS),
+// поэтому при ошибке оставляем текущее значение из настроек.
+function loadLocalModels(preselect) {
+    const url = document.getElementById('localBaseUrl').value.replace(/\/+$/, '');
+    const sel = document.getElementById('localModel');
+    const keep = preselect || sel.value;
+    sel.innerHTML = '<option value="">Загрузка...</option>';
+    fetch(url + '/models').then(r => r.json()).then(d => {
+        const models = (d.data || []).map(m => m.id);
+        if (models.length) {
+            sel.innerHTML = models.map(m =>
+                `<option value="${m}"${m === keep ? ' selected' : ''}>${m}</option>`).join('');
+        } else {
+            sel.innerHTML = keep ? `<option value="${keep}" selected>${keep}</option>`
+                                 : '<option value="">Нет моделей</option>';
+        }
+    }).catch(() => {
+        sel.innerHTML = keep ? `<option value="${keep}" selected>${keep}</option>`
+                             : '<option value="">Сервис недоступен — введите имя модели</option>';
+    });
+}
+
+let localTimer;
+document.getElementById('localBaseUrl').addEventListener('input', function() {
+    clearTimeout(localTimer);
+    localTimer = setTimeout(() => loadLocalModels(), 800);
+});
+
 function collectSettings() {
     const data = { provider_type: currentProvider };
-    if (currentProvider === 'ollama') {
+    if (currentProvider === 'local') {
+        data.local_llm_base_url = document.getElementById('localBaseUrl').value;
+        data.model = document.getElementById('localModel').value;
+    } else if (currentProvider === 'ollama') {
         data.ollama_base_url = document.getElementById('ollamaBaseUrl').value;
         data.model = document.getElementById('ollamaModel').value;
     } else if (currentProvider === 'finetuned') {
@@ -349,7 +406,7 @@ fetch('/api/settings/llm').then(r => r.json()).then(d => {
     statusEl.innerHTML = `<div class="status-dot ${s.available ? 'ok' : 'error'}"></div>
         <span>${s.available ? 'Провайдер подключён' : 'Провайдер недоступен'}</span>`;
 
-    currentProvider = s.provider_type || 'ollama';
+    currentProvider = s.provider_type || 'local';
     document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('active'));
     const activeCard = document.querySelector(`.provider-card[data-provider="${currentProvider}"]`);
     if (activeCard) activeCard.classList.add('active');
@@ -357,8 +414,20 @@ fetch('/api/settings/llm').then(r => r.json()).then(d => {
     const panel = document.getElementById('panel-' + currentProvider);
     if (panel) panel.classList.add('active');
 
+    if (s.local_llm_base_url) document.getElementById('localBaseUrl').value = s.local_llm_base_url;
     if (s.ollama_base_url) document.getElementById('ollamaBaseUrl').value = s.ollama_base_url;
     if (s.finetuned_api_url) document.getElementById('finetunedApiUrl').value = s.finetuned_api_url;
+
+    if (currentProvider === 'local') {
+        const sel = document.getElementById('localModel');
+        if (s.available_models && s.available_models.length) {
+            sel.innerHTML = s.available_models.map(m =>
+                `<option value="${m}"${m === s.model ? ' selected' : ''}>${m}</option>`).join('');
+        } else if (s.model) {
+            sel.innerHTML = `<option value="${s.model}" selected>${s.model}</option>`;
+        }
+        loadLocalModels(s.model);
+    }
 
     if (currentProvider === 'ollama' && s.available_models && s.available_models.length) {
         const sel = document.getElementById('ollamaModel');

@@ -49,7 +49,7 @@ class DocumentChunk(db.Model):
     start_position = db.Column(db.Integer, nullable=False)
     end_position = db.Column(db.Integer, nullable=False)
     chunk_size = db.Column(db.Integer, nullable=False)
-    embedding = db.Column(Vector(384))
+    embedding = db.Column(Vector(1024))  # BGE-M3 → 1024
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Уникальность по документу и индексу чанка
@@ -302,6 +302,53 @@ class LawGenerationSession(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'status': self.status
         }
+
+class ApiKey(db.Model):
+    """API-ключ для доступа сторонних программ к публичному API.
+
+    Сам ключ (вида lv_<random>) показывается ВЛАДЕЛЬЦУ один раз при создании;
+    в БД хранится только SHA-256 хеш. Поле key_prefix — первые символы ключа
+    для идентификации в админке. request_count — счётчик всех успешных вызовов."""
+    __tablename__ = 'api_keys'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)        # человекочитаемое имя клиента
+    key_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    key_prefix = db.Column(db.String(16), nullable=False)   # напр. "lv_a1b2c3" для опознания
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    request_count = db.Column(db.BigInteger, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+
+    @staticmethod
+    def hash_key(raw_key: str) -> str:
+        import hashlib
+        return hashlib.sha256(raw_key.encode()).hexdigest()
+
+    @classmethod
+    def generate(cls, name: str):
+        """Создаёт новый ключ. Возвращает (ApiKey, raw_key) — raw_key показать
+        владельцу один раз, в БД он не хранится."""
+        import secrets
+        raw_key = 'lv_' + secrets.token_urlsafe(32)
+        obj = cls(
+            name=name,
+            key_hash=cls.hash_key(raw_key),
+            key_prefix=raw_key[:10],
+        )
+        return obj, raw_key
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'key_prefix': self.key_prefix,
+            'is_active': self.is_active,
+            'request_count': self.request_count,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
+        }
+
 
 class DatabaseManager:
     """Менеджер базы данных с SQLAlchemy ORM"""

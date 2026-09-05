@@ -30,9 +30,11 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://lawai:lawai_dev_2026@localhost:5433/lawai
+      LLM_PROVIDER_TYPE: ${LLM_PROVIDER_TYPE:-local}
+      LLM_MODEL: ${LLM_MODEL:-gemma4}
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-http://localhost:8000/v1}
+      LOCAL_LLM_API_KEY: ${LOCAL_LLM_API_KEY:-not-needed}
       OLLAMA_BASE_URL: http://localhost:11434
-      LLM_PROVIDER_TYPE: ${LLM_PROVIDER_TYPE:-ollama}
-      LLM_MODEL: ${LLM_MODEL:-gemma4:26b}
       SECRET_KEY: ${SECRET_KEY}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
@@ -40,8 +42,12 @@ services:
       APP_HOST: 0.0.0.0
       APP_PORT: 5003
       DOCUMENTS_DIR: docs
-      EMBEDDING_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-      EMBEDDING_DIMENSION: 384
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-http://localhost:8002/v1}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-not-needed}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
+      EMBEDDING_DIMENSION: 1024
+      EMBEDDING_RERANK_MODEL: ${EMBEDDING_RERANK_MODEL:-bge-m3}
+      USE_RERANK: ${USE_RERANK:-true}
       MAX_TOKENS: 4000
       TEMPERATURE: 0.1
       TOP_K_RESULTS: 5
