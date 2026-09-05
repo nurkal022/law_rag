@@ -17,9 +17,12 @@
 .auth__aside {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--s-12);
-  padding: var(--s-12) var(--s-12) var(--s-8);
+  /* Не space-between: на высоком экране знак улетал вверх, пример ответа —
+     вниз, и между ними зияла треть экрана. Содержимое собрано в группу и
+     выровнено по центру — так же, как форма справа. */
+  justify-content: center;
+  gap: var(--s-8);
+  padding: var(--s-12);
   /* Разделение линией, а не другим фоном */
   border-right: var(--border);
   min-width: 0;
