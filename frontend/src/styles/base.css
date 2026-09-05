@@ -1,0 +1,75 @@
+/* ============================================================
+   TURA — базовый слой.
+   Сброс + значения по умолчанию для элементов.
+   Три запрета действуют здесь и ниже: никаких box-shadow,
+   никаких градиентов, никаких карточек как способа группировки.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Смысловой текст — антиква. Интерфейс — гротеск. Правило без исключений. */
+h1, h2, h3, h4 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: var(--t-h1-weight);
+  color: var(--ink);
+}
+h1 { font-size: var(--t-h1-size); line-height: var(--t-h1-lh); }
+h2 { font-size: var(--t-h2-size); line-height: var(--t-h2-lh); }
+h3 {
+  font-family: var(--font-sans);
+  font-size: var(--t-h3-size);
+  line-height: var(--t-h3-lh);
+  font-weight: var(--t-h3-weight);
+}
+
+p { margin: 0; }
+
+a {
+  color: var(--seal);
+  text-decoration: none;
+  border-bottom: 1px solid var(--seal-weak);
+  transition: border-color var(--motion);
+}
+a:hover { border-bottom-color: var(--seal); }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; }
+
+/* Фокус виден всегда и везде — это требование, а не пожелание. */
+:focus-visible {
+  outline: 2px solid var(--seal);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+::selection {
+  background: var(--ochre);
+  color: var(--ink);
+}
+
+/* Полосы прокрутки в тон бумаге, без хрома по умолчанию */
+* { scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border: 3px solid var(--paper);
+}
+*::-webkit-scrollbar-track { background: transparent; }

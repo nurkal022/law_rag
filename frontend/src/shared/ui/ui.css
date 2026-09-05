@@ -1,0 +1,249 @@
+/* ============================================================
+   TURA — библиотека компонентов.
+   Все значения берутся из tokens.css. Литералы запрещены.
+   ============================================================ */
+
+/* ---------- Типографические примитивы ---------- */
+.t-display { font-family: var(--font-serif); font-size: var(--t-display-size); line-height: var(--t-display-lh); font-weight: var(--t-display-weight); letter-spacing: -0.01em; }
+.t-h1 { font-family: var(--font-serif); font-size: var(--t-h1-size); line-height: var(--t-h1-lh); font-weight: var(--t-h1-weight); }
+.t-h2 { font-family: var(--font-serif); font-size: var(--t-h2-size); line-height: var(--t-h2-lh); font-weight: var(--t-h2-weight); }
+.t-h3 { font-family: var(--font-sans); font-size: var(--t-h3-size); line-height: var(--t-h3-lh); font-weight: var(--t-h3-weight); }
+.t-legal { font-family: var(--font-serif); font-size: var(--t-legal-size); line-height: var(--t-legal-lh); font-weight: var(--t-legal-weight); max-width: var(--measure); }
+.t-body { font-family: var(--font-sans); font-size: var(--t-body-size); line-height: var(--t-body-lh); }
+.t-ui { font-family: var(--font-sans); font-size: var(--t-ui-size); line-height: var(--t-ui-lh); }
+.t-caption { font-family: var(--font-sans); font-size: var(--t-caption-size); line-height: var(--t-caption-lh); font-weight: var(--t-caption-weight); }
+.t-mono { font-family: var(--font-mono); font-size: var(--t-mono-size); line-height: var(--t-mono-lh); font-weight: var(--t-mono-weight); }
+
+.t-label {
+  font-family: var(--font-sans);
+  font-size: var(--t-label-size);
+  line-height: var(--t-label-lh);
+  font-weight: var(--t-label-weight);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.tone-ink { color: var(--ink); }
+.tone-ink2 { color: var(--ink-2); }
+.tone-mute { color: var(--mute); }
+.tone-seal { color: var(--seal); }
+.tone-ok { color: var(--ok); }
+.tone-warn { color: var(--warn); }
+.tone-err { color: var(--err); }
+
+/* ---------- Кнопка ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4);
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  line-height: var(--t-ui-lh);
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  transition: background-color var(--motion), border-color var(--motion), color var(--motion);
+  white-space: nowrap;
+}
+.btn--primary { background: var(--ink); color: var(--paper); }
+.btn--primary:hover:not(:disabled) { background: var(--ink-2); }
+.btn--secondary { border-color: var(--rule); color: var(--ink-2); }
+.btn--secondary:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.btn--ghost { color: var(--mute); padding-inline: var(--s-2); }
+.btn--ghost:hover:not(:disabled) { color: var(--ink); background: var(--ink-wash); }
+.btn--danger { border-color: var(--rule); color: var(--err); }
+.btn--danger:hover:not(:disabled) { border-color: var(--err); }
+.btn--lg { padding: var(--s-3) var(--s-5); font-size: var(--t-body-size); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- Поля ввода ---------- */
+.field { display: block; }
+.field__label { display: block; margin-bottom: var(--s-1); }
+.field__control {
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  background: var(--paper);
+  color: var(--ink);
+  border: var(--border);
+  border-radius: var(--radius-field);
+  transition: border-color var(--motion);
+}
+.field__control::placeholder { color: var(--mute); }
+.field__control:hover { border-color: var(--ink-2); }
+.field__control:focus { border-color: var(--ink); outline-offset: 1px; }
+.field__control--area { min-height: 88px; resize: vertical; line-height: var(--t-body-lh); }
+.field__hint { margin-top: var(--s-1); }
+.field__hint--err { color: var(--err); }
+
+/* ---------- Правовая координата ----------
+   Единственное место, где применяется моноширинный. */
+.cite {
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
+  line-height: var(--t-mono-lh);
+  font-weight: var(--t-mono-weight);
+  color: var(--seal);
+  border-bottom: 1px solid var(--seal-weak);
+  background: none;
+  border-radius: 0;
+  padding: 0 1px;
+  white-space: nowrap;
+  transition: background-color var(--motion), border-color var(--motion);
+}
+button.cite { border-width: 0 0 1px 0; }
+.cite:hover { background: var(--seal-wash); border-bottom-color: var(--seal); }
+
+/* ---------- Метка-чип ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 3px var(--s-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  color: var(--mute);
+  background: none;
+  transition: border-color var(--motion), color var(--motion);
+}
+.chip--on { border-color: var(--ink); color: var(--ink); }
+button.chip:hover { border-color: var(--ink-2); color: var(--ink); }
+
+/* ---------- Статус ---------- */
+.status { font-family: var(--font-mono); font-size: var(--t-mono-size); line-height: var(--t-mono-lh); font-weight: var(--t-mono-weight); }
+.status--ok { color: var(--ok); }
+.status--warn { color: var(--warn); }
+.status--err { color: var(--err); }
+.status--idle { color: var(--mute); }
+
+/* ---------- Линия ---------- */
+.rule { border: 0; border-top: var(--border); margin: 0; }
+.rule--soft { border-top-color: var(--rule-soft); }
+
+/* ---------- Таблица ----------
+   Реестры набираются таблицей, а не карточками. */
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left;
+  padding: var(--s-2) var(--s-3);
+  border-bottom: var(--border);
+  font-family: var(--font-sans);
+  font-size: var(--t-label-size);
+  font-weight: var(--t-label-weight);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--mute);
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--s-3);
+  border-bottom: var(--border);
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  vertical-align: top;
+}
+.table tbody tr { transition: background-color var(--motion); }
+.table tbody tr:hover { background: var(--surface); }
+.table__title { font-family: var(--font-serif); font-weight: 700; font-size: var(--t-body-size); color: var(--ink); }
+
+/* ---------- Пустое состояние ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-16) var(--s-6);
+  text-align: center;
+  border: 1px dashed var(--rule);
+}
+.empty__title { font-family: var(--font-serif); font-size: var(--t-h2-size); font-weight: var(--t-h2-weight); }
+.empty__body { max-width: 46ch; color: var(--mute); }
+
+/* ---------- Вкладки ---------- */
+.tabs { display: flex; gap: var(--s-5); border-bottom: var(--border); }
+.tabs__item {
+  padding: var(--s-2) 0;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  color: var(--mute);
+  transition: color var(--motion), border-color var(--motion);
+}
+.tabs__item:hover { color: var(--ink); }
+.tabs__item--on { color: var(--ink); font-weight: 600; border-bottom-color: var(--seal); }
+
+/* ---------- Индикатор загрузки ----------
+   Не спиннер: пульсирующая линия, как строка набора. */
+.loading { height: 2px; width: 100%; background: var(--rule); overflow: hidden; }
+.loading__bar { height: 100%; width: 40%; background: var(--seal); animation: tura-slide 1.1s ease-in-out infinite; }
+@keyframes tura-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading__bar { animation: none; width: 100%; opacity: 0.4; }
+}
+
+/* Курсор набора текста в стриминге ответа */
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  vertical-align: -0.15em;
+  background: var(--seal);
+  animation: tura-blink 1s steps(2, start) infinite;
+}
+@keyframes tura-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+
+/* ---------- Скелет ---------- */
+.skeleton { background: var(--rule-soft); animation: tura-fade 1.4s ease-in-out infinite; }
+@keyframes tura-fade { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* ---------- Уведомление ---------- */
+.toasts {
+  position: fixed;
+  right: var(--s-5);
+  bottom: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  z-index: 50;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--ink);
+  color: var(--paper);
+  min-width: 260px;
+  max-width: 380px;
+}
+.toast--err { background: var(--err); }
+.toast--ok { background: var(--ok); }
+.toast__close { color: inherit; opacity: 0.7; background: none; border: 0; padding: 0; }
+.toast__close:hover { opacity: 1; }
+
+/* ---------- Служебное ---------- */
+.stack { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; }
+.spacer { flex: 1 1 auto; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

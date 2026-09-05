@@ -1,0 +1,265 @@
+/* ============================================================
+   TURA — рабочее место юриста: библиотека, дела, документ.
+   Значения только через var(--...) из tokens.css.
+   Группировка линиями и пространством: ни теней, ни карточек.
+   ============================================================ */
+
+/* ---------- Общее для экранов рабочего места ---------- */
+
+.ws-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-6);
+}
+
+.ws-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3) 0;
+  border-bottom: var(--border);
+}
+
+.ws-search {
+  margin-left: auto;
+  min-width: 220px;
+}
+
+/* ---------- Библиотека: зона перетаскивания ---------- */
+
+.ws-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-4);
+  margin: var(--s-4) 0;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  background: none;
+  text-align: center;
+  transition: border-color var(--motion), background-color var(--motion);
+}
+.ws-drop--over {
+  border-color: var(--seal);
+  background: var(--seal-wash);
+}
+
+/* ---------- Библиотека: строка реестра ---------- */
+
+.ws-cell-doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  align-items: flex-start;
+}
+/* Название документа — ссылка без подчёркивания: линия появляется при наведении */
+.ws-cell-doc a { border-bottom-color: transparent; }
+.ws-cell-doc a:hover { border-bottom-color: var(--seal); }
+
+.ws-status-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  white-space: nowrap;
+}
+
+.ws-col-src,
+.ws-col-status {
+  width: 1%;
+}
+
+/* ---------- Дела: список, разделённый линиями ---------- */
+
+.ws-matters {
+  border-top: var(--border);
+}
+
+.ws-matter {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-5);
+  width: 100%;
+  padding: var(--s-4) var(--s-2);
+  border: 0;
+  border-bottom: var(--border);
+  background: none;
+  text-align: left;
+  text-decoration: none;
+  color: var(--ink);
+  transition: background-color var(--motion);
+}
+.ws-matter:hover { background: var(--surface); }
+
+.ws-matter__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.ws-matter__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-1);
+  flex: none;
+  white-space: nowrap;
+}
+
+.ws-matter--archived { opacity: 0.55; }
+
+.ws-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin: var(--s-8) 0 var(--s-3);
+}
+
+/* ---------- Документ: две колонки ---------- */
+
+.ws-doc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: 0;
+  min-height: 100%;
+}
+
+.ws-doc__main {
+  min-width: 0;
+  padding: var(--s-5) var(--s-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.ws-doc__side {
+  background: var(--surface);
+  border-left: var(--border);
+  padding: var(--s-5);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+/* Метаданные документа — строкой, разделены точками-линиями */
+.ws-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-4);
+  padding-bottom: var(--s-4);
+  border-bottom: var(--border);
+}
+.ws-meta__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+/* ---------- Документ: диалог ---------- */
+
+.ws-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  flex: 1;
+}
+
+.ws-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+/* Вопрос пользователя — вставная линия печати слева, не карточка */
+.ws-turn__ask {
+  border-left: 2px solid var(--seal);
+  padding-left: var(--s-3);
+}
+
+.ws-answer p { margin: 0 0 var(--s-3); }
+.ws-answer p:last-child { margin-bottom: 0; }
+
+.ws-ask {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+  padding-top: var(--s-4);
+  border-top: var(--border);
+}
+.ws-ask__field { flex: 1; min-width: 0; }
+
+/* ---------- Документ: панель «пункт → норма» ---------- */
+
+.ws-links {
+  display: flex;
+  flex-direction: column;
+}
+
+.ws-link {
+  padding: var(--s-4) 0;
+  border-top: 1px solid var(--rule-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.ws-link:first-child { border-top: 0; padding-top: var(--s-2); }
+
+/* «ВАШ ПУНКТ 7.2» — служебная подпись привязки */
+.ws-link__clause {
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+}
+
+.ws-link__quote {
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink);
+  margin: 0;
+}
+
+/* Стрелка вниз с кодом нормы: связка пункта и статьи */
+.ws-link__arrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--mute);
+}
+.ws-link__arrow::before {
+  content: '↓';
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
+  color: var(--ochre);
+}
+
+.ws-link__norm {
+  font-family: var(--font-serif);
+  font-size: var(--t-ui-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink-2);
+  margin: 0;
+}
+
+/* ---------- Узкий экран: правая панель уходит под левую ---------- */
+
+@media (max-width: 1100px) {
+  .ws-doc { grid-template-columns: minmax(0, 1fr); }
+  .ws-doc__side {
+    border-left: 0;
+    border-top: var(--border);
+  }
+  .ws-doc__main { padding: var(--s-4); }
+}
+
+@media (max-width: 860px) {
+  .ws-search { margin-left: 0; width: 100%; }
+  .ws-matter { flex-direction: column; gap: var(--s-2); }
+  .ws-matter__meta { align-items: flex-start; flex-direction: row; gap: var(--s-4); }
+}

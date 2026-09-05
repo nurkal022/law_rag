@@ -1,0 +1,108 @@
+/* ============================================================
+   TURA — административная панель.
+   Значения только через var(--...) из tokens.css.
+   Группировка линиями и пространством: ни теней, ни карточек.
+   ============================================================ */
+
+.adm-tabs { margin: var(--s-4) 0 var(--s-6); }
+
+.adm-section { margin-top: var(--s-6); }
+
+.adm-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-3);
+}
+
+/* ---------- Обзор: показатели ----------
+   Разделяются вертикальными линиями, а не рамками. */
+
+.adm-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: var(--border);
+  border-bottom: var(--border);
+}
+
+.adm-metric {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--s-5) var(--s-5);
+  border-left: var(--border);
+}
+.adm-metric:first-child { border-left: 0; padding-left: 0; }
+
+.adm-metric__value {
+  font-family: var(--font-serif);
+  font-size: var(--t-display-size);
+  line-height: var(--t-display-lh);
+  font-weight: var(--t-display-weight);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.adm-metric__label { margin-top: var(--s-2); }
+.adm-metric__delta { margin-top: var(--s-1); display: block; }
+
+/* ---------- Обзор: лента событий ---------- */
+
+.adm-feed { border-top: var(--border); }
+
+.adm-feed__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  border-bottom: var(--border);
+}
+.adm-feed__time { flex: none; width: 11ch; color: var(--mute); }
+.adm-feed__text { flex: 1; min-width: 0; }
+.adm-feed__who { flex: none; color: var(--mute); }
+
+/* ---------- Запросы ---------- */
+
+.adm-queries { border-top: var(--border); }
+
+.adm-query {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  border-bottom: var(--border);
+}
+.adm-query__time { flex: none; width: 11ch; color: var(--mute); }
+.adm-query__text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink);
+}
+.adm-query__meta {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-4);
+}
+
+/* ---------- Таблицы ---------- */
+
+.adm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.adm-actions { display: flex; align-items: center; gap: var(--s-2); }
+.adm-scroll { overflow-x: auto; }
+
+/* ---------- Узкий экран ---------- */
+@media (max-width: 860px) {
+  .adm-metric {
+    flex: 1 1 50%;
+    padding: var(--s-4);
+    border-left: 0;
+    border-top: var(--border);
+  }
+  .adm-metric:first-child { padding-left: var(--s-4); border-top: 0; }
+  .adm-metric:nth-child(2) { border-top: 0; }
+  .adm-feed__who { display: none; }
+  .adm-query { flex-wrap: wrap; }
+}

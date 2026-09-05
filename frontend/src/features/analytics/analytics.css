@@ -1,0 +1,166 @@
+/* ============================================================
+   TURA — правовая аналитика общественного обсуждения.
+   Значения только через var(--...) из tokens.css.
+   Показатели набираются числами, а не плашками; диаграммы —
+   полосы и линии, без круговых и без библиотек.
+   ============================================================ */
+
+/* ---------- Источник данных ---------- */
+
+.an-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4) 0;
+  border-bottom: var(--border);
+}
+.an-source__file { display: none; }
+
+/* ---------- Сводка: числа, разделённые вертикальными линиями ---------- */
+
+.an-figures {
+  display: flex;
+  flex-wrap: wrap;
+  padding: var(--s-6) 0;
+  border-bottom: var(--border);
+}
+
+.an-figure {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 var(--s-6);
+  border-left: var(--border);
+}
+.an-figure:first-child { padding-left: 0; border-left: 0; }
+
+/* Показатель — антиквой: это смысловая величина, а не элемент интерфейса */
+.an-figure__value {
+  font-family: var(--font-serif);
+  font-size: var(--t-display-size);
+  line-height: var(--t-display-lh);
+  font-weight: var(--t-display-weight);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  display: block;
+}
+.an-figure__value--ok { color: var(--ok); }
+.an-figure__value--err { color: var(--err); }
+
+.an-figure__label { margin-top: var(--s-2); }
+
+/* ---------- Блок с заголовком ---------- */
+
+.an-block { margin-top: var(--s-8); }
+
+.an-block__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-3);
+}
+
+/* ---------- Полоса распределения тональности ---------- */
+
+.an-bar {
+  display: flex;
+  width: 100%;
+  height: var(--s-3);
+  margin-top: var(--s-3);
+  overflow: hidden;
+}
+.an-bar__seg { height: 100%; }
+.an-bar__seg--pos { background: var(--ok); }
+.an-bar__seg--neu { background: var(--mute); }
+.an-bar__seg--neg { background: var(--err); }
+
+.an-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-5);
+  margin-top: var(--s-3);
+}
+.an-legend__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+.an-legend__swatch {
+  flex: none;
+  width: var(--s-3);
+  height: var(--s-2);
+}
+.an-legend__swatch--pos { background: var(--ok); }
+.an-legend__swatch--neu { background: var(--mute); }
+.an-legend__swatch--neg { background: var(--err); }
+
+/* ---------- Динамика: инлайновый SVG, без библиотек ---------- */
+
+.an-plot { width: 100%; height: auto; display: block; margin-top: var(--s-3); }
+.an-plot__axis { stroke: var(--rule); stroke-width: 1; }
+.an-plot__line { fill: none; stroke: var(--seal); stroke-width: 1.5; }
+.an-plot__dot { fill: var(--seal); }
+
+.an-plot-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--s-1);
+}
+
+/* ---------- Доля темы: полоса внутри ячейки таблицы ---------- */
+
+.an-share {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.an-share__track {
+  flex: 1 1 auto;
+  min-width: var(--s-16);
+  height: var(--s-1);
+  background: var(--rule);
+}
+.an-share__fill { height: 100%; background: var(--ink-2); }
+.an-share__num { flex: none; min-width: 5ch; text-align: right; }
+
+/* ---------- Риски и противоречия: строки, разделённые линиями ---------- */
+
+.an-risks { border-top: var(--border); }
+
+.an-risk {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s-2) var(--s-4);
+  padding: var(--s-4) var(--s-2);
+  border-bottom: var(--border);
+}
+.an-risk__no {
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-legal-lh);
+  font-weight: 700;
+  color: var(--mute);
+  min-width: 3ch;
+}
+.an-risk__main { min-width: 0; }
+.an-risk__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+}
+
+/* ---------- Узкий экран ---------- */
+
+@media (max-width: 860px) {
+  .an-figures { gap: var(--s-5) 0; }
+  .an-figure {
+    flex: 1 1 40%;
+    padding: 0 var(--s-4);
+  }
+  .an-risk { grid-template-columns: 1fr; }
+  .an-risk__no { display: none; }
+}

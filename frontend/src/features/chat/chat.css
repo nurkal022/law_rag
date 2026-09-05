@@ -1,0 +1,173 @@
+/* ============================================================
+   TURA — Консультант. Лента диалога и поле ввода.
+   Все значения — токенами из tokens.css. Литералы запрещены.
+   Группировка линиями и пространством: ни теней, ни карточек.
+   ============================================================ */
+
+.chat {
+  /* Предел роста поля ввода — производная от шага отступов, не литерал */
+  --chat-input-max: calc(var(--s-16) * 3);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---------- Лента ---------- */
+.chat__feed {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--s-5) var(--s-6) var(--s-8);
+}
+
+.chat__thread {
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+
+/* Ход диалога отделяется линией, а не рамкой вокруг реплики */
+.chat__turn + .chat__turn {
+  margin-top: var(--s-8);
+  padding-top: var(--s-8);
+  border-top: var(--border);
+}
+
+/* ---------- Вопрос пользователя ----------
+   Гротеск, приглушённый: вопрос — не смысловой текст, он служебный. */
+.chat__ask {
+  display: block;
+  color: var(--ink-2);
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--rule);
+}
+
+/* ---------- Ответ ассистента ----------
+   Антиква, широкий интерлиньяж: ответ читают внимательно. */
+.chat__answer {
+  margin-top: var(--s-5);
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.chat__stamp {
+  display: block;
+  margin-bottom: var(--s-2);
+}
+
+/* ---------- Источники ---------- */
+.chat__sources {
+  margin-top: var(--s-5);
+  border-top: var(--border);
+}
+
+.chat__sources-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-3) 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--t-label-size);
+  line-height: var(--t-label-lh);
+  font-weight: var(--t-label-weight);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--mute);
+  transition: color var(--motion);
+}
+.chat__sources-toggle:hover { color: var(--ink); }
+
+/* Указатель раскрытия — знак, а не иконка: заменяет слово «раскрыть» */
+.chat__sign {
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
+  color: var(--mute);
+}
+
+.chat__source {
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.chat__source-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+.chat__source-doc {
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  font-weight: 700;
+  color: var(--ink);
+}
+.chat__source-text { margin-top: var(--s-2); color: var(--ink-2); }
+
+/* ---------- Действия под ответом ---------- */
+.chat__acts {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  margin-top: var(--s-4);
+  flex-wrap: wrap;
+}
+
+/* ---------- Пустое состояние ---------- */
+.chat__empty { max-width: var(--measure); margin: var(--s-12) auto 0; }
+
+.chat__examples {
+  margin-top: var(--s-6);
+  border-top: var(--border);
+}
+.chat__example {
+  display: block;
+  width: 100%;
+  padding: var(--s-3) 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule-soft);
+  text-align: left;
+  font-family: var(--font-serif);
+  font-size: var(--t-legal-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink-2);
+  transition: color var(--motion);
+}
+.chat__example:hover { color: var(--seal); }
+
+/* ---------- Поле ввода ----------
+   Прижато к низу, отделено линией. */
+.chat__composer {
+  flex: none;
+  border-top: var(--border);
+  padding: var(--s-4) var(--s-6);
+  background: var(--paper);
+}
+.chat__composer-inner { max-width: var(--measure); margin: 0 auto; }
+
+.chat__input textarea {
+  min-height: 0;
+  max-height: var(--chat-input-max);
+  resize: none;
+  overflow-y: auto;
+  font-size: var(--t-body-size);
+}
+
+.chat__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+}
+
+.chat__hint { margin-right: auto; }
+
+@media (max-width: 860px) {
+  .chat__feed { padding: var(--s-4) var(--s-4) var(--s-6); }
+  .chat__composer { padding: var(--s-3) var(--s-4); }
+  .chat__hint { display: none; }
+}

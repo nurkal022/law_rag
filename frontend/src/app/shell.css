@@ -1,0 +1,126 @@
+/* ============================================================
+   TURA — оболочка приложения: шапка и левый рельс.
+   ============================================================ */
+
+.shell { display: flex; flex-direction: column; height: 100%; }
+
+/* ---------- Шапка ---------- */
+.hdr {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  height: var(--header-h);
+  padding: 0 var(--s-5);
+  border-bottom: var(--border);
+  flex: none;
+}
+
+/* Словесный знак — типографский, отдельной картинки не требуется */
+.wordmark {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: var(--t-wordmark-size);
+  letter-spacing: var(--track-wordmark);
+  color: var(--ink);
+  border: 0;
+  background: none;
+  padding: 0;
+  text-decoration: none;
+}
+.wordmark:hover { border: 0; }
+
+.langs { display: flex; align-items: center; gap: var(--s-1); }
+.langs__sep { color: var(--rule); }
+.langs__item {
+  border: 0;
+  background: none;
+  padding: var(--s-1) var(--s-1);
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  font-weight: var(--t-caption-weight);
+  color: var(--mute);
+  transition: color var(--motion);
+}
+.langs__item:hover { color: var(--ink); }
+.langs__item--on { color: var(--ink); font-weight: 600; }
+
+.hdr__user {
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  color: var(--mute);
+}
+
+/* ---------- Каркас: рельс + содержимое ---------- */
+.body { display: flex; flex: 1; min-height: 0; }
+
+.rail {
+  width: var(--rail-w);
+  flex: none;
+  border-right: var(--border);
+  padding: var(--s-3) 0;
+  overflow-y: auto;
+}
+.rail__group {
+  padding: var(--s-4) var(--s-4) var(--s-1);
+  font-family: var(--font-sans);
+  font-size: var(--t-label-size);
+  font-weight: var(--t-label-weight);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.rail__group:first-child { padding-top: 0; }
+
+.rail__link {
+  display: block;
+  padding: var(--s-2) var(--s-4);
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  color: var(--mute);
+  text-decoration: none;
+  border: 0;
+  box-shadow: none;
+  transition: color var(--motion), background-color var(--motion);
+}
+.rail__link:hover { color: var(--ink); background: var(--ink-wash); border: 0; }
+
+/* Активный раздел отмечается вставной линией печати, а не заливкой цветом */
+.rail__link--on {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--ink-wash);
+  border-left: 2px solid var(--seal);
+  padding-left: calc(var(--s-4) - 2px);
+}
+
+.main { flex: 1; min-width: 0; overflow-y: auto; }
+
+/* Стандартная обёртка страницы */
+.page { padding: var(--s-5) var(--s-6); }
+.page__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+.page__title { display: flex; flex-direction: column; gap: var(--s-1); }
+
+/* ---------- Узкий экран ----------
+   Рельс уезжает в горизонтальную ленту над содержимым. */
+@media (max-width: 860px) {
+  .body { flex-direction: column; }
+  .rail {
+    width: auto;
+    display: flex;
+    gap: var(--s-1);
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: var(--border);
+    padding: var(--s-2) var(--s-3);
+  }
+  .rail__group { display: none; }
+  .rail__link { white-space: nowrap; padding: var(--s-2) var(--s-3); }
+  .rail__link--on { border-left: 0; border-bottom: 2px solid var(--seal); padding-left: var(--s-3); }
+  .page { padding: var(--s-4); }
+}

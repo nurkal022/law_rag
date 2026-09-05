@@ -1,0 +1,302 @@
+/* ============================================================
+   TURA — конструктор договоров.
+   Только линии и пространство: ни теней, ни градиентов, ни карточек.
+   Все значения — через var(--...) из tokens.css.
+   ============================================================ */
+
+/* ---------- Раскладка: работа слева, документ справа ---------- */
+
+.ct-split {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  column-gap: var(--s-8);
+  align-items: start;
+  margin-top: var(--s-5);
+}
+
+/* Правая колонка отделяется линией, а не рамкой карточки */
+.ct-split__aside {
+  border-left: var(--border);
+  padding-left: var(--s-8);
+  min-width: 0;
+}
+
+.ct-split__main { min-width: 0; }
+
+/* ---------- Список типов договора ---------- */
+
+.ct-types {
+  border-top: var(--border);
+  margin-top: var(--s-4);
+}
+
+.ct-type {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--s-3) var(--s-3);
+  border: 0;
+  border-bottom: var(--border);
+  border-left: 2px solid transparent;
+  background: none;
+  transition: background-color var(--motion), border-color var(--motion);
+}
+.ct-type:hover { background: var(--ink-wash); }
+
+/* Выбранный тип — вставная линия печати слева, без заливки цветом */
+.ct-type--on {
+  border-left-color: var(--seal);
+  background: var(--surface);
+}
+
+.ct-type__name {
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  font-weight: 700;
+  color: var(--ink);
+}
+.ct-type--on .ct-type__name { color: var(--seal); }
+
+.ct-type__desc {
+  display: block;
+  margin-top: var(--s-1);
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  color: var(--mute);
+}
+
+/* ---------- Форма ---------- */
+
+.ct-group { padding: var(--s-5) 0; border-bottom: var(--border); }
+
+.ct-group__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin-bottom: var(--s-3);
+}
+
+.ct-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+.ct-grid > .ct-grid__wide { grid-column: 1 / -1; }
+
+.ct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-5) 0;
+}
+
+/* ---------- Предпросмотр договора ---------- */
+
+.ct-doc { padding-bottom: var(--s-5); }
+
+.ct-doc__head {
+  padding-bottom: var(--s-4);
+  border-bottom: var(--border);
+  margin-bottom: var(--s-5);
+}
+
+.ct-doc__title {
+  font-family: var(--font-serif);
+  font-size: var(--t-h1-size);
+  line-height: var(--t-h1-lh);
+  font-weight: var(--t-h1-weight);
+  color: var(--ink);
+}
+
+.ct-doc__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  margin-top: var(--s-2);
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  color: var(--mute);
+}
+
+.ct-doc__preamble {
+  font-family: var(--font-serif);
+  font-size: var(--t-legal-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink-2);
+  max-width: var(--measure);
+  margin-bottom: var(--s-5);
+}
+
+.ct-sec { padding: var(--s-4) 0; border-top: var(--border); }
+
+.ct-sec__num {
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  color: var(--mute);
+  margin-right: var(--s-2);
+}
+
+.ct-sec__title {
+  display: inline;
+  font-family: var(--font-serif);
+  font-size: var(--t-h2-size);
+  line-height: var(--t-h2-lh);
+  font-weight: var(--t-h2-weight);
+  color: var(--ink);
+}
+
+.ct-sec__body {
+  margin-top: var(--s-2);
+  font-family: var(--font-serif);
+  font-size: var(--t-legal-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink);
+  max-width: var(--measure);
+}
+
+/* ---------- Применённые нормы ---------- */
+
+.ct-norms { margin-top: var(--s-6); border-top: var(--border); }
+
+.ct-norm {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--s-4);
+  align-items: start;
+  padding: var(--s-3) 0;
+  border-bottom: var(--border);
+}
+
+.ct-norm__note {
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink-2);
+}
+
+/* ---------- Проверка: зона загрузки ---------- */
+
+.ct-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-8) var(--s-5);
+  margin: var(--s-4) 0;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  text-align: center;
+  background: none;
+  transition: border-color var(--motion), background-color var(--motion);
+}
+.ct-drop--over { border-color: var(--seal); background: var(--seal-wash); }
+
+.ct-drop__file {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+}
+
+/* ---------- Проверка: позиция и итог ---------- */
+
+.ct-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4) 0;
+}
+
+.ct-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-8);
+  padding: var(--s-5) 0;
+  border-top: var(--border);
+  border-bottom: var(--border);
+}
+
+.ct-summary__item { display: flex; flex-direction: column; gap: var(--s-1); }
+
+.ct-summary__value {
+  font-family: var(--font-serif);
+  font-size: var(--t-display-size);
+  line-height: var(--t-display-lh);
+  font-weight: var(--t-display-weight);
+}
+
+/* ---------- Проверка: найденное ----------
+   Строки, разделённые линиями. Карточек здесь нет намеренно. */
+
+.ct-findings { margin-top: var(--s-2); }
+
+.ct-finding { padding: var(--s-5) 0; border-bottom: var(--border); }
+
+.ct-finding__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin-bottom: var(--s-2);
+}
+
+.ct-finding__problem {
+  font-family: var(--font-serif);
+  font-size: var(--t-legal-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink);
+  max-width: var(--measure);
+}
+
+/* Цитата спорного условия — отбита линией печати слева */
+.ct-finding__quote {
+  margin: var(--s-3) 0;
+  padding-left: var(--s-4);
+  border-left: 2px solid var(--rule);
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-legal-lh);
+  font-style: italic;
+  color: var(--ink-2);
+  max-width: var(--measure);
+}
+
+.ct-finding__norm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+.ct-finding__advice {
+  margin-top: var(--s-2);
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  line-height: var(--t-body-lh);
+  color: var(--mute);
+  max-width: var(--measure);
+}
+
+/* ---------- Узкий экран ----------
+   До 1000px предпросмотр уходит под форму. */
+
+@media (max-width: 1000px) {
+  .ct-split { grid-template-columns: minmax(0, 1fr); row-gap: var(--s-8); }
+  .ct-split__aside {
+    border-left: 0;
+    padding-left: 0;
+    border-top: var(--border);
+    padding-top: var(--s-6);
+  }
+}
+
+@media (max-width: 620px) {
+  .ct-grid { grid-template-columns: minmax(0, 1fr); }
+  .ct-norm { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+  .ct-summary { gap: var(--s-6); }
+}

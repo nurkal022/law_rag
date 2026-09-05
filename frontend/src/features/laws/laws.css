@@ -1,0 +1,177 @@
+/* ============================================================
+   TURA — законопроекты: реестр инициатив, форма и оглавление
+   сгенерированного пакета документов.
+   Значения только через var(--...) из tokens.css.
+   Группировка линиями и пространством: ни теней, ни карточек.
+   ============================================================ */
+
+/* ---------- Каркас экрана: реестр слева, работа справа ---------- */
+
+.laws-layout {
+  display: grid;
+  grid-template-columns: var(--rail-w) 1fr;
+  gap: var(--s-8);
+  align-items: start;
+}
+
+/* ---------- Реестр законопроектов ---------- */
+
+.laws-list {
+  border-top: var(--border);
+}
+
+.laws-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: var(--border);
+  border-left: 2px solid transparent;
+  padding: var(--s-3);
+  padding-left: calc(var(--s-3) - 2px);
+  transition: background-color var(--motion);
+}
+.laws-item:hover { background: var(--ink-wash); }
+
+/* Выбранная инициатива отмечается вставной линией печати, а не заливкой */
+.laws-item--on {
+  background: var(--ink-wash);
+  border-left-color: var(--seal);
+}
+
+.laws-item__title {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.laws-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+}
+
+/* ---------- Форма инициативы ---------- */
+
+.laws-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+  padding-top: var(--s-4);
+}
+.laws-form__wide { grid-column: 1 / -1; }
+
+.laws-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4) 0;
+}
+
+/* ---------- Блок с заголовком и линией ---------- */
+
+.laws-block { margin-top: var(--s-8); }
+
+.laws-block__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-3);
+}
+
+/* ---------- Оглавление пакета документов ---------- */
+
+.laws-toc { border-top: var(--border); }
+
+.laws-sec { border-bottom: var(--border); }
+
+.laws-sec__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: var(--s-3) var(--s-2);
+  transition: background-color var(--motion);
+}
+.laws-sec__head:hover { background: var(--ink-wash); }
+
+/* Нумерация разделов — антиквой, как в оглавлении печатного документа */
+.laws-sec__num {
+  flex: none;
+  min-width: 4ch;
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  font-weight: 700;
+  color: var(--mute);
+}
+
+.laws-sec__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.laws-sec__state { flex: none; }
+
+/* Знак раскрытия заменяет слово «развернуть», а не украшает строку */
+.laws-sec__mark {
+  flex: none;
+  width: var(--s-4);
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  color: var(--mute);
+}
+
+.laws-sec__body {
+  padding: 0 var(--s-2) var(--s-5);
+  padding-left: calc(var(--s-2) + 4ch + var(--s-3));
+}
+
+.laws-sec__text { white-space: pre-line; color: var(--ink-2); }
+
+/* ---------- История версий ---------- */
+
+.laws-versions { border-top: var(--border); }
+
+.laws-version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: var(--s-2);
+  border-bottom: var(--border);
+}
+.laws-version__no {
+  min-width: 5ch;
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  font-weight: 700;
+  color: var(--ink);
+}
+.laws-version__note { flex: 1 1 auto; min-width: 0; }
+
+/* ---------- Узкий экран ---------- */
+
+@media (max-width: 860px) {
+  .laws-layout { grid-template-columns: 1fr; gap: var(--s-6); }
+  .laws-form { grid-template-columns: 1fr; }
+  .laws-sec__body { padding-left: var(--s-2); }
+}

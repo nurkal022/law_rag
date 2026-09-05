@@ -311,3 +311,7 @@ exports/
 googlea*.html 
 # Superpowers brainstorming mockups
 .superpowers/
+
+# TURA: фронтенд и результат сборки
+frontend/node_modules/
+static/app/

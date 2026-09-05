@@ -1,0 +1,136 @@
+/* ============================================================
+   TURA — вход и регистрация.
+   Страницы живут вне оболочки: рельса нет, только разворот на
+   всю высоту экрана. Значения — только var(--...) из tokens.css.
+   Группировка линиями и пространством: ни теней, ни карточек.
+   ============================================================ */
+
+.auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--paper);
+}
+
+/* ---------- Левая половина: типографическая ---------- */
+
+.auth__aside {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s-12);
+  padding: var(--s-12) var(--s-12) var(--s-8);
+  /* Разделение линией, а не другим фоном */
+  border-right: var(--border);
+  min-width: 0;
+}
+
+.auth__mark {
+  font-family: var(--font-serif);
+  font-size: var(--t-display-size);
+  line-height: var(--t-display-lh);
+  font-weight: var(--t-display-weight);
+  letter-spacing: var(--track-wordmark);
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-block;
+  border: 0;
+}
+.auth__mark:hover { border: 0; }
+
+.auth__claim {
+  margin-top: var(--s-5);
+  max-width: 30ch;
+  color: var(--ink-2);
+}
+
+/* Пример ответа внизу — мелко, отделён линией */
+.auth__sample {
+  border-top: var(--border);
+  padding-top: var(--s-4);
+  max-width: 46ch;
+}
+.auth__sample-text { margin-top: var(--s-2); color: var(--ink-2); }
+
+/* ---------- Правая половина: форма ---------- */
+
+.auth__pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-12) var(--s-8);
+  min-width: 0;
+}
+
+.auth__form {
+  width: 100%;
+  max-width: 340px;
+}
+
+/* Знак над формой — виден только когда левая половина скрыта */
+.auth__mark-narrow { display: none; }
+
+.auth__head { margin-bottom: var(--s-8); }
+.auth__lead { margin-top: var(--s-2); color: var(--mute); }
+
+.auth__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.auth__submit { margin-top: var(--s-6); }
+
+.auth__wide { width: 100%; }
+
+/* Разделитель «или» — линия с подписью посередине */
+.auth__or {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: var(--s-6) 0;
+}
+.auth__or::before,
+.auth__or::after {
+  content: '';
+  flex: 1;
+  border-top: var(--border);
+}
+
+.auth__note {
+  margin-top: var(--s-6);
+  padding-top: var(--s-4);
+  border-top: var(--border);
+  color: var(--mute);
+}
+
+.auth__alt {
+  margin-top: var(--s-6);
+  color: var(--mute);
+}
+
+.auth__link {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  transition: border-color var(--motion);
+}
+.auth__link:hover { border-bottom-color: var(--ink); }
+
+/* ---------- Узкий экран ----------
+   Типографическая половина уходит, остаётся форма. */
+@media (max-width: 860px) {
+  .auth { grid-template-columns: 1fr; }
+  .auth__aside { display: none; }
+  .auth__pane {
+    align-items: flex-start;
+    padding: var(--s-8) var(--s-5);
+  }
+  .auth__mark-narrow {
+    display: block;
+    margin-bottom: var(--s-8);
+    font-size: var(--t-h1-size);
+    line-height: var(--t-h1-lh);
+    font-weight: var(--t-h1-weight);
+  }
+}
