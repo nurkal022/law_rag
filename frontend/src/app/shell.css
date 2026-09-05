@@ -93,7 +93,13 @@
   padding-left: calc(var(--s-4) - 2px);
 }
 
-.main { flex: 1; min-width: 0; overflow-y: auto; }
+.main { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
+
+/* Обёртка перехода между страницами не должна разрывать цепочку высоты:
+   без этого экран чата, рассчитанный на высоту окна, схлопывается по
+   содержимому и поле ввода уезжает наверх. */
+.main > .swap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.main > .swap > * { flex: 1; min-height: 0; }
 
 /* Стандартная обёртка страницы */
 .page { padding: var(--s-5) var(--s-6); }
