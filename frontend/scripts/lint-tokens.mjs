@@ -61,6 +61,35 @@ const RULES = [
   },
 ]
 
+/**
+ * Имена токенов, объявленных в tokens.css.
+ *
+ * Нужны для проверки, что var(--что-то) ссылается на существующее. Без неё
+ * опечатка в имени тихо превращается в запасное значение — а если запасного
+ * нет, свойство просто исчезает, и заметить это можно только глазами.
+ */
+function declaredTokens() {
+  const text = readFileSync(join(SRC, 'styles/tokens.css'), 'utf8')
+  const names = new Set()
+  for (const m of text.matchAll(/(--[\w-]+)\s*:/g)) names.add(m[1])
+  return names
+}
+
+/** Свойства, объявленные в самом файле: компонент вправе завести своё. */
+function localTokens(text) {
+  const names = new Set()
+  for (const m of text.matchAll(/(--[\w-]+)\s*:/g)) names.add(m[1])
+  return names
+}
+
+/**
+ * Свойства, приходящие из разметки, а не из таблицы стилей.
+ *
+ * --i — номер элемента в ленте, его задаёт JSX через style: очередь появления
+ * зависит от данных, и объявить её в токенах нельзя.
+ */
+const FROM_MARKUP = new Set(['--i'])
+
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name)
@@ -71,6 +100,7 @@ function walk(dir, out = []) {
 }
 
 let failures = 0
+const TOKENS = declaredTokens()
 
 for (const file of walk(SRC)) {
   const rel = relative(ROOT, file)
@@ -78,6 +108,35 @@ for (const file of walk(SRC)) {
 
   const text = readFileSync(file, 'utf8')
   const lines = text.split('\n')
+  const own = localTokens(text)
+
+  // Ссылка на несуществующий токен. Именно так литеральные величины и
+  // просачиваются в систему: var(--measure-wide, 62rem) выглядит как
+  // обращение к токену, а на деле подставляет литерал, и ни одно правило
+  // ниже его не видит.
+  lines.forEach((line, i) => {
+    const code = line.replace(/\/\*.*?\*\//g, '').replace(/\/\/.*$/, '')
+    for (const m of code.matchAll(/var\(\s*(--[\w-]+)([^)]*)\)/g)) {
+      const [full, name, rest] = m
+      if (TOKENS.has(name) || own.has(name) || FROM_MARKUP.has(name)) {
+        // Запасное значение уместно там, где свойство может отсутствовать:
+        // var(--i, 0) для элемента без номера в ленте. Ловим другое —
+        // спрятанные в запасном значении размеры и цвета: именно так
+        // литералы и просачиваются мимо остальных правил.
+        const fallback = rest.trim().replace(/^,/, '').trim()
+        const hidesLiteral = /\d\s*(px|rem|em|ch|vh|vw|%)|#[0-9a-fA-F]{3,8}/.test(fallback)
+        if (fallback && hidesLiteral) {
+          console.error(`${rel}:${i + 1}  [token-fallback]  ${full.trim()}\n    ` +
+            'запасное значение в var() прячет литерал от проверок — оставь только токен')
+          failures++
+        }
+        continue
+      }
+      console.error(`${rel}:${i + 1}  [unknown-token]  ${full.trim()}\n    ` +
+        `токен ${name} не объявлен в tokens.css — опечатка или забытое объявление`)
+      failures++
+    }
+  })
 
   for (const rule of RULES) {
     lines.forEach((line, i) => {

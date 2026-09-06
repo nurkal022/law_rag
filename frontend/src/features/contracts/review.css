@@ -1,0 +1,118 @@
+/* ============================================================
+   Проверка чужого договора.
+   Все значения — из tokens.css.
+   ============================================================ */
+
+/* Две колонки: слева источник договора, справа условия разбора.
+   Одной колонкой в ширину читаемой строки форма занимала треть экрана,
+   а две трети пустовали — предел меры нужен тексту для чтения, не полям. */
+.ct-rv__form {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--s-8);
+  align-items: start;
+  margin-top: var(--s-5);
+}
+.ct-rv__source { display: flex; flex-direction: column; gap: var(--s-3); }
+
+/* Зона приёма файла: пунктир говорит «сюда можно бросить»,
+   сплошная линия при наведении — «сейчас бросишь именно сюда». */
+.ct-rv__drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  padding: var(--s-8) var(--s-5);
+  border: 1px dashed var(--rule);
+  transition: border-color var(--motion), background-color var(--motion);
+}
+.ct-rv__drop--over { border-style: solid; border-color: var(--ink); background: var(--surface); }
+
+.ct-rv__or { color: var(--mute); }
+
+.ct-rv__opts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  align-items: stretch;
+}
+.ct-rv__party { display: flex; flex-direction: column; gap: var(--s-2); }
+.ct-rv__chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+.ct-rv__busy { display: flex; flex-direction: column; gap: var(--s-2); }
+
+/* ---------- Итог разбора ---------- */
+
+.ct-rv { margin-top: var(--s-5); }
+
+.ct-rv__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: var(--s-6);
+  padding-bottom: var(--s-5);
+  border-bottom: var(--border);
+}
+.ct-rv__score { display: flex; flex-direction: column; gap: var(--s-1); }
+.ct-rv__scorenum {
+  font-family: var(--font-serif);
+  font-size: var(--t-display-size);
+  line-height: var(--t-display-lh);
+  font-weight: var(--t-display-weight);
+}
+.ct-rv__about { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+.ct-rv__facts { display: flex; flex-wrap: wrap; gap: var(--s-4); }
+
+/* Оговорка о происхождении разбора стоит перед выводами, а не после:
+   прочитанное первым определяет, как будет прочитано остальное. */
+.ct-rv__caution {
+  margin: var(--s-4) 0 0;
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--ochre);
+  max-width: var(--measure);
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  color: var(--mute);
+}
+
+.ct-rv__block { margin-top: var(--s-8); }
+.ct-rv__list, .ct-rv__plain { list-style: none; margin: var(--s-3) 0 0; padding: 0; }
+.ct-rv__plain li { padding: var(--s-2) 0; border-bottom: 1px solid var(--rule-soft); }
+
+.ct-rv__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4) 0;
+  border-bottom: 1px solid var(--rule-soft);
+  max-width: var(--measure);
+}
+.ct-rv__itemhead { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+.ct-rv__itemtitle { font-weight: 600; }
+
+/* Степень набирается моноширинным в один ряд с координатами норм: это
+   служебная пометка, а не заголовок. */
+.ct-rv__mark {
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
+  line-height: var(--t-mono-lh);
+  font-weight: var(--t-mono-weight);
+  flex: none;
+}
+.ct-rv__mark--err { color: var(--err); }
+.ct-rv__mark--warn { color: var(--warn); }
+.ct-rv__mark--ok { color: var(--ok); }
+
+.ct-rv__fix {
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--rule);
+}
+
+@media (max-width: 1100px) {
+  .ct-rv__form { grid-template-columns: minmax(0, 1fr); gap: var(--s-6); }
+}
+
+@media (max-width: 860px) {
+  .ct-rv__summary { grid-template-columns: minmax(0, 1fr); }
+  .ct-rv__drop { flex-direction: column; padding: var(--s-6) var(--s-4); }
+}

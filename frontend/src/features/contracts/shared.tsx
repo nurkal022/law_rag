@@ -12,10 +12,8 @@ const dict: Dict = {
   catalog: { ru: 'Каталог', kz: 'Каталог', en: 'Catalogue' },
   mine: { ru: 'Мои договоры', kz: 'Менің шарттарым', en: 'My contracts' },
   review: { ru: 'Проверить договор', kz: 'Шартты тексеру', en: 'Review a contract' },
-  soon: { ru: 'скоро', kz: 'жақында', en: 'soon' },
 }
 
-/** Проверка чужого текста ещё не сделана — так и пишем, а не прячем пункт. */
 export function ContractTabs() {
   const t = useT(dict)
   return (
@@ -37,9 +35,14 @@ export function ContractTabs() {
       >
         {t('mine')}
       </NavLink>
-      <button type="button" className="tabs__item ct-subnav__soon" disabled title={t('soon')}>
-        {t('review')} <span className="ct-soon">{t('soon')}</span>
-      </button>
+      <NavLink
+        to="/contracts/review"
+        className={({ isActive }) =>
+          ['tabs__item', isActive ? 'tabs__item--on' : ''].filter(Boolean).join(' ')
+        }
+      >
+        {t('review')}
+      </NavLink>
     </div>
   )
 }

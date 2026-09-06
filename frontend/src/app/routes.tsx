@@ -40,6 +40,9 @@ const ContractDocumentPage = lazy(() =>
 const MyContractsPage = lazy(() =>
   import('../features/contracts/MyContractsPage').then((m) => ({ default: m.MyContractsPage })),
 )
+const ContractReviewPage = lazy(() =>
+  import('../features/contracts/ReviewPage').then((m) => ({ default: m.ReviewPage })),
+)
 const LawsRegistryPage = lazy(() =>
   import('../features/laws/RegistryPage').then((m) => ({ default: m.RegistryPage })),
 )
@@ -90,6 +93,7 @@ const pages: RouteObject[] = [
       // иначе конструктор откроется как документ с идентификатором «new».
       { path: 'contracts', element: <Deferred><CatalogPage /></Deferred> },
       { path: 'contracts/mine', element: <Deferred><MyContractsPage /></Deferred> },
+      { path: 'contracts/review', element: <Deferred><ContractReviewPage /></Deferred> },
       { path: 'contracts/new/:type', element: <Deferred><ContractBuilderPage /></Deferred> },
       { path: 'contracts/:id', element: <Deferred><ContractDocumentPage /></Deferred> },
       // Тот же порядок, что у договоров: 'new' обязан стоять до ':id',
