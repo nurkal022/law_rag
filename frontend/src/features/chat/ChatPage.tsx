@@ -18,7 +18,11 @@ import { citeCode } from '../legal/cite'
 import { ANSWERS, EXAMPLES, pickAnswer } from './mock'
 import type { MockAnswer, Seg } from './mock'
 import './chat.css'
+import './sidebar.css'
 import './chat.motion.css'
+import { Link } from '../../shared/nav'
+import { useNavigate, useParams } from 'react-router-dom'
+import { withLang } from '../../i18n'
 
 const dict: Dict = {
   title: { ru: 'Консультант', kz: 'Кеңесші', en: 'Assistant' },
@@ -91,6 +95,17 @@ const dict: Dict = {
   },
 
   convs: { ru: 'Диалоги', kz: 'Диалогтар', en: 'Conversations' },
+  gToday: { ru: 'Сегодня', kz: 'Бүгін', en: 'Today' },
+  gWeek: { ru: 'На этой неделе', kz: 'Осы аптада', en: 'This week' },
+  gEarlier: { ru: 'Ранее', kz: 'Бұрын', en: 'Earlier' },
+  search: { ru: 'Поиск по диалогам', kz: 'Диалогтардан іздеу', en: 'Search conversations' },
+  nothing: { ru: 'Ничего не найдено', kz: 'Ештеңе табылмады', en: 'Nothing found' },
+  sections: { ru: 'Разделы', kz: 'Бөлімдер', en: 'Sections' },
+  secDocs: { ru: 'Документы', kz: 'Құжаттар', en: 'Documents' },
+  secContracts: { ru: 'Договоры', kz: 'Шарттар', en: 'Contracts' },
+  secLaws: { ru: 'Законопроекты', kz: 'Заң жобалары', en: 'Draft laws' },
+  secAnalytics: { ru: 'Аналитика', kz: 'Талдау', en: 'Analytics' },
+  newTitle: { ru: 'Новый диалог', kz: 'Жаңа диалог', en: 'New conversation' },
   convsAria: { ru: 'Прошлые диалоги', kz: 'Өткен диалогтар', en: 'Past conversations' },
   convsShow: { ru: 'Показать диалоги', kz: 'Диалогтарды көрсету', en: 'Show conversations' },
   convsHide: { ru: 'Скрыть диалоги', kz: 'Диалогтарды жасыру', en: 'Hide conversations' },
@@ -115,6 +130,8 @@ interface Conv {
   id: string
   title: string | L10n
   date: L10n
+  /** Группа в боковой колонке. У замоканных данных проставлена вручную. */
+  group: 'today' | 'week' | 'earlier'
   turns: TurnData[]
 }
 
@@ -132,6 +149,7 @@ const PAST: Conv[] = [
       en: 'Penalty for late payment with no rate in the contract',
     },
     date: { ru: '4 сентября', kz: '4 қыркүйек', en: '4 September' },
+    group: 'week',
     turns: [
       {
         id: 1,
@@ -148,6 +166,7 @@ const PAST: Conv[] = [
       en: 'Limitation period for a supply contract',
     },
     date: { ru: '2 сентября', kz: '2 қыркүйек', en: '2 September' },
+    group: 'week',
     turns: [
       { id: 1, question: EXAMPLES[0].text, answerId: 'limitation' },
       {
@@ -169,6 +188,7 @@ const PAST: Conv[] = [
       en: 'Unilateral withdrawal from a lease',
     },
     date: { ru: '28 августа', kz: '28 тамыз', en: '28 August' },
+    group: 'earlier',
     turns: [{ id: 1, question: EXAMPLES[2].text, answerId: 'termination' }],
   },
 ]
@@ -411,11 +431,14 @@ export function ChatPage() {
   const { lang } = useLang()
 
   const [convs, setConvs] = useState<Conv[]>(PAST)
-  const [activeId, setActiveId] = useState<string>(DRAFT_ID)
+  const { id: routeId } = useParams()
+  const navigate = useNavigate()
+  const activeId = routeId ?? DRAFT_ID
   const [streamingId, setStreamingId] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [attachment, setAttachment] = useState<string | null>(null)
   const [listOpen, setListOpen] = useState(false)
+  const [query, setQuery] = useState('')
 
   const feedRef = useRef<HTMLDivElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -459,10 +482,11 @@ export function ChatPage() {
           id: `c${id}`,
           title: q,
           date: todayLabel(),
+          group: 'today',
           turns: [{ id, question: q, answerId: pickAnswer(q, 0).id, attachment: file }],
         }
         setConvs((prev) => [conv, ...prev])
-        setActiveId(conv.id)
+        navigate(withLang(`/chat/${conv.id}`, lang), { replace: true })
       } else {
         const answer = pickAnswer(q, cur.turns.length)
         const turn: TurnData = { id, question: q, answerId: answer.id, attachment: file }
@@ -485,49 +509,115 @@ export function ChatPage() {
   /** Прерывание набора: Turn оставляет напечатанное и переходит в «прервано». */
   const stop = useCallback(() => setStreamingId(null), [])
 
-  const openConv = useCallback((id: string) => {
-    setStreamingId(null)
-    setActiveId(id)
-    setListOpen(false)
-  }, [])
+  const openConv = useCallback(
+    (id: string) => {
+      setStreamingId(null)
+      setListOpen(false)
+      // Диалог живёт в адресе: перезагрузка возвращает на место,
+      // а ссылкой на переписку можно поделиться.
+      navigate(withLang(id === DRAFT_ID ? '/chat' : `/chat/${id}`, lang))
+    },
+    [navigate, lang],
+  )
 
   const focusInput = () => boxRef.current?.querySelector('textarea')?.focus()
 
+  /** Диалоги, отобранные поиском и разложенные по группам. */
+  const grouped = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const hit = (c: Conv) => !q || text(c.title, lang).toLowerCase().includes(q)
+    const pick = (g: Conv['group']) => convs.filter((c) => c.group === g && hit(c))
+    return [
+      { id: 'today', label: t('gToday'), items: pick('today') },
+      { id: 'week', label: t('gWeek'), items: pick('week') },
+      { id: 'earlier', label: t('gEarlier'), items: pick('earlier') },
+    ].filter((g) => g.items.length > 0)
+  }, [convs, query, lang, t])
+
   return (
     <div className="chat-shell">
-      <aside className="chat-convs" aria-label={t('convsAria')}>
-        {/* Новый диалог — действие, а не строка списка: так его находят сразу */}
-        <Button variant="secondary" className="chat-convs__new" onClick={() => openConv(DRAFT_ID)}>
+      <aside className="cs" aria-label={t('convsAria')}>
+        <div className="cs__brand">
+          <Link to="/" className="wordmark">
+            TURA
+          </Link>
+        </div>
+
+        <Button variant="secondary" className="cs__new" onClick={() => openConv(DRAFT_ID)}>
           + {t('convNew')}
         </Button>
+
+        <input
+          className="cs__search field__control"
+          type="search"
+          value={query}
+          placeholder={t('search')}
+          aria-label={t('search')}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+
+        {/* На узком экране список прячется за кнопку, чтобы переписка была видна */}
         <Button
           variant="ghost"
-          className="chat-convs__toggle"
+          className="cs__toggle"
           aria-expanded={listOpen}
           onClick={() => setListOpen((v) => !v)}
         >
           {listOpen ? t('convsHide') : t('convsShow')} · {convs.length}
         </Button>
 
-        <div className={listOpen ? 'chat-convs__list' : 'chat-convs__list chat-convs__list--off'}>
-          {convs.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={c.id === activeId ? 'chat-conv chat-conv--on' : 'chat-conv'}
-              aria-current={c.id === activeId ? 'true' : undefined}
-              onClick={() => openConv(c.id)}
-            >
-              <span className="chat-conv__title">{text(c.title, lang)}</span>
-              <Caption tone="mute" className="chat-conv__date">
-                {c.date[lang]}
-              </Caption>
-            </button>
-          ))}
+        <nav className={listOpen ? 'cs__list' : 'cs__list cs__list--off'}>
+          {grouped.length === 0 ? (
+            <Caption tone="mute" className="cs__nothing">
+              {t('nothing')}
+            </Caption>
+          ) : (
+            grouped.map((g) => (
+              <div className="cs__group" key={g.id}>
+                <Label className="cs__group-label">{g.label}</Label>
+                {g.items.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={c.id === activeId ? 'cs__conv cs__conv--on' : 'cs__conv'}
+                    aria-current={c.id === activeId ? 'true' : undefined}
+                    onClick={() => openConv(c.id)}
+                  >
+                    <span className="cs__conv-title">{text(c.title, lang)}</span>
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </nav>
+
+        <div className="cs__foot">
+          <Label className="cs__group-label">{t('sections')}</Label>
+          <Link to="/workspace" className="cs__sec">
+            {t('secDocs')}
+          </Link>
+          <Link to="/contracts" className="cs__sec">
+            {t('secContracts')}
+          </Link>
+          <Link to="/laws" className="cs__sec">
+            {t('secLaws')}
+          </Link>
+          <Link to="/analytics" className="cs__sec">
+            {t('secAnalytics')}
+          </Link>
+          <div className="cs__user">н. курманов</div>
         </div>
       </aside>
 
       <div className="chat">
+        {/* Полоса с названием диалога: без неё непонятно, где ты находишься,
+            когда список слева свёрнут. */}
+        <div className="chat__top">
+          <h1 className="chat__title t-h3">
+            {active ? text(active.title, lang) : t('newTitle')}
+          </h1>
+        </div>
+
         <div className="chat__feed" ref={feedRef} aria-label={t('ariaFeed')}>
           {turns.length === 0 ? (
             <div className="chat__empty enter">

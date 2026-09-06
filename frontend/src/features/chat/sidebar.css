@@ -1,0 +1,157 @@
+/* ============================================================
+   TURA — боковая колонка консультанта.
+   Отдельная полноэкранная страница: разделы продукта уезжают вниз
+   колонки, чтобы переписка занимала весь экран.
+   ============================================================ */
+
+.cs {
+  width: var(--list-w);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: var(--border);
+  background: var(--surface);
+  padding: var(--s-3);
+  gap: var(--s-2);
+}
+
+.cs__brand { padding: var(--s-2) var(--s-2) var(--s-3); }
+
+.cs__new { width: 100%; justify-content: flex-start; }
+
+.cs__search { background: var(--paper); }
+
+/* Список занимает всю свободную высоту и прокручивается сам */
+.cs__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: var(--s-2) calc(var(--s-3) * -1) 0;
+  padding: 0 var(--s-3);
+}
+
+.cs__group + .cs__group { margin-top: var(--s-4); }
+.cs__group-label { padding: var(--s-2) var(--s-2) var(--s-1); }
+
+.cs__conv {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--s-2);
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  line-height: var(--t-ui-lh);
+  color: var(--ink-2);
+  transition: background-color var(--motion), color var(--motion);
+}
+.cs__conv:hover { background: var(--ink-wash); color: var(--ink); }
+
+.cs__conv--on {
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  border-left-color: var(--seal);
+}
+
+/* Название в одну строку: список — это указатель, а не чтение */
+.cs__conv-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs__nothing { display: block; padding: var(--s-4) var(--s-2); }
+
+/* Подвал: выход в остальные разделы и пользователь */
+.cs__foot {
+  border-top: var(--border);
+  padding-top: var(--s-2);
+  margin: 0 calc(var(--s-2) * -1);
+  padding-inline: var(--s-2);
+}
+
+.cs__sec {
+  display: block;
+  padding: var(--s-2);
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  color: var(--mute);
+  text-decoration: none;
+  border: 0;
+  transition: color var(--motion);
+}
+.cs__sec:hover { color: var(--ink); border: 0; }
+
+.cs__user {
+  padding: var(--s-3) var(--s-2) var(--s-1);
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  color: var(--mute);
+  border-top: var(--border);
+  margin-top: var(--s-2);
+}
+
+/* На широком экране кнопка показа списка не нужна — список и так виден */
+.cs__toggle { display: none; }
+
+@media (max-width: 860px) {
+  .cs {
+    width: auto;
+    border-right: 0;
+    border-bottom: var(--border);
+    padding: var(--s-2) var(--s-3);
+  }
+  .cs__brand { display: none; }
+  .cs__toggle { display: inline-flex; }
+  .cs__list { max-height: 50vh; flex: none; }
+  .cs__list--off { display: none; }
+  .cs__foot { display: none; }
+}
+
+/* ---------- Полоса с названием диалога ---------- */
+.chat__top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: var(--header-h);
+  padding: var(--s-2) var(--s-6);
+  border-bottom: var(--border);
+}
+.chat__title {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Линия над полем ввода идёт во всю ширину, само поле — по оси переписки */
+.chat__composer {
+  flex: none;
+  border-top: var(--border);
+  padding: var(--s-4) var(--s-6) var(--s-5);
+}
+
+@media (max-width: 860px) {
+  .chat__top { padding: var(--s-2) var(--s-4); }
+  .chat__composer { padding: var(--s-3) var(--s-4) var(--s-4); }
+}
+
+/* На узком экране колонка — полоса сверху: кнопка, поиск и свёрнутый список */
+@media (max-width: 860px) {
+  .cs {
+    flex: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--s-2);
+    align-items: center;
+  }
+  .cs__new { grid-column: 1; }
+  .cs__search { grid-column: 2; }
+  .cs__toggle { grid-column: 1 / -1; justify-content: flex-start; }
+  .cs__list { grid-column: 1 / -1; margin: 0; padding: 0; }
+}

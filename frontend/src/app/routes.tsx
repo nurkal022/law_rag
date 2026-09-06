@@ -58,10 +58,14 @@ const pages: RouteObject[] = [
   { path: 'login', element: <LoginPage /> },
   { path: 'register', element: <RegisterPage /> },
 
+  // Консультант живёт вне оболочки: это отдельная полноэкранная страница,
+  // разделы продукта у неё в подвале боковой колонки.
+  { path: 'chat', element: <Deferred><ChatPage /></Deferred> },
+  { path: 'chat/:id', element: <Deferred><ChatPage /></Deferred> },
+
   {
     element: <Shell />,
     children: [
-      { path: 'chat', element: <Deferred><ChatPage /></Deferred> },
       { path: 'workspace', element: <Deferred><LibraryPage /></Deferred> },
       { path: 'workspace/documents/:id', element: <Deferred><DocumentPage /></Deferred> },
       { path: 'matters', element: <Deferred><MattersPage /></Deferred> },
