@@ -375,3 +375,59 @@ def test_generation_allowed_under_the_limit(app, client):
     r = client.post(f'/api/drafts/{public_id}/generate', json={})
     assert r.status_code == 202
     assert r.get_json()['job']['status'] == 'queued'
+
+
+# ──────────────────────── проверка своего договора ────────────────────────
+
+
+def test_analyze_without_analyzer_is_503(client):
+    public_id = _create(client).get_json()['draft']['id']
+    r = client.post(f'/api/drafts/{public_id}/analyze', json={'party': 0})
+    assert r.status_code == 503
+
+
+def test_analyze_refuses_an_empty_skeleton(app, client):
+    """Пустой каркас проверять нечего: отказ понятнее, чем разбор оглавления."""
+    class Stub:
+        def analyze(self, *a, **kw):
+            raise AssertionError('анализатор не должен вызываться на пустом каркасе')
+
+    app.config['CONTRACT_ANALYZER'] = Stub()
+    public_id = _create(client).get_json()['draft']['id']
+    r = client.post(f'/api/drafts/{public_id}/analyze', json={'party': 0})
+    assert r.status_code == 409
+    assert r.get_json()['error'] == 'too_short'
+
+
+def test_analyze_uses_the_party_role_as_perspective(app, client):
+    """Позиция задаётся ролью из договора: «Заказчик», а не «сторона 1»."""
+    seen = {}
+
+    class Stub:
+        def analyze(self, text, type_id, language='ru', perspective=None):
+            seen['perspective'] = perspective
+            seen['length'] = len(text)
+            return {'success': True, 'analysis': {'risks': []}}
+
+    app.config['CONTRACT_ANALYZER'] = Stub()
+
+    from database.models import Draft, DraftVersion, db
+    from docengine.ops import Op, apply_ops
+    from docengine.schema import DocTree
+
+    public_id = _create(client).get_json()['draft']['id']
+    with app.app_context():
+        draft = db.session.query(Draft).filter_by(public_id=public_id).first()
+        tree = DocTree(**draft.head().tree_json)
+        tree = apply_ops(tree, [Op(op='replace_section', key='subject', clauses=[
+            {'text': 'Исполнитель обязуется оказать услуги по разработке сайта. ' * 12},
+        ])]).tree
+        draft.current_version = 1
+        db.session.add(DraftVersion(draft_id=draft.id, no=1,
+                                    tree_json=tree.model_dump(mode='json'), created_by='llm'))
+        db.session.commit()
+
+    r = client.post(f'/api/drafts/{public_id}/analyze', json={'party': 1})
+    assert r.status_code == 200
+    assert seen['perspective'] == 'Исполнитель'
+    assert r.get_json()['perspective'] == 'Исполнитель'

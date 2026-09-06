@@ -492,6 +492,48 @@ def edit_clause(public_id: str, clause_no: str):
     return jsonify({'success': True, 'draft': draft.to_dict(with_tree=True)})
 
 
+@drafts_bp.route('/<public_id>/analyze', methods=['POST'])
+@login_required
+def analyze(public_id: str):
+    """Проверить собственный договор глазами одной из сторон.
+
+    Тот же анализатор, что разбирает присланные контрагентом договоры, но
+    применённый к своему тексту: составитель почти всегда пишет договор в свою
+    пользу неосознанно, и посмотреть на него со стороны контрагента полезнее,
+    чем ещё раз перечитать самому.
+    """
+    draft = _own_draft(public_id)
+    if not draft:
+        return _err('Документ не найден', 404, 'not_found')
+
+    analyzer = current_app.config.get('CONTRACT_ANALYZER')
+    if analyzer is None:
+        return _err('Анализатор недоступен, попробуйте позже', 503, 'llm_unavailable')
+
+    tree = _tree_of(draft)
+    text = tree.plain_text()
+    # Считаем именно текст пунктов: преамбула и заголовки разделов есть уже в
+    # каркасе, и по общей длине пустое оглавление выглядит как готовый договор.
+    body = sum(len(c.text) for _s, c, _p in tree.walk_clauses())
+    if body < 200:
+        return _err('Документ ещё не составлен: сначала сгенерируйте разделы',
+                    409, 'too_short')
+
+    # Позиция задаётся ролью стороны из самого договора: «Поставщик»,
+    # «Арендатор» — понятнее, чем «сторона 1».
+    party = (request.get_json(silent=True) or {}).get('party')
+    perspective = None
+    if isinstance(party, int) and 0 <= party < len(tree.requisites.parties):
+        perspective = tree.requisites.parties[party].role
+
+    result = analyzer.analyze(text, draft.type_id, language=draft.lang, perspective=perspective)
+    if not result.get('success'):
+        return _err(result.get('error') or 'Не удалось выполнить проверку', 502, 'llm_error')
+
+    log_usage('drafts', 'analyze', details={'type': draft.type_id, 'perspective': perspective})
+    return jsonify({'success': True, 'perspective': perspective, **result})
+
+
 # ────────────────────────────── версии ───────────────────────────────
 
 

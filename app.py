@@ -329,6 +329,7 @@ app.register_blueprint(public_api_bp)
 # фоновый воркер поднимает то же приложение отдельным процессом, и глобальные
 # переменные модуля ему недоступны.
 app.config['LLM_PROVIDER'] = globals().get('provider')
+app.config['CONTRACT_ANALYZER'] = globals().get('contract_analyzer')
 
 from blueprints.drafts import drafts_bp
 from docengine import tasks as _docengine_tasks  # регистрирует обработчики очереди
