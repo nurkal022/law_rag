@@ -50,56 +50,44 @@
   color: var(--mute);
 }
 
-/* ---------- Каркас: рельс + содержимое ---------- */
-.body { display: flex; flex: 1; min-height: 0; }
+/* ---------- Навигация в шапке ---------- */
 
-.rail {
-  width: var(--rail-w);
-  flex: none;
-  border-right: var(--border);
-  padding: var(--s-3) 0;
-  overflow-y: auto;
-}
-.rail__group {
-  padding: var(--s-4) var(--s-4) var(--s-1);
-  font-family: var(--font-sans);
-  font-size: var(--t-label-size);
-  font-weight: var(--t-label-weight);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--mute);
-}
-.rail__group:first-child { padding-top: 0; }
+.nav { display: flex; align-items: center; gap: var(--s-5); margin-left: var(--s-6); }
 
-.rail__link {
-  display: block;
-  padding: var(--s-2) var(--s-4);
+.nav__link {
+  position: relative;
+  padding: var(--s-2) 0;
   font-family: var(--font-sans);
   font-size: var(--t-ui-size);
   color: var(--mute);
   text-decoration: none;
   border: 0;
-  box-shadow: none;
-  transition: color var(--motion), background-color var(--motion);
+  white-space: nowrap;
+  transition: color var(--motion);
 }
-.rail__link:hover { color: var(--ink); background: var(--ink-wash); border: 0; }
+.nav__link:hover { color: var(--ink); border: 0; }
 
-/* Активный раздел отмечается вставной линией печати, а не заливкой цветом */
-.rail__link--on {
-  color: var(--ink);
-  font-weight: 600;
-  background: var(--ink-wash);
-  border-left: 2px solid var(--seal);
-  padding-left: calc(var(--s-4) - 2px);
+/* Активный раздел отмечается линией печати — тем же приёмом, что и вкладки */
+.nav__link--on { color: var(--ink); font-weight: 600; }
+.nav__link--on::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--seal);
 }
 
-.main { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
-
-/* Обёртка перехода между страницами не должна разрывать цепочку высоты:
-   без этого экран чата, рассчитанный на высоту окна, схлопывается по
-   содержимому и поле ввода уезжает наверх. */
-.main > .swap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.main > .swap > * { flex: 1; min-height: 0; }
+/* ---------- Содержимое ----------
+   Раздел получает всю ширину и всю оставшуюся высоту и раскладывается сам. */
+.main {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.main > * { flex: 1; min-height: 0; }
 
 /* Стандартная обёртка страницы */
 .page { padding: var(--s-5) var(--s-6); }
@@ -113,21 +101,22 @@
 .page__title { display: flex; flex-direction: column; gap: var(--s-1); }
 
 /* ---------- Узкий экран ----------
-   Рельс уезжает в горизонтальную ленту над содержимым. */
+   Шапка складывается в две строки: знак и служебное сверху, разделы под ними. */
 @media (max-width: 860px) {
-  .body { flex-direction: column; }
-  .rail {
-    width: auto;
-    display: flex;
-    gap: var(--s-1);
+  .hdr {
+    height: auto;
     flex-wrap: wrap;
-    border-right: 0;
-    border-bottom: var(--border);
-    padding: var(--s-2) var(--s-3);
+    padding: var(--s-2) var(--s-4);
+    row-gap: var(--s-1);
   }
-  .rail__group { display: none; }
-  .rail__link { white-space: nowrap; flex: 0 0 auto; padding: var(--s-2) var(--s-3); }
-  .rail__link--on { border-left: 0; border-bottom: 2px solid var(--seal); padding-left: var(--s-3); }
+  .nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: var(--s-4);
+    overflow-x: auto;
+    flex-wrap: wrap;
+  }
   .page { padding: var(--s-4); }
 }
 
@@ -143,11 +132,9 @@
   /* Разделы переносятся на вторую строку, а не прокручиваются вбок:
      боковая прокрутка без видимого признака прячет половину навигации,
      а растворяющая кромка делается градиентом, который здесь запрещён. */
-  .rail { flex-wrap: wrap; row-gap: var(--s-1); }
 
   /* Цель касания — не меньше 44px по высоте */
   .wordmark { display: inline-flex; align-items: center; min-height: 44px; }
-  .rail__link { display: flex; align-items: center; min-height: 44px; }
   .langs__item { display: inline-flex; align-items: center; min-height: 44px; padding-inline: var(--s-2); }
   .btn { min-height: 44px; }
   .btn--ghost { min-height: 44px; padding-inline: var(--s-3); }

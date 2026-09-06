@@ -22,6 +22,7 @@ import { useLang, useT } from '../../i18n'
 import type { Dict, Lang } from '../../i18n'
 import './workspace.css'
 import './workspace.motion.css'
+import { SectionTabs } from './SectionTabs'
 
 const dict: Dict = {
   title: { ru: 'Мои документы', kz: 'Менің құжаттарым', en: 'My documents' },
@@ -392,6 +393,7 @@ export function LibraryPage() {
 
   return (
     <div className="page">
+      <SectionTabs />
       <input
         ref={fileRef}
         type="file"

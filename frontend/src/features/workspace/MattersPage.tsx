@@ -19,6 +19,7 @@ import { useLang, useT } from '../../i18n'
 import type { Dict, Lang } from '../../i18n'
 import './workspace.css'
 import './workspace.motion.css'
+import { SectionTabs } from './SectionTabs'
 
 const dict: Dict = {
   title: { ru: 'Дела', kz: 'Істер', en: 'Matters' },
@@ -223,6 +224,7 @@ export function MattersPage() {
 
   return (
     <div className="page">
+      <SectionTabs />
       <div className="page__head">
         <div className="page__title">
           <Display>{t('title')}</Display>

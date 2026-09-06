@@ -4,24 +4,27 @@ import { LANGS, useLang, useT } from '../i18n'
 import type { Dict } from '../i18n'
 import './shell.css'
 
+/**
+ * Оболочка приложения.
+ *
+ * Навигация верхняя, как на обычном сайте. Левого рельса нет намеренно:
+ * с ним у консультанта получались две колонки подряд — разделы и список
+ * диалогов, — и экран читался как внутренняя панель, а не как чат. Теперь
+ * каждый раздел распоряжается всей шириной и строит свою раскладку сам.
+ */
+
 const dict: Dict = {
-  groupWork: { ru: 'Работа', kz: 'Жұмыс', en: 'Work' },
-  groupCreate: { ru: 'Создание', kz: 'Құрастыру', en: 'Create' },
-  documents: { ru: 'Мои документы', kz: 'Құжаттарым', en: 'My documents' },
-  matters: { ru: 'Дела', kz: 'Істер', en: 'Matters' },
   assistant: { ru: 'Консультант', kz: 'Кеңесші', en: 'Assistant' },
+  documents: { ru: 'Документы', kz: 'Құжаттар', en: 'Documents' },
   contracts: { ru: 'Договоры', kz: 'Шарттар', en: 'Contracts' },
   laws: { ru: 'Законопроекты', kz: 'Заң жобалары', en: 'Draft laws' },
   analytics: { ru: 'Аналитика', kz: 'Талдау', en: 'Analytics' },
+  sections: { ru: 'Разделы', kz: 'Бөлімдер', en: 'Sections' },
 }
 
-const work = [
-  { to: '/workspace', key: 'documents' },
-  { to: '/matters', key: 'matters' },
+const sections = [
   { to: '/chat', key: 'assistant' },
-] as const
-
-const create = [
+  { to: '/workspace', key: 'documents' },
   { to: '/contracts', key: 'contracts' },
   { to: '/laws', key: 'laws' },
   { to: '/analytics', key: 'analytics' },
@@ -58,48 +61,30 @@ export function Shell() {
         <Link to="/" className="wordmark">
           TURA
         </Link>
+
+        <nav className="nav" aria-label={t('sections')}>
+          {sections.map((s) => (
+            <NavLink
+              key={s.to}
+              to={s.to}
+              className={({ isActive }) =>
+                ['nav__link', isActive ? 'nav__link--on' : ''].filter(Boolean).join(' ')
+              }
+            >
+              {t(s.key)}
+            </NavLink>
+          ))}
+        </nav>
+
         <div className="spacer" />
         <Langs />
         <span className="hdr__user">н. курманов</span>
       </header>
 
-      <div className="body">
-        <nav className="rail" aria-label="Разделы">
-          <div className="rail__group">{t('groupWork')}</div>
-          {work.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                ['rail__link', isActive ? 'rail__link--on' : ''].filter(Boolean).join(' ')
-              }
-            >
-              {t(item.key)}
-            </NavLink>
-          ))}
-
-          <div className="rail__group">{t('groupCreate')}</div>
-          {create.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                ['rail__link', isActive ? 'rail__link--on' : ''].filter(Boolean).join(' ')
-              }
-            >
-              {t(item.key)}
-            </NavLink>
-          ))}
-        </nav>
-
-        <main className="main">
-          {/* key по пути: при переходе содержимое проявляется заново,
-              а рельс и шапка не мигают. */}
-          <div key={location.pathname} className="swap">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      {/* key по пути: содержимое проявляется заново, шапка остаётся на месте */}
+      <main className="main" key={location.pathname}>
+        <Outlet />
+      </main>
     </div>
   )
 }

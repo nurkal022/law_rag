@@ -102,21 +102,12 @@ button.cite:active { transform: translateY(1px); }
 .tabs__item--on::after { transform: scaleX(1); }
 .tabs__item--on { border-bottom-color: transparent; }
 
-/* ---------- Пункт навигации ----------
-   Вставная линия выезжает сверху вниз при переходе в раздел. */
-.rail__link { position: relative; }
-.rail__link--on { border-left-color: transparent; }
-.rail__link--on::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 2px;
-  background: var(--seal);
-  animation: tura-rail var(--motion-state) var(--ease) both;
-}
-@keyframes tura-rail {
-  from { transform: scaleY(0); transform-origin: top; }
-  to   { transform: scaleY(1); }
+/* ---------- Раздел в шапке ----------
+   Линия под активным разделом выезжает слева направо. */
+.nav__link--on::after { animation: tura-nav var(--motion-state) var(--ease) both; }
+@keyframes tura-nav {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); }
 }
 
 /* ---------- Уведомление ---------- */

@@ -108,3 +108,7 @@
 
 /* ---------- Диалог по документу: набор ответа ---------- */
 .ws-answer--typing p:last-child { display: inline; }
+
+/* Подразделы «Документы / Дела» — под заголовком страницы */
+.ws-subnav { margin-bottom: var(--s-5); }
+.ws-subnav .tabs__item { text-decoration: none; border-bottom: 0; }
