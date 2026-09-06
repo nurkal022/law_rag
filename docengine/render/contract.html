@@ -1,0 +1,113 @@
+{#
+  Единственный шаблон листа. Тот же HTML идёт и в React-предпросмотр
+  (standalone=False — только лист, стили уже на странице), и в WeasyPrint
+  (standalone=True — со стилями и правилом @page), чтобы предпросмотр и PDF
+  не разъезжались.
+#}
+{%- macro refs(items) -%}
+{%- if items -%}
+{{ ' ' }}<span class="refs">({% for r in items %}<span class="ref{% if not r.verified %} ref--unverified{% endif %}" data-act="{{ r.act }}" data-article="{{ r.article }}"{% if r.note %} data-note="{{ r.note }}"{% endif %}>{{ r.label() }}</span>{% if not loop.last %}; {% endif %}{% endfor %})</span>
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro table_block(t) -%}
+<table class="doc-table" id="table-{{ t.id }}">
+  <caption>{{ t.title }}</caption>
+  <thead>
+    <tr>{% for c in t.columns %}<th{% if c.numeric %} class="num"{% endif %}{% if c.width %} style="width:{{ (c.width * 100) | round(2) }}%"{% endif %}>{{ c.title }}</th>{% endfor %}</tr>
+  </thead>
+  <tbody>
+    {% for row in t.rows %}<tr>{% for c in t.columns %}<td{% if c.numeric %} class="num"{% endif %}>{{ row[loop.index0] if loop.index0 < row | length else '' }}</td>{% endfor %}</tr>
+    {% endfor %}
+    {% if t.total_row %}<tr class="total">{% for c in t.columns %}<td{% if c.numeric %} class="num"{% endif %}>{{ t.total_row[loop.index0] if loop.index0 < t.total_row | length else '' }}</td>{% endfor %}</tr>{% endif %}
+  </tbody>
+</table>
+{%- if t.note %}<p class="table-note">{{ t.note }}</p>{% endif -%}
+{%- endmacro -%}
+
+{%- macro sections_block(items) -%}
+{% for s in items %}
+<section class="section">
+  <h2>{{ s.no }}. {{ s.title | upper }}</h2>
+  {% if s.pending %}<p class="pending">[Раздел не сгенерирован]</p>{% endif %}
+  {% for c in s.clauses %}
+  <p class="clause"><span class="clause-no">{{ c.no }}.</span> {{ c.text }}{{ refs(c.refs) }}</p>
+    {% for sub in c.subclauses %}
+  <p class="clause clause--sub"><span class="clause-no">{{ sub.no }}.</span> {{ sub.text }}{{ refs(sub.refs) }}</p>
+    {% endfor %}
+  {% endfor %}
+</section>
+{% endfor %}
+{%- endmacro -%}
+
+{%- set body -%}
+<div class="doc-sheet" lang="{{ tree.meta.lang }}">
+
+  <header class="doc-head">
+    <h1>{{ tree.meta.title }}{% if tree.requisites.number %} № {{ tree.requisites.number }}{% endif %}</h1>
+    {% if tree.meta.subtitle %}<p class="subtitle">{{ tree.meta.subtitle }}</p>{% endif %}
+    <p class="place-date"><span class="city">{{ tree.requisites.city }}</span><span class="date">{{ fmt_date(tree.requisites.date) }}</span></p>
+  </header>
+
+  {% if tree.preamble %}<p class="preamble">{{ tree.preamble }}</p>{% endif %}
+
+  {{ sections_block(tree.sections) }}
+
+  {% for t in tree.tables %}{{ table_block(t) }}{% endfor %}
+
+  {% if tree.requisites.parties %}
+  <section class="signatures">
+    <h2>{{ sig_heading }}</h2>
+    <div class="parties">
+      {% for p in tree.requisites.parties %}
+      <div class="party">
+        <p class="party-role">{{ p.role }}</p>
+        <p class="party-name">{{ p.name }}</p>
+        {% if p.id_no %}<p>{{ 'БИН' if p.kind == 'legal' else 'ИИН' }}: {{ p.id_no }}</p>{% endif %}
+        {% if p.address %}<p>Адрес: {{ p.address }}</p>{% endif %}
+        {% if p.phone %}<p>Тел.: {{ p.phone }}</p>{% endif %}
+        {% if p.email %}<p>E-mail: {{ p.email }}</p>{% endif %}
+        {% if p.bank %}<p>Банк: {{ p.bank }}</p>{% endif %}
+        {% if p.iban %}<p>ИИК: {{ p.iban }}</p>{% endif %}
+        {% if p.bik %}<p>БИК: {{ p.bik }}</p>{% endif %}
+        <p class="sign-line">{{ p.signatory_role }} _________________ {{ p.signatory }}</p>
+        {% if p.basis %}<p class="basis">Действует на основании: {{ p.basis }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% for a in tree.annexes %}
+  <section class="annex">
+    <p class="annex-label">Приложение № {{ a.no }}</p>
+    <h1 class="annex-title">{{ a.title }}</h1>
+    {% if a.kind == 'table' and a.table %}{{ table_block(a.table) }}{% else %}{{ sections_block(a.sections) }}{% endif %}
+  </section>
+  {% endfor %}
+
+</div>
+{%- endset -%}
+{%- if not standalone -%}
+{{ body }}
+{%- else -%}
+<!DOCTYPE html>
+<html lang="{{ tree.meta.lang }}">
+<head>
+<meta charset="utf-8">
+<title>{{ tree.meta.title }}</title>
+<style>
+@page {
+  size: A4;
+  margin: 20mm;
+  @bottom-center { content: counter(page); font-family: "Times New Roman", Times, serif; font-size: 10pt; }
+}
+body { margin: 0; }
+{{ css }}
+</style>
+</head>
+<body>
+{{ body }}
+</body>
+</html>
+{%- endif -%}

@@ -303,6 +303,178 @@ class LawGenerationSession(db.Model):
             'status': self.status
         }
 
+class Draft(db.Model):
+    """Сгенерированный документ: договор или законопроект.
+
+    Отдельно от Document — тот хранит корпус НПА, и смешивать пользовательские
+    документы с нормативной базой нельзя ни при каких обстоятельствах
+    (см. спецификацию рабочего места, раздел «Ключевая граница»).
+
+    Само содержимое живёт не здесь, а в версиях: черновик — это identity
+    документа и его текущий указатель, а текст всегда принадлежит версии.
+    Так откат к любой версии не теряет истории.
+    """
+
+    __tablename__ = 'drafts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    kind = db.Column(db.String(32), nullable=False, index=True)  # contract | law_project
+    type_id = db.Column(db.String(64), nullable=False)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    matter_id = db.Column(db.Integer, nullable=True, index=True)  # дело; FK появится вместе с matters
+    title = db.Column(db.Text, nullable=False)
+    lang = db.Column(db.String(8), default='ru', nullable=False)
+    status = db.Column(db.String(32), default='draft', nullable=False, index=True)
+    values_json = db.Column(db.JSON)         # значения формы конструктора
+    current_version = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    versions = db.relationship('DraftVersion', backref='draft', lazy='dynamic',
+                               cascade='all, delete-orphan')
+    turns = db.relationship('DraftTurn', backref='draft', lazy='dynamic',
+                            cascade='all, delete-orphan')
+
+    def head(self):
+        """Текущая версия документа."""
+        return self.versions.filter_by(no=self.current_version).first()
+
+    def to_dict(self, with_tree: bool = False):
+        head = self.head()
+        out = {
+            'id': self.public_id,
+            'kind': self.kind,
+            'type_id': self.type_id,
+            'title': self.title,
+            'lang': self.lang,
+            'status': self.status,
+            'matter_id': self.matter_id,
+            'version': self.current_version,
+            'versions_count': self.versions.count(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if with_tree:
+            out['values'] = self.values_json or {}
+            out['tree'] = head.tree_json if head else None
+        return out
+
+
+class DraftVersion(db.Model):
+    """Одна версия документа: дерево целиком.
+
+    Дерево хранится целиком, а не приращением: юридический документ читают и
+    экспортируют версией, и восстанавливать её проигрыванием цепочки правок
+    означало бы, что сбой в середине цепочки портит все последующие версии.
+    """
+
+    __tablename__ = 'draft_versions'
+    __table_args__ = (db.UniqueConstraint('draft_id', 'no', name='uq_draft_version_no'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    draft_id = db.Column(db.Integer, db.ForeignKey('drafts.id'), nullable=False, index=True)
+    no = db.Column(db.Integer, nullable=False)
+    tree_json = db.Column(db.JSON, nullable=False)
+    summary = db.Column(db.Text, default='')      # «изменён пункт 4.2»
+    created_by = db.Column(db.String(16), default='llm')  # llm | user | system
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self, with_tree: bool = False):
+        out = {
+            'no': self.no,
+            'summary': self.summary,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+        if with_tree:
+            out['tree'] = self.tree_json
+        return out
+
+
+class DraftTurn(db.Model):
+    """Реплика в диалоге правки документа.
+
+    Пользователь пишет «добавь пункт о штрафе», модель отвечает списком
+    операций. Храним и запрос, и операции: без операций непонятно, что именно
+    изменилось, а без запроса — зачем.
+    """
+
+    __tablename__ = 'draft_turns'
+
+    id = db.Column(db.Integer, primary_key=True)
+    draft_id = db.Column(db.Integer, db.ForeignKey('drafts.id'), nullable=False, index=True)
+    role = db.Column(db.String(16), nullable=False)  # user | assistant
+    text = db.Column(db.Text, default='')
+    ops_json = db.Column(db.JSON)
+    version_from = db.Column(db.Integer)
+    version_to = db.Column(db.Integer)
+    rejected_json = db.Column(db.JSON)   # отклонённые операции: показываем честно
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'role': self.role,
+            'text': self.text,
+            'ops': self.ops_json or [],
+            'rejected': self.rejected_json or [],
+            'version_from': self.version_from,
+            'version_to': self.version_to,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Job(db.Model):
+    """Фоновая задача: генерация документа, индексация, тяжёлый экспорт.
+
+    Очередь живёт в PostgreSQL, а не в Redis с Celery: одна база вместо трёх
+    систем, задачи переживают перезапуск, и разбор очереди — это обычный
+    SELECT ... FOR UPDATE SKIP LOCKED, который не даст двум воркерам взять
+    одну задачу.
+
+    Генерация договора занимает минуты. Держать её внутри HTTP-запроса
+    нельзя: прокси обрывает соединение, и работа пропадает вместе с ним.
+    """
+
+    __tablename__ = 'jobs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    kind = db.Column(db.String(48), nullable=False, index=True)
+    status = db.Column(db.String(16), default='queued', nullable=False, index=True)
+    # queued | running | done | failed | cancelled
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    draft_id = db.Column(db.Integer, db.ForeignKey('drafts.id'), nullable=True, index=True)
+    payload_json = db.Column(db.JSON)
+    result_json = db.Column(db.JSON)
+    error = db.Column(db.Text)
+    progress_done = db.Column(db.Integer, default=0)
+    progress_total = db.Column(db.Integer, default=0)
+    progress_label = db.Column(db.Text, default='')
+    attempts = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    started_at = db.Column(db.DateTime)
+    finished_at = db.Column(db.DateTime)
+    heartbeat_at = db.Column(db.DateTime)
+
+    def to_dict(self):
+        return {
+            'id': self.public_id,
+            'kind': self.kind,
+            'status': self.status,
+            'progress': {
+                'done': self.progress_done or 0,
+                'total': self.progress_total or 0,
+                'label': self.progress_label or '',
+            },
+            'error': self.error,
+            'result': self.result_json,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+        }
+
+
 class ApiKey(db.Model):
     """API-ключ для доступа сторонних программ к публичному API.
 

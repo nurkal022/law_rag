@@ -244,10 +244,11 @@ temp/
 *.tmp
 *.temp
 
-# Test files
-test_*.py
-tests/test_*
-*_test.py
+# Черновые проверочные скрипты в корне репозитория.
+# Каталог tests/ раньше игнорировался целиком — из-за этого в проекте
+# «не было тестов»: они просто не могли попасть в git.
+/test_*.py
+/*_test.py
 
 # Coverage reports
 .coverage

@@ -21,6 +21,14 @@ from contracts import ContractGenerator, ContractAnalyzer, ContractTemplates
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Логи движка и очереди идут через logging, а не print: у фоновой задачи нет
+# терминала, в который можно печатать, зато есть журнал с уровнями и временем.
+import logging
+logging.basicConfig(
+    level=os.getenv('LOG_LEVEL', 'INFO'),
+    format='%(asctime)s %(levelname)-7s %(name)s: %(message)s',
+)
+
 # Инициализация компонентов RAG системы
 db_manager = DatabaseManager()
 db_manager.init_app(app)
@@ -284,6 +292,10 @@ def initialize_rag_system():
         # Expose to blueprint via app context
         app.doc_processor = doc_processor
         app.retriever = retriever
+        # Движок документов ищет нормы под каждый раздел отдельно, поэтому
+        # поисковик нужен и ему — включая фоновый воркер, у которого нет
+        # доступа к переменным этого модуля.
+        app.config['RAG_RETRIEVER'] = retriever
         print("✅ ИИ система успешно инициализирована")
         return True
 
@@ -311,6 +323,26 @@ app.register_blueprint(auth_bp)
 # Регистрация публичного API для сторонних программ (/api/v1, аутентификация по ключу)
 from blueprints.public_api import public_api_bp
 app.register_blueprint(public_api_bp)
+
+# ─── Документный движок: договоры и законопроекты ──────────────────────────
+# Провайдер и поисковик кладём в конфиг приложения, а не импортируем из app:
+# фоновый воркер поднимает то же приложение отдельным процессом, и глобальные
+# переменные модуля ему недоступны.
+app.config['LLM_PROVIDER'] = globals().get('provider')
+
+from blueprints.drafts import drafts_bp
+from docengine import tasks as _docengine_tasks  # регистрирует обработчики очереди
+app.register_blueprint(drafts_bp)
+
+if os.getenv('DOCENGINE_INLINE_WORKER', '1') == '1' and not os.getenv('WERKZEUG_RUN_MAIN_DONE'):
+    # В разработке воркер живёт в потоке того же процесса. На производстве
+    # его запускают отдельно (scripts/worker.py), иначе он делит с веб-сервером
+    # память и глобальную блокировку интерпретатора.
+    try:
+        from docengine.jobs import start_inline_worker
+        start_inline_worker(app)
+    except Exception as _e:
+        logging.getLogger('docengine').error('воркер не запущен: %s', _e)
 
 
 # Делаем текущего пользователя доступным во всех шаблонах через {{ auth_user }}
