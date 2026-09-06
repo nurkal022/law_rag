@@ -454,3 +454,170 @@ def test_registry_survives_a_draft_without_parties(client):
     _create(client, values={'subject': 'что-то'})
     row = client.get('/api/drafts?kind=contract').get_json()['drafts'][0]
     assert row['parties'] == []
+
+
+# ─────────────────── правка готового договора промптом ───────────────────
+#
+# Это то, ради чего затевался движок: договор уже составлен, человек пишет
+# «добавь пеню за просрочку» — и меняется ровно то, что он попросил, а
+# остальной документ остаётся нетронутым.
+
+
+class ScriptedProvider:
+    """Модель, отвечающая заранее заданным разбором указания."""
+
+    def __init__(self, payload):
+        self.payload = payload
+        self.calls = []
+
+    def chat_completion(self, messages, **kw):
+        self.calls.append(messages)
+        return {'content': json.dumps(self.payload, ensure_ascii=False), 'model': 'stub'}
+
+
+@pytest.fixture
+def drafted(app, client):
+    """Договор с двумя составленными разделами."""
+    from database.models import Draft, DraftVersion, db
+    from docengine.ops import Op, apply_ops
+    from docengine.schema import DocTree
+
+    public_id = _create(client).get_json()['draft']['id']
+    with app.app_context():
+        draft = db.session.query(Draft).filter_by(public_id=public_id).first()
+        tree = DocTree(**draft.head().tree_json)
+        tree = apply_ops(tree, [
+            Op(op='replace_section', key='subject', clauses=[
+                {'text': 'Исполнитель обязуется оказать услуги по разработке сайта.'}]),
+            Op(op='replace_section', key='price', clauses=[
+                {'text': 'Стоимость услуг составляет 500 000 тенге.'},
+                {'text': 'Оплата производится в течение 10 банковских дней.'}]),
+        ]).tree
+        draft.current_version = 1
+        db.session.add(DraftVersion(draft_id=draft.id, no=1,
+                                    tree_json=tree.model_dump(mode='json'), created_by='llm'))
+        db.session.commit()
+    return public_id
+
+
+def test_prompt_adds_a_clause_and_leaves_the_rest_alone(app, client, drafted):
+    app.config['LLM_PROVIDER'] = ScriptedProvider({
+        'ops': [{'op': 'insert_clause', 'key': 'price',
+                 'text': 'За просрочку оплаты начисляется пеня 0,1% за каждый день.',
+                 'refs': [{'act': 'ГК РК', 'article': '353'}]}],
+        'reply': 'Добавил пункт о пене за просрочку оплаты.',
+    })
+
+    r = client.post(f'/api/drafts/{drafted}/turns', json={'text': 'добавь пеню за просрочку'})
+    assert r.status_code == 200
+
+    body = r.get_json()
+    assert body['applied'] == 1
+    assert body['rejected'] == []
+    assert 'пене' in body['reply']
+
+    sections = body['draft']['tree']['sections']
+    price = next(s for s in sections if s['key'] == 'price')
+    assert [c['no'] for c in price['clauses']] == ['2.1', '2.2', '2.3']
+    assert price['clauses'][2]['text'].startswith('За просрочку')
+
+    subject = next(s for s in sections if s['key'] == 'subject')
+    assert subject['clauses'][0]['text'].startswith('Исполнитель обязуется оказать')
+
+
+def test_prompt_creates_a_new_version_with_a_diff(app, client, drafted):
+    """Прежняя редакция остаётся: к ней можно вернуться, изменения видны по пунктам."""
+    app.config['LLM_PROVIDER'] = ScriptedProvider({
+        'ops': [{'op': 'replace_clause', 'no': '2.2',
+                 'text': 'Оплата производится в течение 5 банковских дней.'}],
+        'reply': 'Сократил срок оплаты до пяти дней.',
+    })
+
+    r = client.post(f'/api/drafts/{drafted}/turns', json={'text': 'сократи срок оплаты'})
+    body = r.get_json()
+
+    assert body['draft']['version'] == 2
+    change = next(c for c in body['changes'] if c['no'] == '2.2')
+    assert change['kind'] == 'changed'
+    assert '10 банковских' in change['before']
+    assert '5 банковских' in change['after']
+
+    versions = client.get(f'/api/drafts/{drafted}/versions').get_json()['versions']
+    assert [v['no'] for v in versions] == [2, 1, 0]
+
+    old = client.get(f'/api/drafts/{drafted}/versions/1').get_json()['version']
+    assert '10 банковских' in json.dumps(old['tree'], ensure_ascii=False)
+
+
+def test_prompt_asking_for_a_missing_clause_is_reported_not_swallowed(app, client, drafted):
+    """Молча проигнорированная правка хуже видимой ошибки."""
+    app.config['LLM_PROVIDER'] = ScriptedProvider({
+        'ops': [{'op': 'replace_clause', 'no': '9.9', 'text': 'что-то'}],
+        'reply': 'Изменил пункт 9.9.',
+    })
+
+    body = client.post(f'/api/drafts/{drafted}/turns',
+                       json={'text': 'поменяй девятый раздел'}).get_json()
+    assert body['applied'] == 0
+    assert len(body['rejected']) == 1
+    assert '9.9' in body['rejected'][0]['detail']
+    assert body['draft']['version'] == 1  # новая версия не заводится
+
+
+def test_manual_edit_survives_a_later_prompt(app, client, drafted):
+    """Формулировка, поправленная юристом, не должна исчезнуть после модели."""
+    client.put(f'/api/drafts/{drafted}/clauses/1.1',
+               json={'text': 'Исполнитель разрабатывает сайт по техническому заданию.'})
+
+    app.config['LLM_PROVIDER'] = ScriptedProvider({
+        'ops': [{'op': 'replace_section', 'key': 'subject',
+                 'clauses': [{'text': 'Совсем другой предмет договора.'}]}],
+        'reply': 'Переписал предмет договора.',
+    })
+
+    body = client.post(f'/api/drafts/{drafted}/turns',
+                       json={'text': 'перепиши предмет'}).get_json()
+    subject = next(s for s in body['draft']['tree']['sections'] if s['key'] == 'subject')
+    texts = [c['text'] for c in subject['clauses']]
+    assert 'Исполнитель разрабатывает сайт по техническому заданию.' in texts
+    assert 'Совсем другой предмет договора.' in texts
+
+
+def test_dialogue_is_kept(app, client, drafted):
+    app.config['LLM_PROVIDER'] = ScriptedProvider({
+        'ops': [{'op': 'insert_clause', 'key': 'price', 'text': 'Цена включает НДС.'}],
+        'reply': 'Уточнил, что цена включает НДС.',
+    })
+    client.post(f'/api/drafts/{drafted}/turns', json={'text': 'уточни про НДС'})
+
+    turns = client.get(f'/api/drafts/{drafted}/turns').get_json()['turns']
+    assert [t['role'] for t in turns] == ['user', 'assistant']
+    assert turns[0]['text'] == 'уточни про НДС'
+    assert 'НДС' in turns[1]['text']
+
+
+def test_model_sees_the_current_document(app, client, drafted):
+    """Указание разбирается по нынешней редакции, иначе правка ляжет мимо."""
+    provider = ScriptedProvider({'ops': [], 'reply': 'Изменений не требуется.'})
+    app.config['LLM_PROVIDER'] = provider
+
+    client.post(f'/api/drafts/{drafted}/turns', json={'text': 'проверь договор'})
+
+    sent = json.dumps(provider.calls[0], ensure_ascii=False)
+    assert 'Стоимость услуг составляет 500 000 тенге' in sent
+    assert 'проверь договор' in sent
+
+
+def test_revert_restores_the_previous_wording(app, client, drafted):
+    app.config['LLM_PROVIDER'] = ScriptedProvider({
+        'ops': [{'op': 'replace_clause', 'no': '2.1', 'text': 'Стоимость услуг — 900 000 тенге.'}],
+        'reply': 'Поднял цену.',
+    })
+    client.post(f'/api/drafts/{drafted}/turns', json={'text': 'подними цену'})
+
+    r = client.post(f'/api/drafts/{drafted}/revert', json={'version': 1})
+    tree = r.get_json()['draft']['tree']
+    price = next(s for s in tree['sections'] if s['key'] == 'price')
+    assert price['clauses'][0]['text'] == 'Стоимость услуг составляет 500 000 тенге.'
+    # Откат дописывает историю, а не стирает её.
+    assert r.get_json()['draft']['version'] == 3
