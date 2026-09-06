@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from '../../shared/nav'
+import { useLocation } from 'react-router-dom'
 import { Caption, Label, UIText } from '../../shared/ui'
-import { LANGS, useLang, useT } from '../../i18n'
+import { LANGS, useLang, useT, stripLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import './public.css'
+import './public.chrome.css'
 import './public.motion.css'
 
 /**
@@ -104,8 +106,18 @@ export function PublicHeader() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  // На главной под шапкой лежит чернильная обложка: пока страница не
+  // прокручена, шапка того же тона, иначе светлая полоса режет разворот.
+  const { pathname } = useLocation()
+  const onCover = stripLang(pathname) === '/'
+  const ink = onCover && atTop
+
   return (
-    <header className={['pub-hdr', atTop ? 'pub-hdr--top' : ''].filter(Boolean).join(' ')}>
+    <header
+      className={['pub-hdr', atTop ? 'pub-hdr--top' : '', ink ? 'pub-hdr--ink' : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="pub-wrap pub-hdr__in">
         <Link to="/" className="pub-wordmark">
           TURA

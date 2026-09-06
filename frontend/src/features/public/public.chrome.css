@@ -1,0 +1,35 @@
+/* ============================================================
+   Шапка публичных страниц над обложкой.
+   На главной, пока страница вверху, шапка чернильная — того же тона,
+   что и обложка под ней. При прокрутке становится бумажной.
+   ============================================================ */
+
+.pub-hdr {
+  transition:
+    background-color var(--motion-state),
+    border-color var(--motion-state),
+    color var(--motion-state);
+}
+
+.pub-hdr--ink {
+  background: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.pub-hdr--ink .pub-wordmark { color: var(--paper); }
+.pub-hdr--ink .pub-wordmark:hover { color: var(--on-ink); }
+
+.pub-hdr--ink .pub-link { color: var(--on-ink); border-bottom-color: transparent; }
+.pub-hdr--ink .pub-link:hover { color: var(--paper); border-bottom-color: var(--ink-2); }
+
+.pub-hdr--ink .pub-langs__item { color: var(--on-ink); }
+.pub-hdr--ink .pub-langs__item--on { color: var(--paper); }
+.pub-hdr--ink .pub-langs__sep { color: var(--ink-2); }
+
+/* Кнопка меняет заливку местами: бумага по чернилам */
+.pub-hdr--ink .pub-cta {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+.pub-hdr--ink .pub-cta:hover { background: var(--on-ink); border-color: var(--on-ink); }
