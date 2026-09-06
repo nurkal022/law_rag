@@ -40,7 +40,15 @@ const ContractDocumentPage = lazy(() =>
 const MyContractsPage = lazy(() =>
   import('../features/contracts/MyContractsPage').then((m) => ({ default: m.MyContractsPage })),
 )
-const LawsPage = lazy(() => import('../features/laws/LawsPage').then((m) => ({ default: m.LawsPage })))
+const LawsRegistryPage = lazy(() =>
+  import('../features/laws/RegistryPage').then((m) => ({ default: m.RegistryPage })),
+)
+const LawWizardPage = lazy(() =>
+  import('../features/laws/WizardPage').then((m) => ({ default: m.WizardPage })),
+)
+const LawDocumentPage = lazy(() =>
+  import('../features/laws/DocumentPage').then((m) => ({ default: m.DocumentPage })),
+)
 const AnalyticsPage = lazy(() =>
   import('../features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
 )
@@ -84,7 +92,11 @@ const pages: RouteObject[] = [
       { path: 'contracts/mine', element: <Deferred><MyContractsPage /></Deferred> },
       { path: 'contracts/new/:type', element: <Deferred><ContractBuilderPage /></Deferred> },
       { path: 'contracts/:id', element: <Deferred><ContractDocumentPage /></Deferred> },
-      { path: 'laws', element: <Deferred><LawsPage /></Deferred> },
+      // Тот же порядок, что у договоров: 'new' обязан стоять до ':id',
+      // иначе мастер откроется как документ с идентификатором «new».
+      { path: 'laws', element: <Deferred><LawsRegistryPage /></Deferred> },
+      { path: 'laws/new', element: <Deferred><LawWizardPage /></Deferred> },
+      { path: 'laws/:id', element: <Deferred><LawDocumentPage /></Deferred> },
       { path: 'analytics', element: <Deferred><AnalyticsPage /></Deferred> },
       { path: 'admin', element: <Deferred><AdminPage /></Deferred> },
     ],

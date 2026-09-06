@@ -15,8 +15,9 @@ import {
 import type { TabItem } from '../../shared/ui'
 import { useT } from '../../i18n'
 import type { Dict } from '../../i18n'
+import { api } from '../../shared/api'
 import { Sheet } from '../drafts/Sheet'
-import { ListSkeleton, LoadFailure } from '../drafts/shared'
+import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import {
   EditPanel,
   STATUS_LABEL,
@@ -28,19 +29,21 @@ import {
   useSectionBuild,
 } from '../drafts/doc'
 import type { QuickAsk } from '../drafts/doc'
-import type { Clause, DraftStatus } from '../drafts/types'
+import type { Clause, DraftStatus, PassportResponse, Section } from '../drafts/types'
 import '../drafts/drafts.css'
 import '../drafts/drafts.motion.css'
+import './laws.css'
 
 /**
- * Готовый документ: оглавление, лист, работа с текстом.
+ * Пакет законопроекта.
  *
- * Две вещи здесь важнее остальных. Первая — отказы модели: то, что она
- * попыталась изменить, но применить не удалось, показывается наравне с
- * применённым. Молча проигнорированная правка хуже видимой ошибки: человек
- * уверен, что договор изменён, и подписывает прежний текст. Вторая — пометка
- * ручной правки: пункт, исправленный человеком, помечен и не переписывается
- * при перегенерации.
+ * Главное отличие от договора: одиннадцать разделов здесь — не части одного
+ * текста, а самостоятельные документы. Финансовое обоснование переписывают,
+ * не трогая пояснительную записку, поэтому у каждого раздела в оглавлении
+ * своё действие, а не одна кнопка «составить недостающие» на весь пакет.
+ *
+ * Сторон у законопроекта нет: ни преамбулы, ни подписей на листе. Это делает
+ * пустой список сторон в дереве, отдельной ветки здесь нет.
  */
 
 const dict: Dict = {
@@ -49,8 +52,15 @@ const dict: Dict = {
   versions: { ru: 'Версии', kz: 'Нұсқалар', en: 'Versions' },
 
   download: { ru: 'Скачать', kz: 'Жүктеу', en: 'Download' },
-  titleEdit: { ru: 'Название документа', kz: 'Құжаттың атауы', en: 'Document title' },
+  titleEdit: { ru: 'Название законопроекта', kz: 'Заң жобасының атауы', en: 'Draft law title' },
   version: { ru: 'версия', kz: 'нұсқа', en: 'version' },
+  xlsxHint: {
+    ru: 'Сравнительная таблица и расчёт расходов — таблицами',
+    kz: 'Салыстырмалы кесте және шығыстар есебі — кестелермен',
+    en: 'Comparison table and cost estimate as spreadsheets',
+  },
+
+  caveat: { ru: 'Оговорка', kz: 'Ескертпе', en: 'Caveat' },
 
   issues: { ru: 'Замечания', kz: 'Ескертулер', en: 'Issues' },
   pendingOne: { ru: 'раздел ещё не составлен', kz: 'бөлім әлі жазылмаған', en: 'section not drafted yet' },
@@ -59,51 +69,63 @@ const dict: Dict = {
   building: { ru: 'Составляю разделы', kz: 'Бөлімдер жазылуда', en: 'Drafting sections' },
   fill: { ru: 'Дополнить', kz: 'Толықтыру', en: 'Complete it' },
 
+  sectionWrite: { ru: 'Составить', kz: 'Жазу', en: 'Draft' },
+  sectionRedo: { ru: 'Переписать', kz: 'Қайта жазу', en: 'Rewrite' },
+  sectionRedoHint: {
+    ru: 'Раздел будет написан заново. Пункты, правленные вручную, сохранятся.',
+    kz: 'Бөлім қайтадан жазылады. Қолмен түзетілген тармақтар сақталады.',
+    en: 'The section is written from scratch. Clauses edited by hand are kept.',
+  },
+
   clauseEdit: { ru: 'Править вручную', kz: 'Қолмен түзету', en: 'Edit manually' },
   clauseRewrite: { ru: 'Переписать этот пункт', kz: 'Осы тармақты қайта жазу', en: 'Rewrite this clause' },
   clauseExplain: { ru: 'Объяснить пункт', kz: 'Тармақты түсіндіру', en: 'Explain this clause' },
-  edited: { ru: 'правлено вручную', kz: 'қолмен түзетілген', en: 'edited manually' },
   saveClause: { ru: 'Сохранить', kz: 'Сақтау', en: 'Save' },
   cancelEdit: { ru: 'Отменить', kz: 'Бас тарту', en: 'Cancel' },
+  edited: { ru: 'правлено вручную', kz: 'қолмен түзетілген', en: 'edited manually' },
   saved: { ru: 'Пункт сохранён', kz: 'Тармақ сақталды', en: 'Clause saved' },
 
   askPlaceholder: {
-    ru: 'Что изменить в договоре? Например: «в пункте 4.2 увеличь неустойку до 0,5% за день»',
-    kz: 'Шартта нені өзгерту керек? Мысалы: «4.2-тармақта тұрақсыздық айыбын күніне 0,5%-ға дейін ұлғайт»',
-    en: 'What should change? For example: “in clause 4.2 raise the penalty to 0.5% per day”',
+    ru: 'Что изменить в пакете? Например: «в финансовом обосновании раздели расходы по годам»',
+    kz: 'Топтамада нені өзгерту керек? Мысалы: «қаржылық негіздемеде шығыстарды жылдар бойынша бөл»',
+    en: 'What should change? For example: “in the financial justification split the costs by year”',
   },
-  quickHarder: { ru: 'Ужесточить в мою пользу', kz: 'Мен үшін қатаңдату', en: 'Tighten in my favour' },
-  quickPenalty: { ru: 'Добавить штрафные санкции', kz: 'Айыппұл санкцияларын қосу', en: 'Add penalties' },
-  quickSimpler: { ru: 'Упростить язык', kz: 'Тілін жеңілдету', en: 'Simplify the language' },
-  quickAnnex: { ru: 'Добавить приложение', kz: 'Қосымша қосу', en: 'Add an annex' },
-  quickHarderText: {
-    ru: 'Ужесточи условия договора в мою пользу: усиль ответственность другой стороны и сократи мои риски, не выходя за рамки права РК.',
-    kz: 'Шарт талаптарын менің пайдама қатаңдат: екінші тараптың жауапкершілігін күшейт, менің тәуекелдерімді азайт.',
-    en: 'Tighten the contract in my favour: strengthen the other party’s liability and reduce my risks within Kazakhstan law.',
-  },
-  quickPenaltyText: {
-    ru: 'Добавь в раздел об ответственности неустойку за просрочку с указанием процента за каждый день и предельного размера.',
-    kz: 'Жауапкершілік бөліміне мерзімін өткізгені үшін тұрақсыздық айыбын қос: күніне пайызын және шекті мөлшерін көрсет.',
-    en: 'Add a late-payment penalty to the liability section: a daily percentage and a cap.',
-  },
-  quickSimplerText: {
-    ru: 'Упрости язык договора: короткие предложения, без канцелярита, сохранив юридический смысл каждого условия.',
-    kz: 'Шарт тілін жеңілдет: қысқа сөйлемдер, әр талаптың құқықтық мағынасын сақта.',
-    en: 'Simplify the language: short sentences, no bureaucratese, preserving the legal meaning.',
-  },
-  quickAnnexText: {
-    ru: 'Добавь приложение к договору: акт приёма-передачи с полями для даты, перечня и подписей сторон.',
-    kz: 'Шартқа қосымша қос: күні, тізбесі және тараптардың қолдары үшін өрістері бар қабылдау-беру актісі.',
-    en: 'Add an annex: a handover act with fields for the date, the list and the parties’ signatures.',
-  },
-
   noTurns: {
-    ru: 'Правок ещё не было. Опишите, что изменить, — договор будет исправлен по пунктам.',
-    kz: 'Әзірге түзетулер жоқ. Нені өзгерту керегін жазыңыз — шарт тармақтап түзетіледі.',
-    en: 'No edits yet. Describe what to change and the contract will be amended clause by clause.',
+    ru: 'Правок ещё не было. Опишите, что изменить, — пакет будет исправлен по пунктам.',
+    kz: 'Әзірге түзетулер жоқ. Нені өзгерту керегін жазыңыз — топтама тармақтап түзетіледі.',
+    en: 'No edits yet. Describe what to change and the package will be amended clause by clause.',
   },
 
-  noTree: { ru: 'У документа нет содержимого', kz: 'Құжаттың мазмұны жоқ', en: 'The document has no content' },
+  quickNorms: { ru: 'Добавить ссылки на нормы', kz: 'Нормаларға сілтеме қосу', en: 'Add citations' },
+  quickNormsText: {
+    ru: 'Подкрепи утверждения ссылками на конкретные статьи Конституции РК, кодексов и действующих законов. Там, где нормы нет, скажи об этом прямо, а не выдумывай ссылку.',
+    kz: 'Тұжырымдарды ҚР Конституциясының, кодекстердің және қолданыстағы заңдардың нақты баптарына сілтемелермен бекіт. Норма жоқ жерде сілтеме ойлап таппай, тікелей айт.',
+    en: 'Back the statements with citations to specific articles of the Constitution, the codes and the acts in force. Where there is no norm, say so instead of inventing a citation.',
+  },
+  quickCosts: { ru: 'Разложить расходы по годам', kz: 'Шығыстарды жылдар бойынша бөлу', en: 'Break costs down by year' },
+  quickCostsText: {
+    ru: 'В финансово-экономическом обосновании разложи расходы и доходы бюджета по годам таблицей, укажи источники финансирования и итог по каждому году.',
+    kz: 'Қаржы-экономикалық негіздемеде бюджет шығыстары мен кірістерін жылдар бойынша кестемен бөл, қаржыландыру көздерін және әр жылдың қорытындысын көрсет.',
+    en: 'In the financial justification break the budget costs and revenues down by year as a table, state the funding sources and the total for each year.',
+  },
+  quickCorruption: {
+    ru: 'Усилить антикоррупционную часть',
+    kz: 'Сыбайлас жемқорлыққа қарсы бөлікті күшейту',
+    en: 'Strengthen the anti-corruption part',
+  },
+  quickCorruptionText: {
+    ru: 'В антикоррупционной экспертизе разбери коррупциогенные факторы по видам: широта дискреционных полномочий, неопределённость формулировок, отсылочные нормы, завышенные требования к заявителю. По каждому фактору укажи способ устранения.',
+    kz: 'Сыбайлас жемқорлыққа қарсы сараптамада коррупциогендік факторларды түрлері бойынша талда: дискрециялық өкілеттіктердің кеңдігі, тұжырымдардың айқынсыздығы, сілтемелік нормалар, өтініш берушіге қойылатын шамадан тыс талаптар. Әр фактор бойынша жою тәсілін көрсет.',
+    en: 'In the anti-corruption review analyse the corruption-prone factors by type: breadth of discretion, vague wording, referential norms, excessive requirements on the applicant. For each factor state how to remove it.',
+  },
+  quickSimpler: { ru: 'Упростить язык', kz: 'Тілін жеңілдету', en: 'Simplify the language' },
+  quickSimplerText: {
+    ru: 'Упрости язык пояснительной записки и аннотации: короткие предложения, без канцелярита. Нормативный текст самого закона не трогай — там формулировки менять нельзя.',
+    kz: 'Түсіндірме жазба мен аннотацияның тілін жеңілдет: қысқа сөйлемдер, кеңсе тілінсіз. Заңның нормативтік мәтінін қозғама.',
+    en: 'Simplify the explanatory note and the abstract: short sentences, no bureaucratese. Leave the normative text of the law itself untouched.',
+  },
+
+  noTree: { ru: 'У пакета нет содержимого', kz: 'Топтаманың мазмұны жоқ', en: 'The package has no content' },
   noTreeBody: {
     ru: 'Сервер вернул документ без дерева. Это ошибка на стороне сервера — сообщите о ней.',
     kz: 'Сервер ағашсыз құжат қайтарды. Бұл сервер жағындағы қате — хабарлаңыз.',
@@ -122,12 +144,19 @@ export function DocumentPage() {
   const grab = useExport(draft?.id)
   const { building, run } = useSectionBuild(draft?.id ?? '', reload)
 
+  /* Оговорка живёт в паспорте типа, а не в документе. Загрузка отдельная и
+     необязательная: пакет читается и без неё, поэтому ошибку здесь показывать
+     нечем — экран просто обходится без плашки. */
+  const { data: pass } = useLoader<PassportResponse>(
+    () => api.get<PassportResponse>(`/drafts/passport/law_project?lang=${draft?.lang ?? 'ru'}`),
+    [draft?.lang],
+  )
+  const caveat = pass?.passport.caveat ?? null
+
   const [tab, setTab] = useState('edit')
   const [activeNo, setActiveNo] = useState<string | null>(null)
   const [editingNo, setEditingNo] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
-  // Поле правки живёт здесь, а не в панели: «переписать этот пункт» из листа
-  // должно подставлять в него указание, а лист панели не видит.
   const [ask, setAsk] = useState('')
 
   const tabs: TabItem[] = [
@@ -140,11 +169,6 @@ export function DocumentPage() {
     if (draft) setTitle(draft.title)
   }, [draft])
 
-  /** Достроить незаполненные разделы.
-
-      Со страницы документа генерацию запустить было нельзя вовсе: попав сюда
-      из конструктора с частично составленным договором, человек упирался в
-      тупик — оставалось начинать заново. */
   const buildPending = () => {
     if (!tree || building) return
     const keys = tree.sections.filter((s) => s.pending).map((s) => s.key).filter(Boolean) as string[]
@@ -164,7 +188,6 @@ export function DocumentPage() {
     toast(t('saved'), 'ok')
   }
 
-  /** Указание для правой панели: пункт адресуется по номеру, как в договоре. */
   const askAbout = (text: string) => {
     setTab('edit')
     setAsk(text)
@@ -196,16 +219,21 @@ export function DocumentPage() {
     )
   }
 
+  /* Сравнительная таблица и расчёт расходов — таблицы по существу, и XLSX для
+     них осмысленнее DOCX. Кнопка появляется, только когда таблицы уже есть:
+     пустой файл в ответ на нажатие хуже отсутствующей кнопки. */
   const hasTables = tree.tables.length > 0 || tree.annexes.some((a) => a.table)
   const pending = tree.sections.filter((s) => s.pending)
   const shownIssues = tree.issues.filter((i) => i.code !== 'section_pending')
 
   const quick: QuickAsk[] = [
-    { label: t('quickHarder'), text: t('quickHarderText') },
-    { label: t('quickPenalty'), text: t('quickPenaltyText') },
+    { label: t('quickNorms'), text: t('quickNormsText') },
+    { label: t('quickCosts'), text: t('quickCostsText') },
+    { label: t('quickCorruption'), text: t('quickCorruptionText') },
     { label: t('quickSimpler'), text: t('quickSimplerText') },
-    { label: t('quickAnnex'), text: t('quickAnnexText') },
   ]
+
+  const sectionBusy = (s: Section) => Boolean(building && s.key && building.keys.includes(s.key))
 
   return (
     <div className="page ct-doc">
@@ -244,24 +272,52 @@ export function DocumentPage() {
             <Caption tone="mute">{t('download')}</Caption>
             <Button onClick={() => grab('docx')}>DOCX</Button>
             <Button onClick={() => grab('pdf')}>PDF</Button>
-            {hasTables ? <Button onClick={() => grab('xlsx')}>XLSX</Button> : null}
+            {hasTables ? (
+              <Button onClick={() => grab('xlsx')} title={t('xlsxHint')}>
+                XLSX
+              </Button>
+            ) : null}
           </span>
         </div>
       </header>
 
+      {caveat ? (
+        <details className="ct-caveat">
+          <summary className="ct-caveat__head">
+            <Label as="span">{t('caveat')}</Label>
+          </summary>
+          <Caption tone="ink2" className="ct-caveat__body">
+            {caveat}
+          </Caption>
+        </details>
+      ) : null}
+
       <div className="ct-doc__grid">
-        <nav className="ct-toc" aria-label={t('contents')}>
+        {/* Оглавление пакета: у каждого раздела своё действие, потому что
+            раздел здесь — отдельный документ, а не часть общего текста. */}
+        <nav className="ct-toc lw-toc" aria-label={t('contents')}>
           <Label as="div" className="ct-toc__head">
             {t('contents')}
           </Label>
           <ol className="ct-toc__list">
             {tree.sections.map((s) => (
-              <li key={s.key ?? s.no}>
+              <li key={s.key ?? s.no} className="lw-toc__item">
                 <a href={`#section-${s.no}`} className="ct-toc__link">
                   <span className="ct-toc__no tabular">{s.no}</span>
                   <span>{s.title}</span>
                   {s.pending ? <span className="ct-toc__pending" aria-hidden="true">·</span> : null}
                 </a>
+                {s.key ? (
+                  <button
+                    type="button"
+                    className="lw-toc__redo"
+                    disabled={Boolean(building)}
+                    title={s.pending ? undefined : t('sectionRedoHint')}
+                    onClick={() => run([s.key as string])}
+                  >
+                    {sectionBusy(s) ? '…' : s.pending ? t('sectionWrite') : t('sectionRedo')}
+                  </button>
+                ) : null}
               </li>
             ))}
           </ol>
@@ -283,9 +339,6 @@ export function DocumentPage() {
                   </div>
                 ) : null}
 
-                {/* Несоставленные разделы — одно состояние документа, а не
-                    десяток новостей: развёрнутым списком они вытесняли сам
-                    договор ниже линии сгиба. */}
                 {pending.length ? (
                   <div className="ct-pending">
                     <UIText tone="mute">
@@ -309,7 +362,7 @@ export function DocumentPage() {
                             variant="ghost"
                             onClick={() =>
                               askAbout(
-                                `${issue.message} Дополни договор так, чтобы это условие было согласовано.`,
+                                `${issue.message} Дополни пакет так, чтобы это требование было закрыто.`,
                               )
                             }
                           >
@@ -367,7 +420,7 @@ export function DocumentPage() {
                     variant="ghost"
                     onClick={() =>
                       askAbout(
-                        `Объясни простыми словами, что означает пункт ${clause.no} и чем он грозит сторонам. Текст договора не меняй.`,
+                        `Объясни простыми словами, что означает пункт ${clause.no} и к каким последствиям он ведёт. Текст законопроекта не меняй.`,
                       )
                     }
                   >

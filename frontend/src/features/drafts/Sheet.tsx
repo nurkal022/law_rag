@@ -4,12 +4,16 @@ import { refLabel } from './preview'
 import type { DocLang } from './preview'
 
 /**
- * Лист документа.
+ * Лист документа — общий для договора и законопроекта.
  *
- * Один компонент и в конструкторе, и в готовом договоре: то, что человек видит
- * при заполнении формы, обязано совпадать с тем, что он получит после
+ * Один компонент и в конструкторе, и в готовом документе: то, что человек
+ * видит при заполнении формы, обязано совпадать с тем, что он получит после
  * генерации, — иначе предпросмотр не предпросмотр, а отдельная картинка.
  * Разница только в источнике дерева.
+ *
+ * У законопроекта нет сторон: ни преамбулы, ни подписей. Ветки этих блоков
+ * проверяют содержимое, а не вид документа, поэтому пустой список сторон
+ * просто не даёт им ничего нарисовать.
  */
 
 const CITY_WORD: Record<DocLang, (city: string) => string> = {
@@ -263,6 +267,11 @@ export function Sheet({
     tree.meta.lang === 'kk' || tree.meta.lang === 'en' ? tree.meta.lang : 'ru'
   const { requisites } = tree
 
+  const meta = [
+    requisites.city ? CITY_WORD[lang](requisites.city) : '',
+    requisites.date ? formatDate(requisites.date, lang) : '',
+  ].filter(Boolean)
+
   /* Знак «?» у каждой ссылки без исключения ничего не сообщает: постоянный
      признак читается как оформление, а не как предупреждение. Пока не выверена
      ни одна ссылка, оговорка ставится один раз на весь документ. */
@@ -288,10 +297,17 @@ export function Sheet({
           {tree.meta.title}
           {requisites.number ? <span className="sheet__number"> № {requisites.number}</span> : null}
         </h2>
-        <div className="sheet__meta">
-          <span>{requisites.city ? CITY_WORD[lang](requisites.city) : ''}</span>
-          <span>{requisites.date ? formatDate(requisites.date, lang) : ''}</span>
-        </div>
+        {meta.length ? (
+          /* Пустой span в строке реквизитов не безобиден: space-between
+             прижимал одинокую дату к левому краю под центрованным заголовком.
+             У законопроекта города нет, поэтому строка собирается из того,
+             что действительно заполнено. */
+          <div className={['sheet__meta', meta.length === 1 ? 'sheet__meta--one' : ''].filter(Boolean).join(' ')}>
+            {meta.map((item, i) => (
+              <span key={i}>{item}</span>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       {tree.preamble ? <p className="sheet__preamble">{tree.preamble}</p> : null}

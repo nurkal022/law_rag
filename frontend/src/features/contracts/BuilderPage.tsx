@@ -11,15 +11,16 @@ import {
   Label,
   Loading,
   Select,
-  Textarea,
   UIText,
   useToast,
 } from '../../shared/ui'
 import { useLang, useT, withLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { api, errorMessage, sse } from '../../shared/api'
-import { Sheet } from './Sheet'
-import { ContractTabs, ListSkeleton, LoadFailure, useLoader } from './shared'
+import { Sheet } from '../drafts/Sheet'
+import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
+import { FieldControl, validateField } from '../drafts/FieldControl'
+import { ContractTabs } from './shared'
 import {
   PARTY_ATTRS,
   buildPreviewTree,
@@ -27,17 +28,16 @@ import {
   partyKey,
   passportPartyField,
   termCovered,
-} from './preview'
+} from '../drafts/preview'
 import type {
   DraftResponse,
   Job,
   JobResponse,
-  PassportField,
   PassportResponse,
   PartyKind,
-} from './types'
-import './contracts.css'
-import './contracts.motion.css'
+} from '../drafts/types'
+import '../drafts/drafts.css'
+import '../drafts/drafts.motion.css'
 
 /**
  * Конструктор договора.
@@ -151,9 +151,6 @@ const ATTRS_BY_KIND: Record<PartyKind, readonly string[]> = {
 const GROUP_ORDER = ['subject', 'terms', 'extra']
 const GROUP_LABEL: Record<string, string> = { subject: 'gSubject', terms: 'gTerms', extra: 'gExtra' }
 
-const ID_RE = /^\d{12}$/
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-
 type Values = Record<string, string>
 
 export function BuilderPage() {
@@ -201,22 +198,15 @@ export function BuilderPage() {
     const out: Record<string, string> = {}
     if (!passport) return out
 
+    const msg = {
+      required: t('errRequired'),
+      digits12: t('errDigits12'),
+      number: t('errNumber'),
+      date: t('errDate'),
+    }
     const checkValue = (name: string, v: string, kind: string, required: boolean) => {
-      const value = (v ?? '').trim()
-      if (required && !value) {
-        out[name] = t('errRequired')
-        return
-      }
-      if (!value) return
-      if (kind === 'iin' || kind === 'bin' || kind === 'iin_bin') {
-        if (!ID_RE.test(value)) out[name] = t('errDigits12')
-      } else if (kind === 'number' || kind === 'money') {
-        if (!Number.isFinite(Number(value.replace(/\s/g, '').replace(',', '.')))) {
-          out[name] = t('errNumber')
-        }
-      } else if (kind === 'date') {
-        if (!DATE_RE.test(value)) out[name] = t('errDate')
-      }
+      const problem = validateField(v, kind, required, msg)
+      if (problem) out[name] = problem
     }
 
     for (const f of passport.fields) {
@@ -590,75 +580,5 @@ export function BuilderPage() {
         </aside>
       </div>
     </div>
-  )
-}
-
-/* --------------------------- поле по описанию паспорта --------------------------- */
-
-function FieldControl({
-  field,
-  value,
-  error,
-  onChange,
-  onBlur,
-}: {
-  field: PassportField
-  value: string
-  error?: string
-  onChange: (v: string) => void
-  onBlur: () => void
-}) {
-  const label = field.unit ? `${field.label}, ${field.unit}` : field.label
-  const hint = field.hint ?? undefined
-
-  if (field.type === 'textarea') {
-    return (
-      <div className="ct-grid__wide">
-        <Textarea
-          label={label}
-          hint={hint}
-          error={error}
-          onBlur={onBlur}
-          placeholder={field.placeholder ?? undefined}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </div>
-    )
-  }
-  if (field.type === 'select') {
-    return (
-      <Select
-        label={label}
-        hint={hint}
-        error={error}
-        onBlur={onBlur}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">—</option>
-        {field.options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </Select>
-    )
-  }
-
-  const isId = field.type === 'iin' || field.type === 'bin' || field.type === 'iin_bin'
-  return (
-    <Input
-      label={label}
-      hint={hint}
-      error={error}
-      onBlur={onBlur}
-      placeholder={field.placeholder ?? undefined}
-      type={field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'}
-      inputMode={isId ? 'numeric' : field.type === 'money' ? 'decimal' : undefined}
-      maxLength={isId ? 12 : undefined}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
   )
 }

@@ -4,11 +4,12 @@ import { Link } from '../../shared/nav'
 import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { api } from '../../shared/api'
-import { docLang } from './preview'
-import type { CatalogResponse, CatalogType } from './types'
-import { ContractTabs, ListSkeleton, LoadFailure, useLoader } from './shared'
-import './contracts.css'
-import './contracts.motion.css'
+import { docLang } from '../drafts/preview'
+import type { CatalogResponse, CatalogType } from '../drafts/types'
+import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
+import { ContractTabs } from './shared'
+import '../drafts/drafts.css'
+import '../drafts/drafts.motion.css'
 
 /**
  * Каталог типов договоров.

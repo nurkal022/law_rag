@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, DragEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Link } from '../../shared/nav'
@@ -10,282 +10,184 @@ import {
   Display,
   Empty,
   Input,
-  Mono,
-  Status,
+  Label,
+  Select,
   Table,
   TableTitle,
   UIText,
   useToast,
 } from '../../shared/ui'
-import type { StatusKind } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
-import type { Dict, Lang } from '../../i18n'
+import type { Dict } from '../../i18n'
+import { api, errorMessage } from '../../shared/api'
+import { LoadFailure, useLoader } from '../drafts/shared'
+import { SectionTabs } from './SectionTabs'
+import { upload } from './upload'
+import {
+  Highlight,
+  StatusMark,
+  WsSkeleton,
+  anyPending,
+  localeOf,
+  useSize,
+  useSourceLabel,
+  whenShort,
+  wsDict,
+} from './common'
+import type {
+  DocumentResponse,
+  DocumentsResponse,
+  FoundDocument,
+  MattersResponse,
+  SearchResponse,
+  WsDocument,
+} from './types'
 import './workspace.css'
 import './workspace.motion.css'
-import { SectionTabs } from './SectionTabs'
+import './workspace.pages.css'
+
+/**
+ * Библиотека документов.
+ *
+ * Главное на экране — не список, а состояние каждого документа. Файл принят
+ * сервером сразу, а разбор текста идёт фоном и может не удаться: скан без
+ * распознавания, недоступный сервис. Поэтому строка со сбоем показывает
+ * причину целиком, а не значок: в причине написано, что делать. И поэтому же
+ * такой документ остаётся рабочим — он открывается и скачивается, теряется
+ * только поиск по его тексту.
+ */
 
 const dict: Dict = {
   title: { ru: 'Мои документы', kz: 'Менің құжаттарым', en: 'My documents' },
   subtitle: {
-    ru: 'Личная библиотека: загруженные файлы и созданное в TURA',
+    ru: 'Личная библиотека: загруженные файлы и составленное в TURA',
     kz: 'Жеке кітапхана: жүктелген файлдар және TURA-да жасалғаны',
-    en: 'Personal library: uploaded files and documents created in TURA',
+    en: 'Personal library: uploaded files and documents drafted in TURA',
   },
-  upload: { ru: 'Загрузить', kz: 'Жүктеу', en: 'Upload' },
-  search: { ru: 'Поиск по своим документам', kz: 'Өз құжаттарыңнан іздеу', en: 'Search your documents' },
+
   drop: {
-    ru: 'Перетащите PDF или DOCX сюда — до 20 МБ',
-    kz: 'PDF немесе DOCX файлын осында сүйреңіз — 20 МБ дейін',
-    en: 'Drag a PDF or DOCX here — up to 20 MB',
+    ru: 'Перетащите PDF или DOCX — можно несколько сразу',
+    kz: 'PDF немесе DOCX сүйреп әкеліңіз — бірнешеуін бірден болады',
+    en: 'Drag PDF or DOCX files here — several at once is fine',
   },
-  dropOver: { ru: 'Отпустите файл', kz: 'Файлды жіберіңіз', en: 'Drop the file' },
-  choose: { ru: 'Выбрать файл', kz: 'Файл таңдау', en: 'Choose file' },
+  dropOver: { ru: 'Отпустите файлы', kz: 'Файлдарды жіберіңіз', en: 'Drop the files' },
+  choose: { ru: 'Выбрать файлы', kz: 'Файлдарды таңдау', en: 'Choose files' },
+  toMatter: { ru: 'Попадут в дело', kz: 'Іске түседі', en: 'They will go to matter' },
+
+  upSending: { ru: 'отправляется', kz: 'жіберілуде', en: 'sending' },
+  upDone: { ru: 'принят, идёт обработка', kz: 'қабылданды, өңделуде', en: 'accepted, processing' },
+  upDup: {
+    ru: 'этот файл уже в библиотеке',
+    kz: 'бұл файл кітапханада бар',
+    en: 'this file is already in the library',
+  },
+  upClear: { ru: 'Скрыть', kz: 'Жасыру', en: 'Hide' },
+  upFail: { ru: 'Файл не принят', kz: 'Файл қабылданбады', en: 'The file was not accepted' },
+
+  fMatter: { ru: 'Дело', kz: 'Іс', en: 'Matter' },
+  fSource: { ru: 'Источник', kz: 'Дереккөз', en: 'Source' },
+  fStatus: { ru: 'Состояние', kz: 'Күйі', en: 'State' },
+  all: { ru: 'Все', kz: 'Барлығы', en: 'All' },
+  search: { ru: 'Поиск по тексту документов', kz: 'Құжат мәтіні бойынша іздеу', en: 'Search document text' },
+  searchScope: {
+    ru: 'Поиск идёт по всей библиотеке, фильтры к нему не применяются.',
+    kz: 'Іздеу бүкіл кітапхана бойынша жүреді, сүзгілер қолданылмайды.',
+    en: 'Search covers the whole library; the filters do not apply to it.',
+  },
+  found: { ru: 'Найдено документов', kz: 'Табылған құжаттар', en: 'Documents found' },
+  searchShort: {
+    ru: 'Наберите хотя бы два знака.',
+    kz: 'Кемінде екі таңба теріңіз.',
+    en: 'Type at least two characters.',
+  },
+  onlyIndexed: {
+    ru: 'Поиск идёт по обработанным документам. Те, что ещё обрабатываются или не попали в поиск, здесь не появятся.',
+    kz: 'Іздеу өңделген құжаттар бойынша жүреді. Әлі өңделіп жатқандар мұнда шықпайды.',
+    en: 'Search covers processed documents only; those still processing or not searchable will not appear.',
+  },
+
   colDoc: { ru: 'Документ', kz: 'Құжат', en: 'Document' },
   colMatter: { ru: 'Дело', kz: 'Іс', en: 'Matter' },
+  colSize: { ru: 'Размер', kz: 'Көлемі', en: 'Size' },
   colSource: { ru: 'Источник', kz: 'Дереккөз', en: 'Source' },
-  colStatus: { ru: 'Статус', kz: 'Күйі', en: 'Status' },
-  all: { ru: 'Все', kz: 'Барлығы', en: 'All' },
-  noMatter: { ru: 'Без дела', kz: 'Іссіз', en: 'No matter' },
-  dash: { ru: '—', kz: '—', en: '—' },
-  srcUpload: { ru: 'загружен', kz: 'жүктелген', en: 'uploaded' },
-  srcTura: { ru: 'создан в TURA', kz: 'TURA-да жасалған', en: 'created in TURA' },
-  stIndexed: { ru: 'проиндексирован', kz: 'индекстелген', en: 'indexed' },
-  stPending: { ru: 'индексируется…', kz: 'индекстелуде…', en: 'indexing…' },
-  stFailed: { ru: 'не распознан', kz: 'танылмады', en: 'not recognised' },
-  retry: { ru: 'Повторить', kz: 'Қайталау', en: 'Retry' },
-  retryAria: {
-    ru: 'Переиндексировать документ',
-    kz: 'Құжатты қайта индекстеу',
-    en: 'Re-index document',
-  },
-  emptyTitle: { ru: 'Библиотека пуста', kz: 'Кітапхана бос', en: 'The library is empty' },
-  emptyBody: {
-    ru: 'Загрузите договор, устав или доверенность — TURA проиндексирует документ и сможет отвечать по нему со ссылками на нормы РК.',
-    kz: 'Шартты, жарғыны немесе сенімхатты жүктеңіз — TURA құжатты индекстеп, ҚР нормаларына сілтемемен жауап береді.',
-    en: 'Upload a contract, charter or power of attorney — TURA will index it and answer questions with references to Kazakhstan law.',
-  },
-  emptyFilterTitle: { ru: 'Ничего не найдено', kz: 'Ештеңе табылмады', en: 'Nothing found' },
-  emptyFilterBody: {
-    ru: 'В этом деле пока нет документов. Снимите фильтр или загрузите файл.',
-    kz: 'Бұл істе әзірге құжат жоқ. Сүзгіні алып тастаңыз немесе файл жүктеңіз.',
-    en: 'This matter has no documents yet. Clear the filter or upload a file.',
-  },
+  colStatus: { ru: 'Состояние', kz: 'Күйі', en: 'State' },
+  colDate: { ru: 'Загружен', kz: 'Жүктелген', en: 'Added' },
   colActs: { ru: 'Действия', kz: 'Әрекеттер', en: 'Actions' },
-  remove: { ru: 'Удалить', kz: 'Жою', en: 'Delete' },
-  removeAria: {
-    ru: 'Удалить документ из библиотеки',
-    kz: 'Құжатты кітапханадан жою',
-    en: 'Delete document from the library',
+
+  failStill: {
+    ru: 'Документ открывается и скачивается как обычно — он только не участвует в поиске.',
+    kz: 'Құжат әдеттегідей ашылады және жүктеледі — тек іздеуге қатыспайды.',
+    en: 'The document still opens and downloads as usual — it is only left out of search.',
   },
+  reindex: { ru: 'Переиндексировать', kz: 'Қайта индекстеу', en: 'Re-index' },
+  reindexed: {
+    ru: 'Обработка запущена заново',
+    kz: 'Өңдеу қайта басталды',
+    en: 'Processing has been restarted',
+  },
+
+  remove: { ru: 'Удалить', kz: 'Жою', en: 'Delete' },
   removeAsk: { ru: 'Удалить безвозвратно?', kz: 'Қайтарымсыз жойылсын ба?', en: 'Delete permanently?' },
   removeYes: { ru: 'Да, удалить', kz: 'Иә, жою', en: 'Yes, delete' },
   cancel: { ru: 'Отмена', kz: 'Болдырмау', en: 'Cancel' },
   removed: { ru: 'Документ удалён', kz: 'Құжат жойылды', en: 'Document deleted' },
-  queued: {
-    ru: 'Файл принят, идёт индексация',
-    kz: 'Файл қабылданды, индекстеу жүріп жатыр',
-    en: 'File accepted, indexing has started',
+  failRemove: { ru: 'Удалить не удалось', kz: 'Жою мүмкін болмады', en: 'Could not delete' },
+
+  emptyTitle: { ru: 'Библиотека пуста', kz: 'Кітапхана бос', en: 'The library is empty' },
+  emptyBody: {
+    ru: 'Загрузите договор, устав или доверенность — TURA разберёт текст, и по документу можно будет искать и задавать вопросы.',
+    kz: 'Шартты, жарғыны немесе сенімхатты жүктеңіз — TURA мәтінді талдайды, содан кейін құжаттан іздеуге және сұрақ қоюға болады.',
+    en: 'Upload a contract, charter or power of attorney — TURA parses the text so you can search it and ask questions.',
   },
-  ready: {
-    ru: 'Документ проиндексирован и доступен в диалоге',
-    kz: 'Құжат индекстелді және диалогта қолжетімді',
-    en: 'The document is indexed and available in the conversation',
+  emptyFilterTitle: { ru: 'Ничего не найдено', kz: 'Ештеңе табылмады', en: 'Nothing found' },
+  emptyFilterBody: {
+    ru: 'Под выбранные условия документов нет. Снимите фильтры или загрузите файл.',
+    kz: 'Таңдалған шарттарға сай құжат жоқ. Сүзгілерді алып тастаңыз немесе файл жүктеңіз.',
+    en: 'No documents match the filters. Clear them or upload a file.',
   },
+  emptySearchTitle: { ru: 'Ничего не нашлось', kz: 'Ештеңе табылмады', en: 'No matches' },
+  clearFilters: { ru: 'Снять фильтры', kz: 'Сүзгілерді алу', en: 'Clear filters' },
 }
 
-type Source = 'upload' | 'tura'
-type DocStatus = 'indexed' | 'pending' | 'failed'
-
-/** Строка на трёх языках. */
-type L10n = Record<Lang, string>
-
-/** Названия дел, к которым привязаны документы. Ключ — идентификатор дела. */
-const MATTER_NAMES: Record<string, L10n> = {
-  'astana-logistik': {
-    ru: 'ТОО «Астана Логистик»',
-    kz: '«Астана Логистик» ЖШС',
-    en: 'Astana Logistik LLP',
-  },
-  'sklad-ryskulova': {
-    ru: 'Аренда склада на Рыскулова',
-    kz: 'Рысқұлов көшесіндегі қойманы жалға алу',
-    en: 'Warehouse lease on Ryskulov street',
-  },
-  kaztransservis: {
-    ru: 'Спор с АО «КазТрансСервис»',
-    kz: '«ҚазТрансСервис» АҚ-мен дау',
-    en: 'Dispute with KazTransService JSC',
-  },
-  hr: { ru: 'Кадровые документы', kz: 'Кадр құжаттары', en: 'HR documents' },
+/** Состояние одной отправки: показывается, пока файл идёт и сразу после. */
+interface Sending {
+  key: number
+  name: string
+  percent: number
+  state: 'sending' | 'done' | 'duplicate' | 'error'
+  message?: string
 }
 
-const MATTER_IDS = Object.keys(MATTER_NAMES)
-
-interface DocRow {
-  id: string
-  title: L10n
-  ref: string
-  /** Идентификатор дела либо null, если документ ни к одному не привязан. */
-  matter: string | null
-  source: Source
-  status: DocStatus
-}
-
-/** Замоканный реестр — до подключения /api/workspace/documents. */
-const DOCS: DocRow[] = [
-  {
-    id: '47-p',
-    title: {
-      ru: 'Договор поставки № 47-П',
-      kz: '№ 47-П жеткізу шарты',
-      en: 'Supply contract No. 47-P',
-    },
-    ref: 'DOC-2026-047',
-    matter: 'astana-logistik',
-    source: 'upload',
-    status: 'indexed',
-  },
-  {
-    id: 'lease-sk',
-    title: {
-      ru: 'Договор аренды складского помещения',
-      kz: 'Қойма үй-жайын жалға алу шарты',
-      en: 'Warehouse lease agreement',
-    },
-    ref: 'DOC-2026-051',
-    matter: 'sklad-ryskulova',
-    source: 'upload',
-    status: 'indexed',
-  },
-  {
-    id: 'charter',
-    title: {
-      ru: 'Устав ТОО «Астана Логистик»',
-      kz: '«Астана Логистик» ЖШС жарғысы',
-      en: 'Charter of Astana Logistik LLP',
-    },
-    ref: 'DOC-2026-012',
-    matter: 'astana-logistik',
-    source: 'upload',
-    status: 'indexed',
-  },
-  {
-    id: 'poa',
-    title: {
-      ru: 'Доверенность на представительство в суде',
-      kz: 'Сотта өкілдік етуге сенімхат',
-      en: 'Power of attorney for court representation',
-    },
-    ref: 'DOC-2026-063',
-    matter: 'kaztransservis',
-    source: 'tura',
-    status: 'indexed',
-  },
-  {
-    id: 'nda',
-    title: {
-      ru: 'Соглашение о неразглашении с подрядчиком',
-      kz: 'Мердігермен жасалған құпиялылық туралы келісім',
-      en: 'Non-disclosure agreement with a contractor',
-    },
-    ref: 'DOC-2026-070',
-    matter: null,
-    source: 'tura',
-    status: 'pending',
-  },
-  {
-    id: 'claim',
-    title: {
-      ru: 'Претензия о взыскании неустойки',
-      kz: 'Тұрақсыздық айыбын өндіру туралы кінәрат-талап',
-      en: 'Letter of claim for recovery of a penalty',
-    },
-    ref: 'DOC-2026-072',
-    matter: 'kaztransservis',
-    source: 'tura',
-    status: 'indexed',
-  },
-  {
-    id: 'bill',
-    title: {
-      ru: 'Законопроект о внесении изменений в Закон «О госзакупках»',
-      kz: '«Мемлекеттік сатып алу туралы» Заңға өзгерістер енгізу туралы заң жобасы',
-      en: 'Draft law amending the Public Procurement Act',
-    },
-    ref: 'DOC-2026-058',
-    matter: null,
-    source: 'tura',
-    status: 'indexed',
-  },
-  {
-    id: 'labor',
-    title: {
-      ru: 'Трудовой договор с директором филиала',
-      kz: 'Филиал директорымен жасалған еңбек шарты',
-      en: 'Employment contract with the branch director',
-    },
-    ref: 'DOC-2026-039',
-    matter: 'hr',
-    source: 'upload',
-    status: 'failed',
-  },
-  {
-    id: 'act',
-    title: {
-      ru: 'Акт сверки взаиморасчётов за 2025 год',
-      kz: '2025 жылғы өзара есеп айырысуды салыстыру актісі',
-      en: 'Reconciliation statement for 2025',
-    },
-    ref: 'DOC-2026-044',
-    matter: 'astana-logistik',
-    source: 'upload',
-    status: 'failed',
-  },
-  {
-    id: 'protocol',
-    title: {
-      ru: 'Протокол общего собрания участников',
-      kz: 'Қатысушылардың жалпы жиналысының хаттамасы',
-      en: 'Minutes of the general meeting of participants',
-    },
-    ref: 'DOC-2026-018',
-    matter: 'sklad-ryskulova',
-    source: 'upload',
-    status: 'indexed',
-  },
-]
-
-const STATUS_KIND: Record<DocStatus, StatusKind> = {
-  indexed: 'ok',
-  pending: 'warn',
-  failed: 'err',
-}
-
-const STATUS_KEY: Record<DocStatus, string> = {
-  indexed: 'stIndexed',
-  pending: 'stPending',
-  failed: 'stFailed',
-}
-
-/**
- * Реестр живёт в состоянии: загрузка, повтор индексации и удаление меняют его
- * прямо на экране. До подключения /api/workspace/documents индексация —
- * имитация с задержкой, а не запрос к серверу.
- */
-const INDEX_MS = 2500
+const POLL_MS = 6000
 
 export function LibraryPage() {
   const t = useT(dict)
+  const tw = useT(wsDict)
   const { lang } = useLang()
+  const locale = localeOf(lang)
+  const size = useSize()
+  const sourceLabel = useSourceLabel()
   const toast = useToast()
-  const [params, setParams] = useSearchParams()
 
-  const [docs, setDocs] = useState<DocRow[]>(DOCS)
-  const [query, setQuery] = useState('')
+  const [params, setParams] = useSearchParams()
+  const matterParam = params.get('matter') ?? ''
+  const statusParam = params.get('status') ?? ''
+  const sourceParam = params.get('source') ?? ''
+  const q = params.get('q') ?? ''
+
+  const [term, setTerm] = useState(q)
+  const [docs, setDocs] = useState<WsDocument[] | null>(null)
+  const [docsError, setDocsError] = useState<unknown>(null)
+  const [sending, setSending] = useState<Sending[]>([])
   const [over, setOver] = useState(false)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+  const [flash, setFlash] = useState<number[]>([])
 
   const fileRef = useRef<HTMLInputElement>(null)
+  /* dragleave приходит и от дочерних узлов, поэтому «над областью» считается
+     счётчиком входов и выходов, а не последним событием. */
+  const dragDepth = useRef(0)
+  const sendKey = useRef(0)
   const timers = useRef<number[]>([])
 
   useEffect(
@@ -295,109 +197,215 @@ export function LibraryPage() {
     [],
   )
 
-  /* Фильтр по делу живёт в адресе: со страницы дел сюда приходят по ссылке
-     /workspace?matter=<id>, и выбранное дело должно быть уже подставлено. */
-  const fromUrl = params.get('matter')
-  const filter = fromUrl && fromUrl.trim() ? fromUrl : 'all'
-  /* Дело, созданное на соседнем экране, ещё не значится в замоканном списке:
-     его имя приходит вместе с фильтром, чтобы чип было чем подписать. */
-  const extraName = params.get('name')
-  const known = filter === 'all' || filter === 'none' || MATTER_IDS.includes(filter)
+  const matters = useLoader<MattersResponse>(
+    () => api.get<MattersResponse>('/workspace/matters?archived=1'),
+    [],
+  )
+  const matterList = useMemo(() => matters.data?.matters ?? [], [matters.data])
+  const matterName = useCallback(
+    (id: number | null) => matterList.find((m) => m.id === id)?.title ?? null,
+    [matterList],
+  )
 
-  const setFilter = useCallback(
-    (id: string) => {
+  const query = useMemo(() => {
+    const search = new URLSearchParams()
+    if (matterParam) search.set('matter_id', matterParam)
+    if (statusParam) search.set('status', statusParam)
+    if (sourceParam) search.set('source', sourceParam)
+    const s = search.toString()
+    return s ? `?${s}` : ''
+  }, [matterParam, statusParam, sourceParam])
+
+  /**
+   * Реестр перечитывается сам, пока хоть один документ обрабатывается.
+   * Обновление молчаливое: подменять таблицу заглушкой раз в шесть секунд —
+   * значит мигать экраном под руками у читающего.
+   */
+  const fetchDocs = useCallback(
+    async (silent = false) => {
+      try {
+        const res = await api.get<DocumentsResponse>(`/workspace/documents${query}`)
+        setDocs(res.documents)
+        setDocsError(null)
+      } catch (e) {
+        if (!silent) {
+          setDocs(null)
+          setDocsError(e)
+        }
+      }
+    },
+    [query],
+  )
+
+  useEffect(() => {
+    setDocs(null)
+    setDocsError(null)
+    void fetchDocs()
+  }, [fetchDocs])
+
+  useEffect(() => {
+    if (!docs || !anyPending(docs)) return
+    const id = window.setInterval(() => void fetchDocs(true), POLL_MS)
+    return () => window.clearInterval(id)
+  }, [docs, fetchDocs])
+
+  /* Поиск живёт в адресе: найденное можно оставить открытым и вернуться. */
+  useEffect(() => {
+    if (term === q) return
+    const id = window.setTimeout(() => {
       const next = new URLSearchParams(params)
-      if (id === 'all') next.delete('matter')
-      else next.set('matter', id)
+      if (term.trim()) next.set('q', term.trim())
+      else next.delete('q')
+      setParams(next, { replace: true })
+    }, 350)
+    return () => window.clearTimeout(id)
+  }, [term, q, params, setParams])
+
+  const searching = q.trim().length >= 2
+  const found = useLoader<SearchResponse>(
+    () =>
+      searching
+        ? api.get<SearchResponse>(`/workspace/search?q=${encodeURIComponent(q.trim())}`)
+        : Promise.resolve({ query: '', documents: [] as FoundDocument[] }),
+    [q, searching],
+  )
+
+  const setParam = useCallback(
+    (key: string, value: string) => {
+      const next = new URLSearchParams(params)
+      if (value) next.set(key, value)
+      else next.delete(key)
       setParams(next, { replace: true })
       setConfirmId(null)
     },
     [params, setParams],
   )
 
-  /** Перевод строки в «проиндексирован» через задержку — имитация фоновой индексации. */
-  const indexLater = useCallback(
-    (id: string, title: string) => {
-      const timer = window.setTimeout(() => {
-        setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, status: 'indexed' } : d)))
-        toast(`${title} — ${t('ready')}`, 'ok')
-      }, INDEX_MS)
-      timers.current.push(timer)
-    },
-    [toast, t],
-  )
+  const markFlash = useCallback((id: number) => {
+    setFlash((prev) => (prev.includes(id) ? prev : [...prev, id]))
+    const timer = window.setTimeout(() => setFlash((prev) => prev.filter((x) => x !== id)), 4000)
+    timers.current.push(timer)
+  }, [])
 
   const accept = useCallback(
     (files: FileList | null) => {
-      const file = files?.[0]
-      if (!file) return
-      const id = `up-${Date.now()}`
-      const name = file.name.replace(/\.[^.]+$/, '')
-      const row: DocRow = {
-        id,
-        title: { ru: name, kz: name, en: name },
-        ref: `DOC-2026-${String(Math.floor(Math.random() * 900) + 100)}`,
-        matter: filter !== 'all' && filter !== 'none' ? filter : null,
-        source: 'upload',
-        status: 'pending',
+      const list = files ? Array.from(files) : []
+      if (!list.length) return
+
+      for (const file of list) {
+        const key = ++sendKey.current
+        setSending((prev) => [...prev, { key, name: file.name, percent: 0, state: 'sending' }])
+
+        const form = new FormData()
+        form.append('file', file)
+        if (/^\d+$/.test(matterParam)) form.append('matter_id', matterParam)
+
+        upload<DocumentResponse>('/workspace/documents', form, (percent) =>
+          setSending((prev) => prev.map((s) => (s.key === key ? { ...s, percent } : s))),
+        )
+          .then((res) => {
+            setSending((prev) =>
+              prev.map((s) =>
+                s.key === key
+                  ? { ...s, percent: 100, state: res.duplicate ? 'duplicate' : 'done' }
+                  : s,
+              ),
+            )
+            markFlash(res.document.id)
+            void fetchDocs(true)
+            /* Успех сам убирается из списка: он уже виден строкой в реестре,
+               и держать про него отдельную запись незачем. Отказ остаётся. */
+            const timer = window.setTimeout(
+              () => setSending((prev) => prev.filter((s) => s.key !== key)),
+              res.duplicate ? 7000 : 4000,
+            )
+            timers.current.push(timer)
+          })
+          .catch((e) => {
+            setSending((prev) =>
+              prev.map((s) =>
+                s.key === key
+                  ? { ...s, state: 'error', message: errorMessage(e, t('upFail')) }
+                  : s,
+              ),
+            )
+          })
       }
-      setDocs((prev) => [row, ...prev])
-      setQuery('')
-      toast(t('queued'))
-      indexLater(id, name)
     },
-    [filter, indexLater, toast, t],
+    [matterParam, markFlash, fetchDocs, t],
   )
 
-  const retry = useCallback(
-    (d: DocRow) => {
-      setDocs((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: 'pending' } : x)))
-      indexLater(d.id, d.title[lang])
+  const reindex = useCallback(
+    async (doc: WsDocument) => {
+      setDocs((prev) =>
+        prev
+          ? prev.map((d) =>
+              d.id === doc.id ? { ...d, status: 'pending', status_error: null } : d,
+            )
+          : prev,
+      )
+      try {
+        await api.post(`/workspace/documents/${doc.id}/reindex`)
+        toast(`${doc.title} — ${t('reindexed')}`)
+      } catch (e) {
+        toast(errorMessage(e, t('upFail')), 'err')
+        void fetchDocs(true)
+      }
     },
-    [indexLater, lang],
+    [fetchDocs, t, toast],
   )
 
   const remove = useCallback(
-    (d: DocRow) => {
-      setDocs((prev) => prev.filter((x) => x.id !== d.id))
+    async (doc: WsDocument) => {
       setConfirmId(null)
-      toast(`${t('removed')}: ${d.title[lang]}`, 'ok')
+      try {
+        await api.del(`/workspace/documents/${doc.id}`)
+        setDocs((prev) => (prev ? prev.filter((d) => d.id !== doc.id) : prev))
+        toast(`${t('removed')}: ${doc.title}`, 'ok')
+      } catch (e) {
+        toast(errorMessage(e, t('failRemove')), 'err')
+      }
     },
-    [toast, t, lang],
+    [t, toast],
   )
 
-  const rows = useMemo(
-    () =>
-      docs.filter((d) => {
-        if (filter === 'none' && d.matter !== null) return false
-        if (filter !== 'all' && filter !== 'none' && d.matter !== filter) return false
-        const q = query.trim().toLowerCase()
-        if (q && !d.title[lang].toLowerCase().includes(q) && !d.ref.toLowerCase().includes(q)) {
-          return false
-        }
-        return true
-      }),
-    [docs, filter, query, lang],
-  )
-
-  const onDrag = (e: DragEvent<HTMLDivElement>, state: boolean) => {
+  const onDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    if (!e.dataTransfer?.types?.includes('Files')) return
     e.preventDefault()
-    setOver(state)
+    dragDepth.current += 1
+    setOver(true)
   }
-
+  const onDragLeave = () => {
+    dragDepth.current = Math.max(0, dragDepth.current - 1)
+    if (dragDepth.current === 0) setOver(false)
+  }
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    dragDepth.current = 0
     setOver(false)
     accept(e.dataTransfer?.files ?? null)
   }
 
+  const filtered = Boolean(matterParam || statusParam || sourceParam)
+  const rows = docs ?? []
+
   return (
-    <div className="page">
+    <div
+      className={over ? 'page ws-page ws-page--over' : 'page ws-page'}
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => {
+        if (e.dataTransfer?.types?.includes('Files')) e.preventDefault()
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <SectionTabs />
+
       <input
         ref={fileRef}
         type="file"
         accept=".pdf,.docx"
+        multiple
         className="visually-hidden"
         tabIndex={-1}
         aria-hidden="true"
@@ -412,67 +420,155 @@ export function LibraryPage() {
           <Display>{t('title')}</Display>
           <Body tone="mute">{t('subtitle')}</Body>
         </div>
-        <div className="ws-actions">
-          <Button variant="primary" onClick={() => fileRef.current?.click()}>
-            {t('upload')}
-          </Button>
-        </div>
       </div>
 
-      <div className="ws-filters">
-        <Chip active={filter === 'all'} onClick={() => setFilter('all')}>
-          {t('all')} · {docs.length}
-        </Chip>
-        {MATTER_IDS.map((id) => (
-          <Chip key={id} active={filter === id} onClick={() => setFilter(id)}>
-            {MATTER_NAMES[id][lang]}
-          </Chip>
-        ))}
-        <Chip active={filter === 'none'} onClick={() => setFilter('none')}>
-          {t('noMatter')}
-        </Chip>
-        {known ? null : (
-          <Chip active onClick={() => setFilter('all')}>
-            {extraName ?? filter}
-          </Chip>
-        )}
-        <div className="ws-search">
-          <Input
-            type="search"
-            value={query}
-            placeholder={t('search')}
-            aria-label={t('search')}
-            onChange={(e) => setQuery(e.currentTarget.value)}
-          />
+      <div className={over ? 'ws-drop ws-drop--over' : 'ws-drop'}>
+        <div className="ws-drop__text">
+          <Body tone="mute" style={{ margin: 0 }}>
+            {over ? t('dropOver') : t('drop')}
+          </Body>
+          {/^\d+$/.test(matterParam) && matterName(Number(matterParam)) ? (
+            <Caption tone="mute">
+              {t('toMatter')}: {matterName(Number(matterParam))}
+            </Caption>
+          ) : null}
         </div>
-      </div>
-
-      <div
-        className={over ? 'ws-drop ws-drop--over' : 'ws-drop'}
-        onDragOver={(e) => onDrag(e, true)}
-        onDragEnter={(e) => onDrag(e, true)}
-        onDragLeave={(e) => onDrag(e, false)}
-        onDrop={onDrop}
-      >
-        <Body tone="mute" style={{ margin: 0 }}>
-          {over ? t('dropOver') : t('drop')}
-        </Body>
         <Button variant="secondary" onClick={() => fileRef.current?.click()}>
           {t('choose')}
         </Button>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="enter">
+      {sending.length ? (
+        <ul className="ws-uploads">
+          {sending.map((s) => (
+            <li key={s.key} className="ws-upload swap">
+              <div className="ws-upload__head">
+                <UIText>{s.name}</UIText>
+                <Caption tone={s.state === 'error' ? 'err' : 'mute'}>
+                  {s.state === 'sending'
+                    ? `${t('upSending')} · ${s.percent}%`
+                    : s.state === 'done'
+                      ? t('upDone')
+                      : s.state === 'duplicate'
+                        ? t('upDup')
+                        : s.message}
+                </Caption>
+              </div>
+              {s.state === 'sending' ? (
+                <div className="ws-upload__track">
+                  <div className="ws-upload__bar" style={{ width: `${s.percent}%` }} />
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  onClick={() => setSending((prev) => prev.filter((x) => x.key !== s.key))}
+                >
+                  <Caption>{t('upClear')}</Caption>
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <div className="ws-filters">
+        <Select
+          label={t('fMatter')}
+          value={matterParam}
+          onChange={(e) => setParam('matter', e.currentTarget.value)}
+        >
+          <option value="">{t('all')}</option>
+          <option value="none">{tw('noMatter')}</option>
+          {matterList.map((m) => (
+            <option key={m.id} value={String(m.id)}>
+              {m.title}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          label={t('fSource')}
+          value={sourceParam}
+          onChange={(e) => setParam('source', e.currentTarget.value)}
+        >
+          <option value="">{t('all')}</option>
+          <option value="upload">{tw('srcUpload')}</option>
+          <option value="contract">{tw('srcContract')}</option>
+          <option value="law_project">{tw('srcLawProject')}</option>
+          <option value="chat">{tw('srcChat')}</option>
+        </Select>
+
+        <div className="ws-filters__chips">
+          <Label as="div">{t('fStatus')}</Label>
+          <div className="ws-chiprow">
+            <Chip active={!statusParam} onClick={() => setParam('status', '')}>
+              {t('all')}
+            </Chip>
+            <Chip active={statusParam === 'indexed'} onClick={() => setParam('status', 'indexed')}>
+              {tw('stIndexed')}
+            </Chip>
+            <Chip active={statusParam === 'pending'} onClick={() => setParam('status', 'pending')}>
+              {tw('stPending')}
+            </Chip>
+            <Chip active={statusParam === 'failed'} onClick={() => setParam('status', 'failed')}>
+              {tw('stFailed')}
+            </Chip>
+          </div>
+        </div>
+
+        <div className="ws-search">
+          <Input
+            type="search"
+            value={term}
+            label={t('search')}
+            placeholder={t('search')}
+            hint={term.trim() && !searching ? t('searchShort') : undefined}
+            onChange={(e) => setTerm(e.currentTarget.value)}
+          />
+        </div>
+      </div>
+
+      {searching ? (
+        <SearchResults
+          state={found}
+          query={q.trim()}
+          matterName={matterName}
+          onClear={() => {
+            setTerm('')
+            setParam('q', '')
+          }}
+        />
+      ) : docsError ? (
+        <div className="ws-state">
+          <LoadFailure error={docsError} onRetry={() => void fetchDocs()} />
+        </div>
+      ) : docs === null ? (
+        <WsSkeleton rows={7} />
+      ) : rows.length === 0 ? (
+        <div className="ws-state">
           <Empty
-            title={docs.length === 0 ? t('emptyTitle') : t('emptyFilterTitle')}
+            title={filtered ? t('emptyFilterTitle') : t('emptyTitle')}
             action={
-              <Button variant="primary" onClick={() => fileRef.current?.click()}>
-                {t('upload')}
-              </Button>
+              filtered ? (
+                <Button
+                  onClick={() => {
+                    const next = new URLSearchParams(params)
+                    next.delete('matter')
+                    next.delete('status')
+                    next.delete('source')
+                    setParams(next, { replace: true })
+                  }}
+                >
+                  {t('clearFilters')}
+                </Button>
+              ) : (
+                <Button variant="primary" onClick={() => fileRef.current?.click()}>
+                  {t('choose')}
+                </Button>
+              )
             }
           >
-            {docs.length === 0 ? t('emptyBody') : t('emptyFilterBody')}
+            {filtered ? t('emptyFilterBody') : t('emptyBody')}
           </Empty>
         </div>
       ) : (
@@ -481,81 +577,172 @@ export function LibraryPage() {
             <tr>
               <th scope="col">{t('colDoc')}</th>
               <th scope="col">{t('colMatter')}</th>
+              <th scope="col">{t('colSize')}</th>
               <th scope="col" className="ws-col-src">
                 {t('colSource')}
               </th>
               <th scope="col" className="ws-col-status">
                 {t('colStatus')}
               </th>
+              <th scope="col">{t('colDate')}</th>
               <th scope="col" className="ws-col-acts">
                 <span className="visually-hidden">{t('colActs')}</span>
               </th>
             </tr>
           </thead>
-          {/* Ключ по составу фильтра: при смене выборки лента набегает заново */}
-          <tbody key={`${filter}:${query}`}>
+          <tbody key={query}>
             {rows.map((d, i) => (
-              <tr key={d.id} className="enter-item" style={{ '--i': i } as CSSProperties}>
-                <td>
-                  <div className="ws-cell-doc">
-                    <Link to={`/workspace/documents/${d.id}`}>
-                      <TableTitle>{d.title[lang]}</TableTitle>
-                    </Link>
-                    <Mono tone="mute">{d.ref}</Mono>
-                  </div>
-                </td>
-                <td>
-                  {d.matter ? (
-                    <UIText tone="ink2">{MATTER_NAMES[d.matter][lang]}</UIText>
-                  ) : (
-                    <UIText tone="mute">{t('dash')}</UIText>
-                  )}
-                </td>
-                <td className="ws-col-src">
-                  <Mono tone="mute">{d.source === 'upload' ? t('srcUpload') : t('srcTura')}</Mono>
-                </td>
-                <td className="ws-col-status">
-                  <div className="ws-status-cell">
-                    <Status kind={STATUS_KIND[d.status]}>{t(STATUS_KEY[d.status])}</Status>
-                    {d.status === 'failed' ? (
-                      <Button
-                        variant="ghost"
-                        aria-label={`${t('retryAria')}: ${d.title[lang]}`}
-                        onClick={() => retry(d)}
-                      >
-                        <Caption>{t('retry')}</Caption>
-                      </Button>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="ws-col-acts">
-                  {confirmId === d.id ? (
-                    <div className="ws-confirm swap">
-                      <Caption tone="mute">{t('removeAsk')}</Caption>
-                      <Button variant="danger" onClick={() => remove(d)}>
-                        <Caption>{t('removeYes')}</Caption>
-                      </Button>
-                      <Button variant="ghost" onClick={() => setConfirmId(null)}>
-                        <Caption>{t('cancel')}</Caption>
-                      </Button>
+              <Fragment key={d.id}>
+                <tr
+                  className={
+                    flash.includes(d.id) ? 'enter-item ws-row--flash' : 'enter-item'
+                  }
+                  style={{ '--i': i } as CSSProperties}
+                >
+                  <td>
+                    <div className="ws-cell-doc">
+                      <Link to={`/workspace/documents/${d.id}`}>
+                        <TableTitle>{d.title}</TableTitle>
+                      </Link>
+                      {d.original_filename ? (
+                        <Caption tone="mute">{d.original_filename}</Caption>
+                      ) : null}
                     </div>
-                  ) : (
-                    <div className="ws-row-acts">
-                      <Button
-                        variant="ghost"
-                        aria-label={`${t('removeAria')}: ${d.title[lang]}`}
-                        onClick={() => setConfirmId(d.id)}
-                      >
-                        <Caption>{t('remove')}</Caption>
-                      </Button>
+                  </td>
+                  <td>
+                    {matterName(d.matter_id) ? (
+                      <UIText tone="ink2">{matterName(d.matter_id)}</UIText>
+                    ) : (
+                      <UIText tone="mute">{tw('dash')}</UIText>
+                    )}
+                  </td>
+                  <td className="ws-num">
+                    <Caption tone="ink2">{size(d.file_size)}</Caption>
+                  </td>
+                  <td className="ws-col-src">
+                    <Caption tone="mute">{sourceLabel(d.source)}</Caption>
+                  </td>
+                  <td className="ws-col-status">
+                    <div className="ws-status-cell">
+                      <StatusMark status={d.status} />
+                      {d.status === 'pending' ? (
+                        <span className="ws-progress" aria-hidden="true">
+                          <span className="ws-progress__bar" />
+                        </span>
+                      ) : null}
                     </div>
-                  )}
-                </td>
-              </tr>
+                  </td>
+                  <td className="ws-num">
+                    <Caption tone="ink2">{whenShort(d.created_at, locale)}</Caption>
+                  </td>
+                  <td className="ws-col-acts">
+                    {confirmId === d.id ? (
+                      <div className="ws-confirm swap">
+                        <Caption tone="mute">{t('removeAsk')}</Caption>
+                        <Button variant="danger" onClick={() => void remove(d)}>
+                          <Caption>{t('removeYes')}</Caption>
+                        </Button>
+                        <Button variant="ghost" onClick={() => setConfirmId(null)}>
+                          <Caption>{t('cancel')}</Caption>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="ws-row-acts">
+                        <Button
+                          variant="ghost"
+                          aria-label={`${t('remove')}: ${d.title}`}
+                          onClick={() => setConfirmId(d.id)}
+                        >
+                          <Caption>{t('remove')}</Caption>
+                        </Button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+                {d.status === 'failed' ? (
+                  <tr className="ws-note-row">
+                    <td colSpan={7}>
+                      <div className="ws-note">
+                        <div className="ws-note__text">
+                          {d.status_error ? <Body style={{ margin: 0 }}>{d.status_error}</Body> : null}
+                          <Caption tone="mute">{t('failStill')}</Caption>
+                        </div>
+                        <Button onClick={() => void reindex(d)}>{t('reindex')}</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             ))}
           </tbody>
         </Table>
       )}
+    </div>
+  )
+}
+
+/**
+ * Найденное показывается отрывками с подсветкой: по одному названию нельзя
+ * понять, тот ли это документ, а отрывок отвечает на вопрос сразу.
+ */
+function SearchResults({
+  state,
+  query,
+  matterName,
+  onClear,
+}: {
+  state: ReturnType<typeof useLoader<SearchResponse>>
+  query: string
+  matterName: (id: number | null) => string | null
+  onClear: () => void
+}) {
+  const t = useT(dict)
+  const tw = useT(wsDict)
+
+  if (state.loading) return <WsSkeleton rows={4} />
+  if (state.error) {
+    return (
+      <div className="ws-state">
+        <LoadFailure error={state.error} onRetry={state.reload} />
+      </div>
+    )
+  }
+
+  const items = state.data?.documents ?? []
+  if (!items.length) {
+    return (
+      <div className="ws-state">
+        <Empty title={t('emptySearchTitle')} action={<Button onClick={onClear}>{t('cancel')}</Button>}>
+          {t('onlyIndexed')}
+        </Empty>
+      </div>
+    )
+  }
+
+  return (
+    <div className="ws-found">
+      <div className="ws-group-head">
+        <Label>{t('found')}</Label>
+        <Caption tone="mute">{items.length}</Caption>
+      </div>
+      <Caption tone="mute">{t('searchScope')}</Caption>
+      {items.map((d, i) => (
+        <article key={d.id} className="ws-hitdoc enter-item" style={{ '--i': i } as CSSProperties}>
+          <div className="ws-hitdoc__head">
+            <Link to={`/workspace/documents/${d.id}`}>
+              <TableTitle>{d.title}</TableTitle>
+            </Link>
+            <Caption tone="mute">
+              {matterName(d.matter_id) ?? tw('noMatter')}
+            </Caption>
+          </div>
+          {d.excerpts.map((ex) => (
+            <p key={ex.chunk} className="ws-excerpt">
+              <Highlight text={ex.text} query={query} />
+            </p>
+          ))}
+        </article>
+      ))}
     </div>
   )
 }

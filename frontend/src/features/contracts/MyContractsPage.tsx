@@ -1,13 +1,14 @@
 import { Body, Caption, Display, Empty, Status, Table, TableTitle, UIText } from '../../shared/ui'
-import type { StatusKind } from '../../shared/ui'
 import { Link } from '../../shared/nav'
 import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { api } from '../../shared/api'
-import { ContractTabs, ListSkeleton, LoadFailure, useLoader } from './shared'
-import type { Draft, DraftStatus, DraftsResponse } from './types'
-import './contracts.css'
-import './contracts.motion.css'
+import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
+import { STATUS_KIND, STATUS_LABEL, statusDict, when } from '../drafts/doc'
+import { ContractTabs } from './shared'
+import type { Draft, DraftsResponse } from '../drafts/types'
+import '../drafts/drafts.css'
+import '../drafts/drafts.motion.css'
 
 /**
  * Реестр договоров. Таблица, а не карточки: список из тридцати договоров
@@ -29,12 +30,6 @@ const dict: Dict = {
   colVersion: { ru: 'Версия', kz: 'Нұсқа', en: 'Version' },
   colStatus: { ru: 'Статус', kz: 'Мәртебе', en: 'Status' },
 
-  statusDraft: { ru: 'Черновик', kz: 'Жоба', en: 'Draft' },
-  statusReview: { ru: 'На согласовании', kz: 'Келісуде', en: 'In review' },
-  statusAgreed: { ru: 'Согласован', kz: 'Келісілген', en: 'Agreed' },
-  statusSigned: { ru: 'Подписан', kz: 'Қол қойылған', en: 'Signed' },
-  statusArchived: { ru: 'В архиве', kz: 'Мұрағатта', en: 'Archived' },
-
   emptyTitle: { ru: 'Договоров пока нет', kz: 'Әзірге шарттар жоқ', en: 'No contracts yet' },
   emptyBody: {
     ru: 'Выберите тип договора в каталоге, заполните реквизиты — и документ соберётся по разделам с указанием норм.',
@@ -45,31 +40,9 @@ const dict: Dict = {
   dash: { ru: '—', kz: '—', en: '—' },
 }
 
-const STATUS_LABEL: Record<DraftStatus, string> = {
-  draft: 'statusDraft',
-  review: 'statusReview',
-  agreed: 'statusAgreed',
-  signed: 'statusSigned',
-  archived: 'statusArchived',
-}
-
-const STATUS_KIND: Record<DraftStatus, StatusKind> = {
-  draft: 'idle',
-  review: 'warn',
-  agreed: 'ok',
-  signed: 'ok',
-  archived: 'idle',
-}
-
-function when(iso: string | null, locale: string) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
 export function MyContractsPage() {
   const t = useT(dict)
+  const ts = useT(statusDict)
   const { lang } = useLang()
   const locale = lang === 'kz' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'ru-RU'
 
@@ -145,7 +118,7 @@ export function MyContractsPage() {
                   <td className="tabular">{d.version}</td>
                   <td>
                     <Status kind={STATUS_KIND[d.status] ?? 'idle'}>
-                      {t(STATUS_LABEL[d.status] ?? 'statusDraft')}
+                      {ts(STATUS_LABEL[d.status] ?? 'statusDraft')}
                     </Status>
                   </td>
                 </tr>

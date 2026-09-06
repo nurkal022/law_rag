@@ -1,185 +1,131 @@
 /* ============================================================
-   TURA — законопроекты: реестр инициатив, форма и оглавление
-   сгенерированного пакета документов.
-   Значения только через var(--...) из tokens.css.
-   Группировка линиями и пространством: ни теней, ни карточек.
+   TURA — законопроекты.
+   Общая часть (лист, конструктор, реестр) живёт в features/drafts;
+   здесь только то, чего у договоров нет: шаги мастера, сводка пакета
+   и оглавление с действием у каждого раздела.
    ============================================================ */
 
-/* ---------- Каркас экрана: реестр слева, работа справа ---------- */
+/* ---------- Шаги мастера ---------- */
 
-.laws-layout {
-  display: grid;
-  grid-template-columns: var(--list-w) minmax(0, 1fr);
-  gap: var(--s-8);
-  align-items: start;
-}
-
-/* ---------- Реестр законопроектов ---------- */
-
-.laws-list {
-  border-top: var(--border);
-}
-
-.laws-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-bottom: var(--border);
-  border-left: 2px solid transparent;
-  padding: var(--s-3);
-  padding-left: calc(var(--s-3) - 2px);
-  transition: background-color var(--motion);
-}
-.laws-item:hover { background: var(--ink-wash); }
-
-/* Выбранная инициатива отмечается вставной линией печати, а не заливкой */
-.laws-item--on {
-  background: var(--ink-wash);
-  border-left-color: var(--seal);
-}
-
-.laws-item__title {
-  display: block;
-  font-family: var(--font-serif);
-  font-size: var(--t-body-size);
-  line-height: var(--t-body-lh);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.laws-item__meta {
+.lw-steps {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s-2);
-  margin-top: var(--s-1);
-}
-
-/* ---------- Форма инициативы ---------- */
-
-.laws-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s-4);
-  padding-top: var(--s-4);
-}
-.laws-form__wide { grid-column: 1 / -1; }
-
-.laws-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-4) 0;
-}
-
-/* ---------- Блок с заголовком и линией ---------- */
-
-.laws-block { margin-top: var(--s-8); }
-
-.laws-block__head {
-  display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--s-4);
-  margin-bottom: var(--s-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--s-3);
+  border-bottom: var(--border);
 }
 
-/* ---------- Оглавление пакета документов ---------- */
+.lw-steps__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 
-.laws-toc { border-top: var(--border); }
+.lw-steps__count { flex: none; }
 
-.laws-sec { border-bottom: var(--border); }
-
-.laws-sec__head {
+.lw-step {
   display: flex;
   align-items: baseline;
-  gap: var(--s-3);
-  width: 100%;
-  text-align: left;
+  gap: var(--s-2);
   background: none;
   border: 0;
-  padding: var(--s-3) var(--s-2);
-  transition: background-color var(--motion);
-}
-.laws-sec__head:hover { background: var(--ink-wash); }
-
-/* Нумерация разделов — антиквой, как в оглавлении печатного документа */
-.laws-sec__num {
-  flex: none;
-  min-width: 4ch;
-  font-family: var(--font-serif);
-  font-size: var(--t-body-size);
-  line-height: var(--t-body-lh);
-  font-weight: 700;
-  color: var(--mute);
-}
-
-.laws-sec__name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-family: var(--font-serif);
-  font-size: var(--t-body-size);
-  line-height: var(--t-body-lh);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.laws-sec__state { flex: none; }
-
-/* Знак раскрытия заменяет слово «развернуть», а не украшает строку */
-.laws-sec__mark {
-  flex: none;
-  width: var(--s-4);
-  text-align: center;
+  border-bottom: 2px solid transparent;
+  padding: 0 0 var(--s-1);
   font-family: var(--font-sans);
   font-size: var(--t-ui-size);
   color: var(--mute);
+  cursor: pointer;
+  transition: color var(--motion), border-color var(--motion);
 }
+.lw-step:hover { color: var(--ink); }
+.lw-step--done { color: var(--ink-2); }
+.lw-step--on { color: var(--ink); border-bottom-color: var(--seal); }
 
-.laws-sec__body {
-  padding: 0 var(--s-2) var(--s-5);
-  padding-left: calc(var(--s-2) + 4ch + var(--s-3));
-}
+.lw-step__no { color: var(--mute); }
+.lw-step--on .lw-step__no { color: var(--seal); }
 
-.laws-sec__text { white-space: pre-line; color: var(--ink-2); }
+/* Шаг занимает всю высоту секции, чтобы кнопки «назад» и «далее» не прыгали
+   между шагами с разным числом полей. */
+/* Небольшой резерв высоты, чтобы кнопки шага не прыгали между соседними
+   экранами. Прежние 26rem равнялись самому длинному шагу — и на коротком
+   первом под формой зияла пустота высотой в четверть экрана. */
+.lw-stage { min-height: 15rem; }
 
-/* ---------- История версий ---------- */
+.lw-block { margin-top: var(--s-5); }
+.lw-block__head { padding-bottom: var(--s-2); border-bottom: 1px solid var(--rule-soft); margin-bottom: var(--s-3); }
 
-.laws-versions { border-top: var(--border); }
+.lw-actions { display: flex; gap: var(--s-3); align-items: center; }
 
-.laws-version {
+/* ---------- Сводка перед составлением ---------- */
+
+.lw-review { display: flex; flex-direction: column; gap: var(--s-6); margin-top: var(--s-5); }
+.lw-review__block { display: flex; flex-direction: column; gap: var(--s-2); }
+
+.lw-package { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
+.lw-package__item {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
   gap: var(--s-3);
-  padding: var(--s-2);
-  border-bottom: var(--border);
+  align-items: baseline;
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--rule-soft);
 }
-.laws-version__no {
-  min-width: 5ch;
-  font-family: var(--font-serif);
-  font-size: var(--t-body-size);
-  font-weight: 700;
-  color: var(--ink);
-}
-.laws-version__note { flex: 1 1 auto; min-width: 0; }
+.lw-package__no { color: var(--mute); flex: none; min-width: var(--s-5); }
+.lw-package__body { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2); }
+.lw-package__opt { margin-left: var(--s-2); }
 
-/* ---------- Узкий экран ---------- */
+/* Доля заполненного полосой: число заставляет считать, полоса читается сразу */
+.lw-gauge {
+  display: block;
+  height: var(--s-1);
+  background: var(--rule-soft);
+  margin: var(--s-2) 0;
+}
+.lw-gauge__fill {
+  display: block;
+  height: 100%;
+  background: var(--seal);
+  transition: width var(--motion-state) var(--ease);
+}
+
+.lw-missing { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
+.lw-missing li { padding: var(--s-1) 0; display: flex; gap: var(--s-2); align-items: baseline; }
+
+/* ---------- Оглавление пакета ---------- */
+
+/* Раздел пакета — самостоятельный документ, поэтому действие стоит у каждого,
+   а не одно на весь пакет. Действие появляется при наведении и фокусе: одиннадцать
+   постоянно видимых кнопок читались как список кнопок, а не как оглавление. */
+.lw-toc__item { display: flex; align-items: baseline; gap: var(--s-2); }
+.lw-toc__item > .ct-toc__link { flex: 1 1 auto; min-width: 0; }
+
+.lw-toc__redo {
+  flex: none;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  color: var(--mute);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion), color var(--motion), border-color var(--motion);
+}
+.lw-toc__item:hover .lw-toc__redo,
+.lw-toc__redo:focus-visible { opacity: 1; }
+.lw-toc__redo:hover { color: var(--seal); border-bottom-color: var(--seal); }
+.lw-toc__redo:disabled { cursor: not-allowed; opacity: 0.4; }
 
 @media (max-width: 860px) {
-  .laws-layout { grid-template-columns: 1fr; gap: var(--s-6); }
-  .laws-form { grid-template-columns: 1fr; }
-  .laws-sec__body { padding-left: var(--s-2); }
+  .lw-stage { min-height: 0; }
+  .lw-toc__redo { opacity: 1; }
 }
 
-@media (max-width: 620px) {
-  /* Строка раздела: состояние и знак раскрытия не выдавливают название */
-  .laws-sec__head { flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
-  .laws-sec__name { flex: 1 1 60%; }
-  .laws-actions > .btn { flex: 1 1 auto; }
-  .laws-version { gap: var(--s-1) var(--s-3); }
+@media (prefers-reduced-motion: reduce) {
+  .lw-gauge__fill { transition: none; }
 }

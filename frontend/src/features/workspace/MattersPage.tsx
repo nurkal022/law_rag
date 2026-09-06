@@ -10,35 +10,44 @@ import {
   H2,
   Input,
   Label,
-  Mono,
   Textarea,
   UIText,
   useToast,
 } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
-import type { Dict, Lang } from '../../i18n'
+import type { Dict } from '../../i18n'
+import { api, errorMessage } from '../../shared/api'
+import { LoadFailure, useLoader } from '../drafts/shared'
+import { SectionTabs } from './SectionTabs'
+import { WsSkeleton, localeOf, whenShort } from './common'
+import type { DeleteMatterResponse, Matter, MatterResponse, MattersResponse } from './types'
 import './workspace.css'
 import './workspace.motion.css'
-import { SectionTabs } from './SectionTabs'
+import './workspace.pages.css'
+
+/**
+ * Дела: папки, в которые складываются документы по одному вопросу.
+ *
+ * Удаление дела на сервере документы не трогает — они выходят из папки и
+ * остаются в библиотеке. Об этом сказано прямо в подтверждении, с числом:
+ * человек, увидевший «удалить дело с 12 документами», откажется от действия,
+ * которое ничем ему не грозит.
+ */
 
 const dict: Dict = {
   title: { ru: 'Дела', kz: 'Істер', en: 'Matters' },
   subtitle: {
-    ru: 'Папки, объединяющие документы и диалоги по одному вопросу',
-    kz: 'Бір мәселе бойынша құжаттар мен диалогтарды біріктіретін қалталар',
-    en: 'Folders that group documents and conversations around one question',
+    ru: 'Папки, объединяющие документы по одному вопросу',
+    kz: 'Бір мәселе бойынша құжаттарды біріктіретін қалталар',
+    en: 'Folders that group documents around one question',
   },
   create: { ru: 'Новое дело', kz: 'Жаңа іс', en: 'New matter' },
   active: { ru: 'В работе', kz: 'Жұмыста', en: 'Active' },
   archived: { ru: 'В архиве', kz: 'Мұрағатта', en: 'Archived' },
   docs: { ru: 'документов', kz: 'құжат', en: 'documents' },
-  updated: { ru: 'Обновлено', kz: 'Жаңартылды', en: 'Updated' },
-  emptyTitle: { ru: 'Дел пока нет', kz: 'Әзірге іс жоқ', en: 'No matters yet' },
-  emptyBody: {
-    ru: 'Дело собирает документы и переписку по одному вопросу: договор, спор, сделка. Создайте первое — и переносите в него файлы из библиотеки.',
-    kz: 'Іс бір мәселе бойынша құжаттар мен хат алмасуды жинайды: шарт, дау, мәміле. Алғашқысын құрып, кітапханадан файлдарды көшіріңіз.',
-    en: 'A matter collects the documents and conversations for one question: a contract, a dispute, a deal. Create the first one and move files into it.',
-  },
+  updated: { ru: 'Изменено', kz: 'Өзгертілген', en: 'Updated' },
+  noDesc: { ru: 'Описание не заполнено', kz: 'Сипаттама толтырылмаған', en: 'No description' },
+
   formTitle: { ru: 'Название дела', kz: 'Іс атауы', en: 'Matter title' },
   formTitlePh: {
     ru: 'Например: Спор с подрядчиком по договору подряда',
@@ -52,175 +61,210 @@ const dict: Dict = {
     en: 'Briefly: what the question is and which documents will gather here',
   },
   save: { ru: 'Создать', kz: 'Құру', en: 'Create' },
+  saveEdit: { ru: 'Сохранить', kz: 'Сақтау', en: 'Save' },
   cancel: { ru: 'Отмена', kz: 'Болдырмау', en: 'Cancel' },
   created: { ru: 'Дело создано', kz: 'Іс құрылды', en: 'Matter created' },
-  noDesc: { ru: 'Описание не заполнено.', kz: 'Сипаттама толтырылмаған.', en: 'No description yet.' },
-  today: { ru: 'сегодня', kz: 'бүгін', en: 'today' },
-}
+  failSave: { ru: 'Сохранить не удалось', kz: 'Сақтау мүмкін болмады', en: 'Could not save' },
 
-/** Строка на трёх языках. */
-type L10n = Record<Lang, string>
+  rename: { ru: 'Переименовать', kz: 'Атын өзгерту', en: 'Rename' },
+  archive: { ru: 'В архив', kz: 'Мұрағатқа', en: 'Archive' },
+  unarchive: { ru: 'Вернуть в работу', kz: 'Жұмысқа қайтару', en: 'Reactivate' },
+  remove: { ru: 'Удалить дело', kz: 'Істі жою', en: 'Delete matter' },
+  removeAsk: {
+    ru: 'Удалить дело? Документы останутся в библиотеке — они просто выйдут из этого дела.',
+    kz: 'Іс жойылсын ба? Құжаттар кітапханада қалады — олар тек осы істен шығады.',
+    en: 'Delete the matter? The documents stay in the library — they simply leave this matter.',
+  },
+  removeCount: { ru: 'Выйдут из дела', kz: 'Істен шығады', en: 'Will leave the matter' },
+  removeYes: { ru: 'Удалить дело', kz: 'Істі жою', en: 'Delete matter' },
+  removed: { ru: 'Дело удалено', kz: 'Іс жойылды', en: 'Matter deleted' },
+  freed: {
+    ru: 'документов вернулось в библиотеку без дела',
+    kz: 'құжат кітапханаға іссіз оралды',
+    en: 'documents returned to the library without a matter',
+  },
+  failRemove: { ru: 'Удалить не удалось', kz: 'Жою мүмкін болмады', en: 'Could not delete' },
 
-interface Matter {
-  id: string
-  /** У заготовленных дел заголовок трёхъязычный, у созданных — как набран. */
-  title: L10n | string
-  description: L10n | string
-  docs: number
-  updated: L10n | string
-  archived?: boolean
-}
+  openDocs: { ru: 'Документы дела', kz: 'Істің құжаттары', en: 'Documents in this matter' },
 
-function text(v: L10n | string, lang: Lang): string {
-  return typeof v === 'string' ? v : v[lang]
-}
-
-/** Замоканные дела — до подключения /api/workspace/matters. */
-const MATTERS: Matter[] = [
-  {
-    id: 'astana-logistik',
-    title: {
-      ru: 'ТОО «Астана Логистик»',
-      kz: '«Астана Логистик» ЖШС',
-      en: 'Astana Logistik LLP',
-    },
-    description: {
-      ru: 'Корпоративное сопровождение: устав, договоры поставки, акты сверки.',
-      kz: 'Корпоративтік сүйемелдеу: жарғы, жеткізу шарттары, салыстыру актілері.',
-      en: 'Corporate support: charter, supply contracts, reconciliation statements.',
-    },
-    docs: 12,
-    updated: { ru: '4 сентября 2026', kz: '2026 жылғы 4 қыркүйек', en: '4 September 2026' },
+  emptyTitle: { ru: 'Дел пока нет', kz: 'Әзірге іс жоқ', en: 'No matters yet' },
+  emptyBody: {
+    ru: 'Дело собирает документы по одному вопросу: договор, спор, сделка. Создайте первое — и переносите в него файлы из библиотеки.',
+    kz: 'Іс бір мәселе бойынша құжаттарды жинайды: шарт, дау, мәміле. Алғашқысын құрып, кітапханадан файлдарды көшіріңіз.',
+    en: 'A matter collects the documents for one question: a contract, a dispute, a deal. Create the first one and move files into it.',
   },
-  {
-    id: 'sklad-ryskulova',
-    title: {
-      ru: 'Аренда склада на Рыскулова',
-      kz: 'Рысқұлов көшесіндегі қойманы жалға алу',
-      en: 'Warehouse lease on Ryskulov street',
-    },
-    description: {
-      ru: 'Долгосрочная аренда 1 400 м², согласование условий с арендодателем.',
-      kz: '1 400 ш. м. ұзақ мерзімді жалдау, жалға берушімен талаптарды келісу.',
-      en: 'Long-term lease of 1,400 sq m; terms under negotiation with the landlord.',
-    },
-    docs: 6,
-    updated: { ru: '2 сентября 2026', kz: '2026 жылғы 2 қыркүйек', en: '2 September 2026' },
-  },
-  {
-    id: 'kaztransservis',
-    title: {
-      ru: 'Спор с АО «КазТрансСервис»',
-      kz: '«ҚазТрансСервис» АҚ-мен дау',
-      en: 'Dispute with KazTransService JSC',
-    },
-    description: {
-      ru: 'Взыскание неустойки за просрочку поставки, досудебный порядок.',
-      kz: 'Жеткізуді кешіктіргені үшін тұрақсыздық айыбын өндіру, сотқа дейінгі тәртіп.',
-      en: 'Recovery of a penalty for late delivery; pre-action stage.',
-    },
-    docs: 9,
-    updated: { ru: '28 августа 2026', kz: '2026 жылғы 28 тамыз', en: '28 August 2026' },
-  },
-  {
-    id: 'hr',
-    title: { ru: 'Кадровые документы', kz: 'Кадр құжаттары', en: 'HR documents' },
-    description: {
-      ru: 'Трудовые договоры, должностные инструкции, приказы по филиалу.',
-      kz: 'Еңбек шарттары, лауазымдық нұсқаулықтар, филиал бойынша бұйрықтар.',
-      en: 'Employment contracts, job descriptions, branch orders.',
-    },
-    docs: 21,
-    updated: { ru: '15 августа 2026', kz: '2026 жылғы 15 тамыз', en: '15 August 2026' },
-  },
-  {
-    id: 'tender-2025',
-    title: {
-      ru: 'Госзакупки 2025: тендер на перевозки',
-      kz: '2025 мемлекеттік сатып алу: тасымалдау тендері',
-      en: 'Public procurement 2025: haulage tender',
-    },
-    description: {
-      ru: 'Завершено: заявка отозвана, документы сохранены для истории.',
-      kz: 'Аяқталды: өтінім кері қайтарылды, құжаттар тарих үшін сақталды.',
-      en: 'Closed: the bid was withdrawn and the documents kept for the record.',
-    },
-    docs: 4,
-    updated: { ru: '11 марта 2026', kz: '2026 жылғы 11 наурыз', en: '11 March 2026' },
-    archived: true,
-  },
-]
-
-function MatterRow({
-  m,
-  lang,
-  updatedLabel,
-  docsLabel,
-  index,
-}: {
-  m: Matter
-  lang: Lang
-  updatedLabel: string
-  docsLabel: string
-  index: number
-}) {
-  const title = text(m.title, lang)
-  return (
-    <Link
-      /* Дело — это фильтр библиотеки: переход открывает реестр с уже
-         выбранным делом, а не отдельный экран со списком тех же строк. */
-      to={`/workspace?matter=${encodeURIComponent(m.id)}&name=${encodeURIComponent(title)}`}
-      className={m.archived ? 'ws-matter ws-matter--archived enter-item' : 'ws-matter enter-item'}
-      style={{ '--i': index } as CSSProperties}
-      aria-label={title}
-    >
-      <span className="ws-matter__main">
-        <H2 as="span">{title}</H2>
-        <Body as="span" tone="mute" style={{ margin: 0 }}>
-          {text(m.description, lang)}
-        </Body>
-      </span>
-      <span className="ws-matter__meta">
-        <UIText tone="ink2">
-          {m.docs} {docsLabel}
-        </UIText>
-        <Caption tone="mute">
-          {updatedLabel}: {text(m.updated, lang)}
-        </Caption>
-      </span>
-    </Link>
-  )
 }
 
 export function MattersPage() {
   const t = useT(dict)
   const { lang } = useLang()
+  const locale = localeOf(lang)
   const toast = useToast()
 
-  const [matters, setMatters] = useState<Matter[]>(MATTERS)
+  const { data, error, loading, reload, setData } = useLoader<MattersResponse>(
+    () => api.get<MattersResponse>('/workspace/matters?archived=1'),
+    [],
+  )
+
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
 
-  const active = matters.filter((m) => !m.archived)
-  const archived = matters.filter((m) => m.archived)
+  const matters = data?.matters ?? []
+  const put = useCallback(
+    (next: Matter) =>
+      setData({ matters: (data?.matters ?? []).map((m) => (m.id === next.id ? next : m)) }),
+    [data, setData],
+  )
 
-  const create = useCallback(() => {
+  const create = useCallback(async () => {
     const name = title.trim()
-    if (!name) return
-    const matter: Matter = {
-      id: `m-${Date.now()}`,
-      title: name,
-      description: desc.trim() || t('noDesc'),
-      docs: 0,
-      updated: t('today'),
+    if (!name || busy) return
+    setBusy(true)
+    try {
+      const res = await api.post<MatterResponse>('/workspace/matters', {
+        title: name,
+        description: desc.trim() || undefined,
+      })
+      setData({ matters: [res.matter, ...(data?.matters ?? [])] })
+      setTitle('')
+      setDesc('')
+      setOpen(false)
+      toast(`${t('created')}: ${res.matter.title}`, 'ok')
+    } catch (e) {
+      toast(errorMessage(e, t('failSave')), 'err')
+    } finally {
+      setBusy(false)
     }
-    setMatters((prev) => [matter, ...prev])
-    setTitle('')
-    setDesc('')
-    setOpen(false)
-    toast(`${t('created')}: ${name}`, 'ok')
-  }, [title, desc, t, toast])
+  }, [title, desc, busy, data, setData, t, toast])
+
+  const patch = useCallback(
+    async (m: Matter, body: Record<string, unknown>) => {
+      try {
+        const res = await api.patch<MatterResponse>(`/workspace/matters/${m.id}`, body)
+        put({ ...res.matter, documents_count: m.documents_count })
+      } catch (e) {
+        toast(errorMessage(e, t('failSave')), 'err')
+      }
+    },
+    [put, t, toast],
+  )
+
+  const remove = useCallback(
+    async (m: Matter) => {
+      setConfirmId(null)
+      try {
+        const res = await api.del<DeleteMatterResponse>(`/workspace/matters/${m.id}`)
+        setData({ matters: (data?.matters ?? []).filter((x) => x.id !== m.id) })
+        toast(
+          res.documents_freed
+            ? `${t('removed')}. ${res.documents_freed} ${t('freed')}`
+            : t('removed'),
+          'ok',
+        )
+      } catch (e) {
+        toast(errorMessage(e, t('failRemove')), 'err')
+      }
+    },
+    [data, setData, t, toast],
+  )
+
+  const active = matters.filter((m) => !m.is_archived)
+  const archived = matters.filter((m) => m.is_archived)
+
+  const group = (items: Matter[], label: string) =>
+    items.length ? (
+      <>
+        <div className="ws-group-head">
+          <Label>{label}</Label>
+          <Caption tone="mute">{items.length}</Caption>
+        </div>
+        <div className="ws-matters">
+          {items.map((m, i) => (
+            <div
+              key={m.id}
+              className={
+                m.is_archived
+                  ? 'ws-matter-row ws-matter-row--archived enter-item'
+                  : 'ws-matter-row enter-item'
+              }
+              style={{ '--i': i } as CSSProperties}
+            >
+              {editId === m.id ? (
+                <MatterForm
+                  matter={m}
+                  onCancel={() => setEditId(null)}
+                  onSave={async (title_, description) => {
+                    await patch(m, { title: title_, description })
+                    setEditId(null)
+                  }}
+                />
+              ) : (
+                <>
+                  <Link
+                    /* Дело — это фильтр библиотеки: переход открывает реестр с
+                       уже выбранным делом, а не ещё один список тех же строк. */
+                    to={`/workspace?matter=${m.id}`}
+                    className="ws-matter ws-matter--flat"
+                    aria-label={`${t('openDocs')}: ${m.title}`}
+                  >
+                    <span className="ws-matter__main">
+                      <H2 as="span">{m.title}</H2>
+                      <Body as="span" tone="mute" style={{ margin: 0 }}>
+                        {m.description || t('noDesc')}
+                      </Body>
+                    </span>
+                    <span className="ws-matter__meta">
+                      <UIText tone="ink2">
+                        {m.documents_count} {t('docs')}
+                      </UIText>
+                      <Caption tone="mute">
+                        {t('updated')}: {whenShort(m.updated_at, locale)}
+                      </Caption>
+                    </span>
+                  </Link>
+
+                  {confirmId === m.id ? (
+                    <div className="ws-matter__confirm swap">
+                      <Body style={{ margin: 0 }}>{t('removeAsk')}</Body>
+                      <Caption tone="mute">
+                        {t('removeCount')}: {m.documents_count}
+                      </Caption>
+                      <div className="ws-form__acts">
+                        <Button variant="danger" onClick={() => void remove(m)}>
+                          {t('removeYes')}
+                        </Button>
+                        <Button variant="ghost" onClick={() => setConfirmId(null)}>
+                          {t('cancel')}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="ws-matter__acts">
+                      <Button variant="ghost" onClick={() => setEditId(m.id)}>
+                        <Caption>{t('rename')}</Caption>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => void patch(m, { is_archived: !m.is_archived })}
+                      >
+                        <Caption>{m.is_archived ? t('unarchive') : t('archive')}</Caption>
+                      </Button>
+                      <Button variant="ghost" onClick={() => setConfirmId(m.id)}>
+                        <Caption>{t('remove')}</Caption>
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </>
+    ) : null
 
   return (
     <div className="page">
@@ -242,7 +286,7 @@ export function MattersPage() {
           className="ws-form unfold"
           onSubmit={(e) => {
             e.preventDefault()
-            create()
+            void create()
           }}
         >
           <Input
@@ -260,7 +304,7 @@ export function MattersPage() {
             onChange={(e) => setDesc(e.currentTarget.value)}
           />
           <div className="ws-form__acts">
-            <Button variant="primary" type="submit" disabled={!title.trim()}>
+            <Button variant="primary" type="submit" disabled={!title.trim() || busy}>
               {t('save')}
             </Button>
             <Button variant="ghost" type="button" onClick={() => setOpen(false)}>
@@ -270,51 +314,80 @@ export function MattersPage() {
         </form>
       ) : null}
 
-      {matters.length === 0 ? (
-        <Empty title={t('emptyTitle')} action={<Button variant="primary" onClick={() => setOpen(true)}>{t('create')}</Button>}>
-          {t('emptyBody')}
-        </Empty>
+      {loading ? (
+        <WsSkeleton rows={5} />
+      ) : error ? (
+        <div className="ws-state">
+          <LoadFailure error={error} onRetry={reload} />
+        </div>
+      ) : !matters.length ? (
+        <div className="ws-state">
+          <Empty
+            title={t('emptyTitle')}
+            action={
+              <Button variant="primary" onClick={() => setOpen(true)}>
+                {t('create')}
+              </Button>
+            }
+          >
+            {t('emptyBody')}
+          </Empty>
+        </div>
       ) : (
         <>
-          <div className="ws-group-head">
-            <Label>{t('active')}</Label>
-            <Mono tone="mute">{active.length}</Mono>
-          </div>
-          <div className="ws-matters" key={`a${active.length}`}>
-            {active.map((m, i) => (
-              <MatterRow
-                key={m.id}
-                m={m}
-                index={i}
-                lang={lang}
-                updatedLabel={t('updated')}
-                docsLabel={t('docs')}
-              />
-            ))}
-          </div>
-
-          {archived.length > 0 ? (
-            <>
-              <div className="ws-group-head">
-                <Label>{t('archived')}</Label>
-                <Mono tone="mute">{archived.length}</Mono>
-              </div>
-              <div className="ws-matters">
-                {archived.map((m, i) => (
-                  <MatterRow
-                    key={m.id}
-                    m={m}
-                    index={i}
-                    lang={lang}
-                    updatedLabel={t('updated')}
-                    docsLabel={t('docs')}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
+          {group(active, t('active'))}
+          {group(archived, t('archived'))}
         </>
       )}
     </div>
+  )
+}
+
+/** Переименование на месте: отдельный экран ради одной строки не нужен. */
+function MatterForm({
+  matter,
+  onSave,
+  onCancel,
+}: {
+  matter: Matter
+  onSave: (title: string, description: string) => Promise<void>
+  onCancel: () => void
+}) {
+  const t = useT(dict)
+  const [title, setTitle] = useState(matter.title)
+  const [desc, setDesc] = useState(matter.description ?? '')
+  const [busy, setBusy] = useState(false)
+
+  return (
+    <form
+      className="ws-form ws-form--inline unfold"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!title.trim() || busy) return
+        setBusy(true)
+        void onSave(title.trim(), desc.trim()).finally(() => setBusy(false))
+      }}
+    >
+      <Input
+        label={t('formTitle')}
+        value={title}
+        autoFocus
+        onChange={(e) => setTitle(e.currentTarget.value)}
+      />
+      <Textarea
+        label={t('formDesc')}
+        rows={2}
+        value={desc}
+        onChange={(e) => setDesc(e.currentTarget.value)}
+      />
+      <div className="ws-form__acts">
+        <Button variant="primary" type="submit" disabled={!title.trim() || busy}>
+          {t('saveEdit')}
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel}>
+          {t('cancel')}
+        </Button>
+      </div>
+    </form>
   )
 }
