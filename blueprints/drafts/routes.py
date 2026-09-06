@@ -20,7 +20,7 @@ import json
 import logging
 import secrets
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Response, current_app, jsonify, request, send_file
 
@@ -51,6 +51,24 @@ def _lang() -> str:
 
 def _err(message: str, code: int = 400, kind: str = 'bad_request'):
     return jsonify({'success': False, 'error': kind, 'message': message}), code
+
+
+def _rate_limited(kind: str, limit: int) -> tuple[bool, int]:
+    """Простой почасовой лимит по журналу задач.
+
+    Считаем по той же таблице, в которую и так пишем: отдельное хранилище
+    ради счётчика — лишняя система, которая может разойтись с реальностью.
+    Точность «примерно за час» здесь достаточна, а вот незаметно
+    разошедшийся счётчик был бы хуже отсутствия лимита.
+    """
+    user = current_user()
+    if not user:
+        return True, 0
+    since = datetime.utcnow() - timedelta(hours=1)
+    used = db.session.query(Job).filter(
+        Job.owner_id == user.id, Job.kind == kind, Job.created_at >= since
+    ).count()
+    return used >= limit, max(0, limit - used)
 
 
 def _own_draft(public_id: str) -> Draft | None:
@@ -272,6 +290,13 @@ def generate(public_id: str):
     if running:
         return jsonify({'success': True, 'job': running.to_dict(), 'already': True})
 
+    limit = current_app.config.get('DRAFT_GENERATIONS_PER_HOUR', 20)
+    over, left = _rate_limited('draft.generate', limit)
+    if over:
+        return _err(f'Достигнут предел в {limit} генераций в час. '
+                    f'Попробуйте позже или продолжите править готовый документ.',
+                    429, 'rate_limited')
+
     data = request.get_json(silent=True) or {}
     try:
         p = get_passport(draft.type_id)
@@ -287,7 +312,7 @@ def generate(public_id: str):
         owner_id=draft.owner_id, draft_id=draft.id, total=total,
     )
     log_usage('drafts', 'generate', details={'type': draft.type_id, 'sections': total})
-    return jsonify({'success': True, 'job': job.to_dict()}), 202
+    return jsonify({'success': True, 'job': job.to_dict(), 'remaining': left - 1}), 202
 
 
 @drafts_bp.route('/jobs/<job_id>')

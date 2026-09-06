@@ -345,3 +345,33 @@ def test_delete_removes_draft(client):
     public_id = _create(client).get_json()['draft']['id']
     assert client.delete(f'/api/drafts/{public_id}').status_code == 200
     assert client.get(f'/api/drafts/{public_id}').status_code == 404
+
+
+# ─────────────────────────── ограничение частоты ───────────────────────────
+
+
+def test_generation_is_rate_limited(app, client, monkeypatch):
+    """Один пользователь не должен занимать очередь генерации целиком."""
+    from database.models import Job, db
+
+    app.config['DRAFT_GENERATIONS_PER_HOUR'] = 2
+    public_id = _create(client).get_json()['draft']['id']
+
+    with app.app_context():
+        user_id = app.config['TEST_USER_ID']
+        for _ in range(2):
+            db.session.add(Job(public_id=os.urandom(8).hex(), kind='draft.generate',
+                               status='done', owner_id=user_id))
+        db.session.commit()
+
+    r = client.post(f'/api/drafts/{public_id}/generate', json={})
+    assert r.status_code == 429
+    assert r.get_json()['error'] == 'rate_limited'
+
+
+def test_generation_allowed_under_the_limit(app, client):
+    app.config['DRAFT_GENERATIONS_PER_HOUR'] = 5
+    public_id = _create(client).get_json()['draft']['id']
+    r = client.post(f'/api/drafts/{public_id}/generate', json={})
+    assert r.status_code == 202
+    assert r.get_json()['job']['status'] == 'queued'
