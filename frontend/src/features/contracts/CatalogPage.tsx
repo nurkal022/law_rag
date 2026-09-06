@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Body, Caption, Chip, Display, Empty, Input, Label, UIText } from '../../shared/ui'
+import { Body, Caption, Chip, Display, Empty, Input, Label } from '../../shared/ui'
 import { Link } from '../../shared/nav'
-import { Reveal } from '../../shared/motion'
 import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { api } from '../../shared/api'
@@ -74,22 +73,27 @@ const families: Dict = {
 
 const FAMILY_ORDER = ['sale', 'lease', 'works', 'services', 'finance', 'labour', 'ip', 'corporate', 'family']
 
-function TypeCard({ type, i }: { type: CatalogType; i: number }) {
+function TypeCard({ type, i, family }: { type: CatalogType; i: number; family: string }) {
   const t = useT(dict)
   return (
     <Link to={`/contracts/new/${type.id}`} className="ct-card enter-item" style={{ '--i': i } as React.CSSProperties}>
+      <Label as="div" className="ct-card__family">{family}</Label>
       <div className="ct-card__name">{type.name}</div>
       <Body className="ct-card__summary" tone="mute">
         {type.summary}
       </Body>
 
+      {/* Только основная норма: полный перечень статей — на странице типа.
+          Четыре ссылки подряд растягивали карточки до несопоставимых высот
+          и превращали каталог в список сносок. */}
       {type.legal_basis.length ? (
         <div className="ct-card__basis">
-          {type.legal_basis.slice(0, 4).map((code) => (
-            <span key={code} className="cite ct-card__cite">
-              {code}
-            </span>
-          ))}
+          <span className="cite ct-card__cite">{type.legal_basis[0]}</span>
+          {type.legal_basis.length > 1 ? (
+            <Caption tone="mute" className="tabular">
+              {' '}+{type.legal_basis.length - 1}
+            </Caption>
+          ) : null}
         </div>
       ) : null}
 
@@ -107,10 +111,12 @@ function TypeCard({ type, i }: { type: CatalogType; i: number }) {
       )}
 
       {type.caveat ? (
-        <div className="ct-card__caveat">
-          <Label as="div">{t('caveat')}</Label>
-          <Caption tone="ink2">{type.caveat}</Caption>
-        </div>
+        <details className="ct-caveat ct-card__caveat">
+          <summary className="ct-caveat__head">
+            <Label as="span">{t('caveat')}</Label>
+          </summary>
+          <Caption tone="ink2" className="ct-caveat__body">{type.caveat}</Caption>
+        </details>
       ) : null}
     </Link>
   )
@@ -145,19 +151,6 @@ export function CatalogPage() {
         (!q || x.name.toLowerCase().includes(q) || x.summary.toLowerCase().includes(q)),
     )
   }, [types, family, query])
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, CatalogType[]>()
-    for (const x of shown) {
-      const list = map.get(x.family)
-      if (list) list.push(x)
-      else map.set(x.family, [x])
-    }
-    return [...map.entries()].sort(
-      (a, b) =>
-        (FAMILY_ORDER.indexOf(a[0]) + 1 || 99) - (FAMILY_ORDER.indexOf(b[0]) + 1 || 99),
-    )
-  }, [shown])
 
   return (
     <div className="page">
@@ -209,21 +202,12 @@ export function CatalogPage() {
               <Empty title={t('emptyTitle')}>{t('emptyBody')}</Empty>
             </div>
           ) : (
-            grouped.map(([fam, items]) => (
-              <Reveal as="section" key={fam} className="ct-family">
-                <div className="ct-family__head">
-                  <Label as="h2">{families[fam] ? tf(fam) : fam}</Label>
-                  <UIText tone="mute" className="tabular">
-                    {items.length}
-                  </UIText>
-                </div>
-                <div className="ct-cards">
-                  {items.map((type, i) => (
-                    <TypeCard key={type.id} type={type} i={i} />
-                  ))}
-                </div>
-              </Reveal>
-            ))
+            <div className="ct-cards">
+              {shown.map((type, i) => (
+                <TypeCard key={type.id} type={type} i={i}
+                          family={families[type.family] ? tf(type.family) : type.family} />
+              ))}
+            </div>
           )}
         </>
       )}

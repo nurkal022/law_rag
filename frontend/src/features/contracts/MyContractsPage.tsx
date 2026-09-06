@@ -1,4 +1,4 @@
-import { Body, Caption, Display, Empty, Status, Table, TableTitle } from '../../shared/ui'
+import { Body, Caption, Display, Empty, Status, Table, TableTitle, UIText } from '../../shared/ui'
 import type { StatusKind } from '../../shared/ui'
 import { Link } from '../../shared/nav'
 import { useLang, useT } from '../../i18n'
@@ -132,12 +132,14 @@ export function MyContractsPage() {
                     </Link>
                   </td>
                   <td>
-                    <span className="cite">{d.type_id}</span>
+                    <UIText tone="ink2">{d.type_name ?? d.type_id}</UIText>
                   </td>
                   <td>
-                    {/* Стороны приходят только вместе с деревом, а список его не
-                        отдаёт: показываем прочерк, а не выдуманные наименования. */}
-                    <Caption tone="mute">{t('dash')}</Caption>
+                    {d.parties?.length ? (
+                      <Caption tone="ink2">{d.parties.join(' — ')}</Caption>
+                    ) : (
+                      <Caption tone="mute">{t('dash')}</Caption>
+                    )}
                   </td>
                   <td className="tabular">{when(d.updated_at, locale)}</td>
                   <td className="tabular">{d.version}</td>

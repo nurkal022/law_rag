@@ -54,7 +54,7 @@ const dict: Dict = {
   number: { ru: 'Номер договора', kz: 'Шарт нөмірі', en: 'Contract number' },
   city: { ru: 'Место заключения', kz: 'Жасалған жері', en: 'Place of signing' },
   date: { ru: 'Дата договора', kz: 'Шарт күні', en: 'Contract date' },
-  parties: { ru: 'Стороны', kz: 'Тараптар', en: 'Parties' },
+  party: { ru: 'Сторона', kz: 'Тарап', en: 'Party' },
 
   kind: { ru: 'Вид лица', kz: 'Тұлға түрі', en: 'Type of person' },
   legal: { ru: 'Юридическое лицо', kz: 'Заңды тұлға', en: 'Legal entity' },
@@ -354,10 +354,14 @@ export function BuilderPage() {
         </div>
       )}
       {passport.caveat ? (
-        <div className="ct-flag">
-          <Label as="div">{t('caveat')}</Label>
-          <Caption tone="ink2">{passport.caveat}</Caption>
-        </div>
+        /* Оговорка важна, но её место — под рукой, а не поперёк дороги:
+           развёрнутая, она вытесняла форму и лист ниже линии сгиба. */
+        <details className="ct-caveat">
+          <summary className="ct-caveat__head">
+            <Label as="span">{t('caveat')}</Label>
+          </summary>
+          <Caption tone="ink2" className="ct-caveat__body">{passport.caveat}</Caption>
+        </details>
       ) : null}
 
       <div className="ct-split">
@@ -406,7 +410,7 @@ export function BuilderPage() {
                 <div className="ct-group__head">
                   <H3>{spec.role}</H3>
                   <Caption tone="mute">
-                    {t('parties')} {idx + 1}
+                    {t('party')} {idx + 1}
                   </Caption>
                 </div>
                 <div className="ct-grid">

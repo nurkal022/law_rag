@@ -173,6 +173,18 @@ def start_inline_worker(app) -> threading.Thread:
     В производственной среде воркер запускается отдельным процессом: иначе он
     делит с веб-сервером и память, и глобальную блокировку интерпретатора.
     """
+    from database.models import db
+
+    with app.app_context():
+        dialect = db.engine.dialect.name
+    if dialect != 'postgresql':
+        # Разбор очереди держится на FOR UPDATE SKIP LOCKED — этого нет ни у
+        # SQLite, ни у MySQL. Молчаливый запуск обернулся бы бесконечным
+        # потоком ошибок в журнале вместо одной внятной строки.
+        log.warning('очередь задач требует PostgreSQL, а подключена %s: '
+                    'воркер не запущен, генерация документов недоступна', dialect)
+        raise RuntimeError(f'очередь задач не работает на {dialect}')
+
     stop = threading.Event()
     t = threading.Thread(target=worker_loop, args=(app,), kwargs={'stop': stop}, daemon=True)
     t.start()

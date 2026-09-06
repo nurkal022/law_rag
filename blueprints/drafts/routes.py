@@ -178,7 +178,22 @@ def list_drafts():
     if status:
         q = q.filter_by(status=status)
     items = q.order_by(Draft.updated_at.desc()).limit(200).all()
-    return jsonify({'success': True, 'drafts': [d.to_dict() for d in items]})
+
+    # Название типа отдаём вместе со списком: иначе реестр показывает
+    # служебный код вроде «supply», а клиенту приходится тянуть весь каталог
+    # ради одной подписи в строке.
+    lang = _lang()
+    try:
+        names = {p.id: p.name.get(lang) for p in load_catalog().values()}
+    except CatalogError:
+        names = {}
+
+    drafts = []
+    for d in items:
+        row = d.to_dict()
+        row['type_name'] = names.get(d.type_id, d.type_id)
+        drafts.append(row)
+    return jsonify({'success': True, 'drafts': drafts})
 
 
 @drafts_bp.route('', methods=['POST'])

@@ -431,3 +431,26 @@ def test_analyze_uses_the_party_role_as_perspective(app, client):
     assert r.status_code == 200
     assert seen['perspective'] == 'Исполнитель'
     assert r.get_json()['perspective'] == 'Исполнитель'
+
+
+# ──────────────────────────────── реестр ────────────────────────────────
+
+
+def test_registry_shows_type_name_not_its_code(client):
+    """В реестре стоит «Демонстрационный договор», а не служебное «demo»."""
+    _create(client)
+    row = client.get('/api/drafts?kind=contract').get_json()['drafts'][0]
+    assert row['type_name'] == 'Демонстрационный договор'
+
+
+def test_registry_shows_party_names(client):
+    """Стороны берутся из значений формы: грузить дерево ради двух имён — лишнее."""
+    _create(client)
+    row = client.get('/api/drafts?kind=contract').get_json()['drafts'][0]
+    assert row['parties'] == ['ТОО «Альфа»', 'ИП Досаев']
+
+
+def test_registry_survives_a_draft_without_parties(client):
+    _create(client, values={'subject': 'что-то'})
+    row = client.get('/api/drafts?kind=contract').get_json()['drafts'][0]
+    assert row['parties'] == []

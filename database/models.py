@@ -340,12 +340,28 @@ class Draft(db.Model):
         """Текущая версия документа."""
         return self.versions.filter_by(no=self.current_version).first()
 
+    def party_names(self) -> list:
+        """Наименования сторон для реестра.
+
+        Берутся из значений формы, а не из дерева: реестр показывает сотни
+        строк, и разбирать ради двух имён полный документ каждой из них —
+        неоправданная работа.
+        """
+        values = self.values_json or {}
+        names = []
+        for i in range(2):
+            name = values.get(f'party{i}_name') or values.get(f'p{i}_name') or ''
+            if name:
+                names.append(str(name))
+        return names
+
     def to_dict(self, with_tree: bool = False):
         head = self.head()
         out = {
             'id': self.public_id,
             'kind': self.kind,
             'type_id': self.type_id,
+            'parties': self.party_names(),
             'title': self.title,
             'lang': self.lang,
             'status': self.status,
@@ -540,8 +556,13 @@ class DatabaseManager:
         if not hasattr(self, '_database_initialized'):
             with self.app.app_context():
                 from sqlalchemy import text
-                db.session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                db.session.commit()
+                # Расширение pgvector есть только у PostgreSQL. На других
+                # движках эта команда — синтаксическая ошибка, которая роняет
+                # запуск целиком, хотя всё остальное работало бы: поиск по
+                # векторам недоступен, но интерфейс и документы — вполне.
+                if db.engine.dialect.name == 'postgresql':
+                    db.session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                    db.session.commit()
                 db.create_all()
                 self._database_initialized = True
                 # Проверяем нужно ли загружать документы

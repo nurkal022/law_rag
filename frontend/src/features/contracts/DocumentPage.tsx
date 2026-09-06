@@ -17,7 +17,7 @@ import {
 import type { TabItem } from '../../shared/ui'
 import { useT } from '../../i18n'
 import type { Dict } from '../../i18n'
-import { api, download, errorMessage } from '../../shared/api'
+import { api, download, errorMessage, sse } from '../../shared/api'
 import { Sheet } from './Sheet'
 import { ListSkeleton, LoadFailure, useLoader } from './shared'
 import type {
@@ -27,6 +27,8 @@ import type {
   DraftResponse,
   DraftStatus,
   Issue,
+  Job,
+  JobResponse,
   Rejected,
   Turn,
   TurnResponse,
@@ -65,6 +67,11 @@ const dict: Dict = {
   version: { ru: 'версия', kz: 'нұсқа', en: 'version' },
 
   issues: { ru: 'Замечания', kz: 'Ескертулер', en: 'Issues' },
+  pendingOne: { ru: 'раздел ещё не составлен', kz: 'бөлім әлі жазылмаған', en: 'section not drafted yet' },
+  pendingMany: { ru: 'разделов ещё не составлены', kz: 'бөлім әлі жазылмаған', en: 'sections not drafted yet' },
+  buildRest: { ru: 'Составить недостающие', kz: 'Жетіспейтінін жазу', en: 'Draft the rest' },
+  building: { ru: 'Составляю разделы', kz: 'Бөлімдер жазылуда', en: 'Drafting sections' },
+  errBuild: { ru: 'Не удалось запустить составление', kz: 'Жазуды бастау мүмкін болмады', en: 'Could not start drafting' },
   fill: { ru: 'Дополнить', kz: 'Толықтыру', en: 'Complete it' },
 
   clauseEdit: { ru: 'Править вручную', kz: 'Қолмен түзету', en: 'Edit manually' },
@@ -171,6 +178,7 @@ export function DocumentPage() {
   const setDraft = useCallback((d: Draft) => setData({ draft: d }), [setData])
 
   const [tab, setTab] = useState('edit')
+  const [building, setBuilding] = useState<{ done: number; total: number; label: string } | null>(null)
   const [activeNo, setActiveNo] = useState<string | null>(null)
   const [editingNo, setEditingNo] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
@@ -189,6 +197,46 @@ export function DocumentPage() {
   useEffect(() => {
     if (draft) setTitle(draft.title)
   }, [draft])
+
+  /** Достроить незаполненные разделы.
+
+      Со страницы документа генерацию запустить было нельзя вовсе: попав сюда
+      из конструктора с частично составленным договором, человек упирался в
+      тупик — оставалось начинать заново. */
+  const buildPending = async () => {
+    if (!draft || !tree || building) return
+    const keys = tree.sections.filter((s) => s.pending).map((s) => s.key).filter(Boolean) as string[]
+    if (!keys.length) return
+
+    setBuilding({ done: 0, total: keys.length, label: '' })
+    let jobId = ''
+    try {
+      const started = await api.post<JobResponse>(`/drafts/${draft.id}/generate`, { sections: keys })
+      jobId = started.job.id
+    } catch (e) {
+      setBuilding(null)
+      toast(errorMessage(e, t('errBuild')), 'err')
+      return
+    }
+
+    const stop = sse<Job>(
+      `/drafts/jobs/${jobId}/events`,
+      (j) => {
+        setBuilding({ done: j.progress.done, total: j.progress.total, label: j.progress.label })
+        if (j.status === 'done' || j.status === 'failed' || j.status === 'cancelled') {
+          stop()
+          setBuilding(null)
+          if (j.status === 'failed' && j.error) toast(j.error, 'err')
+          reload()
+        }
+      },
+      () => {
+        stop()
+        setBuilding(null)
+        reload()
+      },
+    )
+  }
 
   const saveTitle = async () => {
     if (!draft || !title.trim() || title === draft.title) return
@@ -284,7 +332,8 @@ export function DocumentPage() {
   }
 
   const hasTables = tree.tables.length > 0 || tree.annexes.some((a) => a.table)
-  const generating = tree.sections.some((s) => s.pending)
+  const pending = tree.sections.filter((s) => s.pending)
+  const shownIssues = tree.issues.filter((i) => i.code !== 'section_pending')
 
   return (
     <div className="page ct-doc">
@@ -348,11 +397,34 @@ export function DocumentPage() {
             onClauseClick={openClause}
             head={
               <>
-                {generating ? <Loading /> : null}
-                {tree.issues.length ? (
+                {building ? (
+                  <div className="ct-building">
+                    <Loading />
+                    <Caption tone="mute">
+                      {t('building')}: {building.done}/{building.total} {building.label}
+                    </Caption>
+                  </div>
+                ) : null}
+
+                {/* Несоставленные разделы — одно состояние документа, а не
+                    десяток новостей: развёрнутым списком они вытесняли сам
+                    договор ниже линии сгиба. */}
+                {pending.length ? (
+                  <div className="ct-pending">
+                    <UIText tone="mute">
+                      <span className="tabular">{pending.length}</span>{' '}
+                      {pending.length === 1 ? t('pendingOne') : t('pendingMany')}
+                    </UIText>
+                    <Button variant="secondary" onClick={buildPending} disabled={!!building}>
+                      {t('buildRest')}
+                    </Button>
+                  </div>
+                ) : null}
+
+                {shownIssues.length ? (
                   <div className="ct-issues">
                     <Label as="div">{t('issues')}</Label>
-                    {tree.issues.map((issue, i) => (
+                    {shownIssues.map((issue, i) => (
                       <div key={i} className={['ct-issue', issueClass(issue.level)].join(' ')}>
                         <UIText>{issue.message}</UIText>
                         {issue.code === 'essential_term_missing' ? (

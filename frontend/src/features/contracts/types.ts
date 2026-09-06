@@ -243,6 +243,10 @@ export interface Draft {
   id: string
   kind: 'contract' | 'law_project'
   type_id: string
+  /** Человеческое имя типа; приходит со списком, у одиночного документа нет. */
+  type_name?: string
+  /** Наименования сторон из формы; для реестра, дерево ради них не грузится. */
+  parties?: string[]
   title: string
   lang: string
   status: DraftStatus

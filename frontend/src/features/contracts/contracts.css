@@ -25,12 +25,9 @@
 }
 
 /* Честная пометка над экраном: невычитанный паспорт, оговорка типа */
-.ct-flag {
-  padding: var(--s-3) 0;
-  border-top: var(--border);
-  max-width: var(--measure);
-}
-.ct-flag--warn { border-top-color: var(--warn); }
+/* Пометка о невычитанности — строка статуса, а не раздел: линия сверху
+   обрывалась на середине ширины и читалась как чужой разделитель. */
+.ct-flag { padding: var(--s-3) 0 0; }
 
 /* ---------- Каталог ---------- */
 
@@ -87,6 +84,7 @@
 
 .ct-card__basis {
   display: flex;
+  align-items: baseline;
   flex-wrap: wrap;
   gap: var(--s-2);
   margin-top: var(--s-3);
@@ -103,12 +101,45 @@
   border-top: 1px solid var(--rule-soft);
 }
 
+.ct-card__family { margin-bottom: var(--s-2); color: var(--mute); }
 .ct-card__flag { margin-top: var(--s-2); }
-.ct-card__caveat {
+
+/* ---------- Оговорка ----------
+   Свёрнута по умолчанию. Развёрнутая, она вытесняла форму и лист ниже линии
+   сгиба, а в каталоге растягивала карточки до несопоставимых высот: сетка
+   рассыпалась от одного длинного текста. */
+
+.ct-caveat {
   margin-top: var(--s-3);
   padding-left: var(--s-3);
   border-left: 2px solid var(--ochre);
 }
+.ct-caveat__head {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--mute);
+  transition: color var(--motion);
+}
+.ct-caveat__head::-webkit-details-marker { display: none; }
+.ct-caveat__head::after {
+  content: '+';
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
+  color: var(--ochre-ink);
+}
+.ct-caveat[open] > .ct-caveat__head::after { content: '−'; }
+.ct-caveat__head:hover { color: var(--ink); }
+.ct-caveat__body {
+  display: block;
+  margin-top: var(--s-2);
+  max-width: var(--measure);
+}
+.ct-caveat[open] > .ct-caveat__body { animation: tura-unfold var(--motion-state) var(--ease) both; }
+
+.ct-card__caveat { margin-top: var(--s-3); }
 
 /* ---------- Конструктор: форма слева, лист справа ---------- */
 
@@ -226,11 +257,6 @@
   margin-top: var(--s-5);
   font-family: var(--font-serif);
   font-size: var(--t-legal-size);
-}
-.sheet__basis {
-  margin-top: var(--s-3);
-  padding-top: var(--s-2);
-  border-top: 1px solid var(--rule-soft);
 }
 
 .sheet__refs { display: inline-flex; flex-wrap: wrap; gap: var(--s-2); margin-left: var(--s-2); }
@@ -501,4 +527,40 @@
   .ct-cards { grid-template-columns: minmax(0, 1fr); }
   .sheet__meta { flex-direction: column; gap: var(--s-1); }
   .ct-doc__title { font-size: var(--t-h2-size); line-height: var(--t-h2-lh); }
+}
+
+
+/* ---------- Несоставленные разделы ----------
+   Свёрнуты в одну строку с действием: развёрнутым списком одинаковых
+   замечаний они вытесняли сам договор ниже линии сгиба. */
+
+.ct-pending {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  border-bottom: var(--border);
+  margin-bottom: var(--s-4);
+}
+.ct-building {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-bottom: var(--s-3);
+  margin-bottom: var(--s-3);
+  border-bottom: var(--border);
+}
+
+/* Пока не выверена ни одна ссылка, знак «?» у каждой из них — оформление,
+   а не предупреждение: оговорка стоит один раз над документом. */
+.sheet--unverified .sheet__unverified { display: none; }
+.sheet__disclaimer {
+  margin-bottom: var(--s-4);
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--ochre);
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  color: var(--mute);
 }

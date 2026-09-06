@@ -44,6 +44,13 @@ const UNVERIFIED_HINT: Record<DocLang, string> = {
   en: 'Citation is not verified against the corpus of legal acts',
 }
 
+/** Оговорка на весь документ, когда не выверена ни одна ссылка. */
+const NONE_VERIFIED: Record<DocLang, string> = {
+  ru: 'Ссылки на нормы приведены моделью и не выверены по корпусу актов',
+  kk: 'Нормаларға сілтемелерді модель келтірді, олар актілер корпусы бойынша тексерілмеген',
+  en: 'Citations were produced by the model and are not verified against the corpus',
+}
+
 /** Дата в договорной форме: «12 марта 2026 года». ISO оставляем как есть. */
 function formatDate(iso: string, lang: DocLang): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
@@ -67,7 +74,7 @@ function Refs({ refs, lang }: { refs: Ref[]; lang: DocLang }) {
           title={r.verified ? refLabel(r) : `${refLabel(r)} — ${UNVERIFIED_HINT[lang]}`}
         >
           {refLabel(r)}
-          {r.verified ? null : <span aria-hidden="true"> ?</span>}
+          {r.verified ? null : <span className="sheet__unverified" aria-hidden="true"> ?</span>}
         </span>
       ))}
     </span>
@@ -256,9 +263,26 @@ export function Sheet({
     tree.meta.lang === 'kk' || tree.meta.lang === 'en' ? tree.meta.lang : 'ru'
   const { requisites } = tree
 
+  /* Знак «?» у каждой ссылки без исключения ничего не сообщает: постоянный
+     признак читается как оформление, а не как предупреждение. Пока не выверена
+     ни одна ссылка, оговорка ставится один раз на весь документ. */
+  const anyVerified = tree.sections.some((s) =>
+    s.clauses.some(
+      (c) =>
+        c.refs.some((r) => r.verified) ||
+        c.subclauses.some((sub) => sub.refs.some((r) => r.verified)),
+    ),
+  )
+  const anyRefs = tree.sections.some((s) =>
+    s.clauses.some((c) => c.refs.length || c.subclauses.some((sub) => sub.refs.length)),
+  )
+
   return (
-    <article className="sheet" lang={lang}>
+    <article className={['sheet', anyVerified ? '' : 'sheet--unverified'].filter(Boolean).join(' ')} lang={lang}>
       {head}
+      {anyRefs && !anyVerified ? (
+        <p className="sheet__disclaimer">{NONE_VERIFIED[lang]}</p>
+      ) : null}
       <header className="sheet__head">
         <h2 className="sheet__title">
           {tree.meta.title}
@@ -268,11 +292,6 @@ export function Sheet({
           <span>{requisites.city ? CITY_WORD[lang](requisites.city) : ''}</span>
           <span>{requisites.date ? formatDate(requisites.date, lang) : ''}</span>
         </div>
-        {tree.meta.legal_basis.length ? (
-          <div className="sheet__basis">
-            <Refs refs={tree.meta.legal_basis} lang={lang} />
-          </div>
-        ) : null}
       </header>
 
       {tree.preamble ? <p className="sheet__preamble">{tree.preamble}</p> : null}
