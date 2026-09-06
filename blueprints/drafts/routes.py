@@ -549,6 +549,92 @@ def analyze(public_id: str):
     return jsonify({'success': True, 'perspective': perspective, **result})
 
 
+@drafts_bp.route('/<public_id>/to-library', methods=['POST'])
+@login_required
+def to_library(public_id: str):
+    """Положить составленный документ в библиотеку, в выбранное дело.
+
+    Это и делает библиотеку местом, где сходятся модули, а не пятой
+    изолированной функцией: по одному спору договор, переписка и судебное
+    решение лежат вместе, а не в трёх разных разделах продукта.
+
+    Файл собирается в Word и кладётся на диск как обычный документ — юрист
+    работает с ним теми же средствами, что и с присланным контрагентом.
+    """
+    import hashlib
+    import uuid as _uuid
+
+    from database.models import UserDocument, UserDocumentVersion
+    from docengine.render import to_docx
+    from workspace import storage
+
+    draft = _own_draft(public_id)
+    if not draft:
+        return _err('Документ не найден', 404, 'not_found')
+
+    tree = _tree_of(draft)
+    if not any(not s.pending for s in tree.sections):
+        return _err('Документ ещё не составлен: сначала сгенерируйте разделы',
+                    409, 'too_short')
+
+    matter_id = (request.get_json(silent=True) or {}).get('matter_id')
+    matter = None
+    if matter_id is not None:
+        from database.models import Matter
+
+        matter = db.session.query(Matter).filter_by(
+            id=matter_id, user_id=draft.owner_id).first()
+        if not matter:
+            return _err('Дело не найдено', 404, 'not_found')
+
+    blob, filename = to_docx(tree)
+    digest = hashlib.sha256(blob).hexdigest()
+
+    # Повторное сохранение той же редакции не плодит копий, но обновляет
+    # привязку к делу: чаще всего именно за этим и нажимают второй раз.
+    twin = db.session.query(UserDocument).filter_by(
+        user_id=draft.owner_id, sha256=digest).first()
+    if twin:
+        if matter:
+            twin.matter_id = matter.id
+            db.session.commit()
+        return jsonify({'success': True, 'document': twin.to_dict(), 'duplicate': True})
+
+    folder = storage.uploads_root() / str(draft.owner_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f'{_uuid.uuid4().hex}.docx'
+    path.write_bytes(blob)
+
+    doc = UserDocument(
+        user_id=draft.owner_id,
+        matter_id=matter.id if matter else draft.matter_id,
+        title=draft.title,
+        original_filename=filename,
+        storage_path=str(path.relative_to(storage.uploads_root())),
+        file_size=len(blob),
+        sha256=digest,
+        mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        source=draft.kind,
+        draft_id=draft.id,
+        status='pending',
+    )
+    db.session.add(doc)
+    db.session.flush()
+    db.session.add(UserDocumentVersion(
+        user_document_id=doc.id, version_no=1,
+        storage_path=doc.storage_path, file_size=doc.file_size,
+        sha256=digest, note=f'версия документа {draft.current_version}',
+    ))
+    if matter:
+        draft.matter_id = matter.id
+    db.session.commit()
+
+    jobs.enqueue('workspace.index', {'document_id': doc.id},
+                 owner_id=draft.owner_id, total=3)
+    log_usage('drafts', 'to_library', details={'kind': draft.kind, 'matter': bool(matter)})
+    return jsonify({'success': True, 'document': doc.to_dict()}), 201
+
+
 # ────────────────────────────── версии ───────────────────────────────
 
 
