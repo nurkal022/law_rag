@@ -111,7 +111,7 @@ class Passport(BaseModel):
     form: Trans = Field(description='Форма сделки: простая письменная, нотариальная, с госрегистрацией')
     # Честная оговорка: например, у агентского договора нет своей главы в ГК РК.
     caveat: Optional[Trans] = None
-    parties: list[PartySpec]
+    parties: list[PartySpec] = Field(default_factory=list)
     fields: list[Field_] = Field(default_factory=list)
     sections: list[SectionSpec]
     essential_terms: list[EssentialTerm] = Field(default_factory=list)
@@ -174,7 +174,10 @@ def load_catalog() -> dict[str, Passport]:
             raise CatalogError(f'{path.name}: {e}') from e
         if p.id in out:
             raise CatalogError(f'{path.name}: тип «{p.id}» уже определён')
-        if len(p.parties) < 2:
+        # Стороны есть у договора, но не у законопроекта: у закона нет
+        # контрагентов, и требовать их значило бы натягивать договорную
+        # модель на нормативный акт.
+        if p.kind == 'contract' and len(p.parties) < 2:
             raise CatalogError(f'{path.name}: у договора должно быть минимум две стороны')
         for term in p.essential_terms:
             for fname in term.fields:

@@ -1,0 +1,237 @@
+# Пакет законопроекта Республики Казахстан.
+#
+# Состав из тринадцати разделов перенесён из law_generator/templates.py, где
+# он сложился за время работы модуля. Требует сверки с Законом РК «О правовых
+# актах» и Регламентом Мажилиса: reviewed остаётся false, пока сверку не
+# сделает юрист.
+id: law_project
+kind: law_project
+name:
+  ru: Проект закона Республики Казахстан
+  kk: Қазақстан Республикасының заң жобасы
+  en: Draft law of the Republic of Kazakhstan
+family: legislation
+summary:
+  ru: >-
+    Полный пакет сопроводительных документов: пояснительная записка,
+    сравнительная таблица, финансовое обоснование, оценка регуляторного
+    воздействия и антикоррупционная экспертиза.
+  kk: >-
+    Ілеспе құжаттардың толық топтамасы: түсіндірме жазба, салыстырмалы кесте,
+    қаржылық негіздеме, реттеушілік әсерді бағалау және сыбайлас
+    жемқорлыққа қарсы сараптама.
+form:
+  ru: пакет документов к внесению в Мажилис
+  kk: Мәжіліске енгізуге арналған құжаттар топтамасы
+  en: package for submission to the Mazhilis
+caveat:
+  ru: >-
+    Состав пакета и структура текста закона требуют сверки с Законом РК
+    «О правовых актах» и действующим Регламентом Мажилиса. Документ готовит
+    юриста к работе, но не заменяет её.
+legal_basis:
+  - act: Конституция РК
+    article: '61'
+    note: право законодательной инициативы
+  - act: Закон РК «О правовых актах»
+    article: '1'
+    note: требует сверки редакции
+
+parties: []
+
+fields:
+  - name: title_ru
+    label: {ru: Название законопроекта, kk: Заң жобасының атауы, en: Draft law title}
+    group: subject
+    required: true
+    hint:
+      ru: Как в заголовке закона, без слова «проект»
+  - name: title_kz
+    label: {ru: Название на казахском, kk: Қазақша атауы, en: Title in Kazakh}
+    group: subject
+  - name: initiator
+    label: {ru: Инициатор, kk: Бастамашы, en: Initiator}
+    group: subject
+    required: true
+  - name: initiator_type
+    label: {ru: Тип инициатора, kk: Бастамашы түрі, en: Initiator type}
+    type: select
+    group: subject
+    required: true
+    options:
+      - {value: deputy, label: {ru: Депутат Парламента, kk: Парламент депутаты, en: Member of Parliament}}
+      - {value: government, label: {ru: Правительство, kk: Үкімет, en: Government}}
+      - {value: ministry, label: {ru: Министерство, kk: Министрлік, en: Ministry}}
+  - name: problem_description
+    label: {ru: Проблема, которую решает закон, kk: Заң шешетін мәселе, en: Problem addressed}
+    type: textarea
+    group: subject
+    required: true
+    hint:
+      ru: Что именно не работает сейчас и к каким последствиям это ведёт
+  - name: goals
+    label: {ru: Цели законопроекта, kk: Заң жобасының мақсаттары, en: Goals}
+    type: textarea
+    group: subject
+    required: true
+    hint:
+      ru: По одной цели в строке
+  - name: target_audience
+    label: {ru: Кого затрагивает, kk: Кімге қатысты, en: Who is affected}
+    group: subject
+  - name: current_legislation_gaps
+    label: {ru: Пробелы действующего законодательства, kk: Қолданыстағы заңнаманың олқылықтары, en: Gaps in current law}
+    type: textarea
+    group: terms
+  - name: constitutional_basis
+    label: {ru: Конституционная основа, kk: Конституциялық негіз, en: Constitutional basis}
+    type: textarea
+    group: terms
+  - name: international_experience
+    label: {ru: Международный опыт, kk: Халықаралық тәжірибе, en: International practice}
+    type: textarea
+    group: terms
+  - name: budget_impact
+    label: {ru: Влияние на бюджет, kk: Бюджетке әсері, en: Budget impact}
+    type: textarea
+    group: terms
+    required: true
+  - name: funding_sources
+    label: {ru: Источники финансирования, kk: Қаржыландыру көздері, en: Funding sources}
+    type: textarea
+    group: terms
+  - name: business_impact
+    label: {ru: Влияние на бизнес, kk: Бизнеске әсері, en: Impact on business}
+    type: textarea
+    group: terms
+  - name: citizen_impact
+    label: {ru: Влияние на граждан, kk: Азаматтарға әсері, en: Impact on citizens}
+    type: textarea
+    group: terms
+  - name: corruption_risks
+    label: {ru: Коррупционные риски, kk: Сыбайлас жемқорлық тәуекелдері, en: Corruption risks}
+    type: textarea
+    group: extra
+  - name: implementation_timeline
+    label: {ru: Сроки введения в действие, kk: Қолданысқа енгізу мерзімдері, en: Implementation timeline}
+    group: extra
+  - name: transitional_provisions
+    label: {ru: Переходные положения, kk: Өтпелі ережелер, en: Transitional provisions}
+    type: textarea
+    group: extra
+
+sections:
+  - key: annotation
+    title: {ru: Аннотация, kk: Аннотация, en: Abstract}
+    guidance:
+      ru: >-
+        Одна страница: на что направлен законопроект, какую проблему решает,
+        кого затрагивает и что изменится после принятия. Без общих слов —
+        каждое утверждение должно опираться на данные формы.
+  - key: explanatory_note
+    title: {ru: Пояснительная записка, kk: Түсіндірме жазба, en: Explanatory note}
+    guidance:
+      ru: >-
+        Обоснование необходимости: описание проблемы, пробелы действующего
+        законодательства, цели и задачи, ожидаемый результат, соответствие
+        Конституции и вышестоящим актам, международный опыт. Ссылки на
+        конкретные нормы обязательны.
+  - key: main_text
+    title: {ru: Текст законопроекта, kk: Заң жобасының мәтіні, en: Text of the draft law}
+    guidance:
+      ru: >-
+        Собственно нормативный текст: статьи с заголовками, внутри статей —
+        пункты и подпункты. Формулировки нормативные, в настоящем времени,
+        без пояснений и обоснований. Обязательны заключительные положения о
+        порядке введения в действие и, при необходимости, переходные положения.
+  - key: comparison_table
+    title: {ru: Сравнительная таблица, kk: Салыстырмалы кесте, en: Comparison table}
+    guidance:
+      ru: >-
+        Для каждой изменяемой нормы: действующая редакция, предлагаемая
+        редакция, обоснование изменения. Оформляется таблицей, а не текстом.
+  - key: financial
+    title: {ru: Финансово-экономическое обоснование, kk: Қаржы-экономикалық негіздеме, en: Financial justification}
+    guidance:
+      ru: >-
+        Расчёт расходов и доходов бюджета по годам, источники финансирования,
+        экономический эффект. Числа сводятся в таблицу; голословное «расходов
+        не требуется» недопустимо без обоснования.
+  - key: regulatory_impact
+    title: {ru: Оценка регуляторного воздействия, kk: Реттеушілік әсерді бағалау, en: Regulatory impact assessment}
+    guidance:
+      ru: >-
+        Влияние на предпринимательство и граждан, изменение административной
+        нагрузки, альтернативные способы решения проблемы и почему выбран
+        законодательный путь.
+  - key: compliance
+    title: {ru: Акт соответствия законодательству, kk: Заңнамаға сәйкестік актісі, en: Compliance act}
+    guidance:
+      ru: >-
+        Проверка на соответствие Конституции, кодексам и вышестоящим законам,
+        отсутствие противоречий и дублирования, соблюдение иерархии актов.
+  - key: anticorruption
+    title: {ru: Антикоррупционная экспертиза, kk: Сыбайлас жемқорлыққа қарсы сараптама, en: Anti-corruption review}
+    guidance:
+      ru: >-
+        Выявление коррупциогенных факторов: широта дискреционных полномочий,
+        неопределённость формулировок, отсылочные нормы, завышенные требования
+        к заявителю. По каждому фактору — способ устранения.
+  - key: forecast
+    title: {ru: Прогноз последствий, kk: Салдарды болжау, en: Impact forecast}
+    guidance:
+      ru: >-
+        Ожидаемые социальные, экономические и правовые последствия на горизонте
+        одного года, трёх и пяти лет, включая риски и меры их снижения.
+  - key: glossary
+    title: {ru: Глоссарий, kk: Глоссарий, en: Glossary}
+    guidance:
+      ru: >-
+        Термины, вводимые законопроектом, с определениями. Термин, уже
+        определённый в действующем законодательстве, переопределять нельзя —
+        вместо этого дать ссылку на источник определения.
+  - key: machine_readable
+    title: {ru: Машиночитаемое приложение, kk: Машинамен оқылатын қосымша, en: Machine-readable appendix}
+    required: false
+    guidance:
+      ru: >-
+        Структурированное представление метаданных законопроекта для
+        автоматической обработки: идентификаторы, связи с изменяемыми актами,
+        даты вступления в силу.
+
+essential_terms:
+  - key: title
+    label: {ru: Название законопроекта}
+    fields: [title_ru]
+  - key: initiator
+    label: {ru: Инициатор законодательной инициативы}
+    fields: [initiator]
+    basis: {act: Конституция РК, article: '61'}
+  - key: problem
+    label: {ru: Обоснование необходимости принятия}
+    fields: [problem_description]
+    section: explanatory_note
+  - key: financial
+    label: {ru: Финансово-экономическое обоснование}
+    fields: [budget_impact]
+    section: financial
+
+annexes:
+  - key: comparison
+    title: {ru: Сравнительная таблица изменений, kk: Өзгерістердің салыстырмалы кестесі, en: Comparison of amendments}
+    kind: table
+    default: true
+    columns:
+      - {ru: Действующая редакция}
+      - {ru: Предлагаемая редакция}
+      - {ru: Обоснование}
+  - key: costs
+    title: {ru: Расчёт расходов по годам, kk: Жылдар бойынша шығыстар есебі, en: Cost estimate by year}
+    kind: table
+    columns:
+      - {ru: Статья расходов}
+      - {ru: Первый год}
+      - {ru: Второй год}
+      - {ru: Третий год}
+
+reviewed: false

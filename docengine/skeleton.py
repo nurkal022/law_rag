@@ -166,11 +166,19 @@ def build_skeleton(passport: Passport, values: dict, lang: str = 'ru') -> DocTre
     values = dict(values or {})
     values.setdefault('lang', lang)
 
+    # Название документа: своё, если человек его дал, иначе имя типа.
+    # Для законопроекта это принципиально — «О внесении изменений в Закон
+    # о госзакупках», а не «Проект закона Республики Казахстан».
+    own_title = _first(values, 'title', f'title_{lang}', 'title_ru', 'title_kz', 'name')
+    if own_title and passport.kind != 'contract':
+        own_title = f'{passport.name.get(lang)} «{own_title}»' \
+            if not own_title.lower().startswith(('проект', 'о ', 'об ')) else own_title
+
     meta = Meta(
         kind=passport.kind,
         type_id=passport.id,
         lang=lang,
-        title=passport.name.get(lang),
+        title=own_title or passport.name.get(lang),
         subtitle=passport.summary.get(lang) or None,
         form=passport.form.get(lang) or None,
         legal_basis=[r.model_copy(deep=True) for r in passport.legal_basis],
@@ -186,7 +194,10 @@ def build_skeleton(passport: Passport, values: dict, lang: str = 'ru') -> DocTre
     tree = DocTree(
         meta=meta,
         requisites=requisites,
-        preamble=build_preamble(requisites, lang),
+        # Договорная формула «стороны заключили настоящий договор» к
+        # нормативному акту неприменима: у закона нет контрагентов.
+        # Преамбулу законопроекта пишет модель в первом разделе.
+        preamble=build_preamble(requisites, lang) if passport.kind == 'contract' else '',
         sections=[
             Section(key=spec.key, title=spec.title.get(lang), clauses=[], pending=True)
             for spec in passport.sections
