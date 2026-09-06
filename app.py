@@ -28,6 +28,7 @@ logging.basicConfig(
     level=os.getenv('LOG_LEVEL', 'INFO'),
     format='%(asctime)s %(levelname)-7s %(name)s: %(message)s',
 )
+log = logging.getLogger('lawvision')
 
 # Инициализация компонентов RAG системы
 db_manager = DatabaseManager()
@@ -49,21 +50,21 @@ try:
     if provider:
         generator = ResponseGenerator(provider=provider)
         law_generator = LawProjectGenerator(provider=provider, database_manager=db_manager)
-        print(f"✅ LLM провайдер инициализирован: {Config.LLM_PROVIDER_TYPE}")
+        log.info(f"LLM провайдер инициализирован: {Config.LLM_PROVIDER_TYPE}")
         
         # Проверяем доступность провайдера
         if not provider.is_available():
-            print(f"⚠️  ВНИМАНИЕ: Ollama недоступна!")
-            print("   Убедитесь, что Ollama запущена: ollama serve")
-            print("   Или установите модель: ollama pull gpt-oss:20b")
+            log.warning("Ollama недоступна!")
+            log.info("   Убедитесь, что Ollama запущена: ollama serve")
+            log.info("   Или установите модель: ollama pull gpt-oss:20b")
     else:
-        print("⚠️  ВНИМАНИЕ: LLM провайдер не настроен!")
-        print("   Убедитесь, что Ollama запущена на http://localhost:11434")
-        print("   Установите модель: ollama pull gpt-oss:20b")
-        print("   Установите LLM_PROVIDER_TYPE=ollama в .env")
+        log.warning("LLM провайдер не настроен!")
+        log.info("   Убедитесь, что Ollama запущена на http://localhost:11434")
+        log.info("   Установите модель: ollama pull gpt-oss:20b")
+        log.info("   Установите LLM_PROVIDER_TYPE=ollama в .env")
 except Exception as e:
-    print(f"⚠️  Ошибка инициализации LLM провайдера: {e}")
-    print("   Проверьте настройки в config.py или переменные окружения")
+    log.exception(f"Ошибка инициализации LLM провайдера: {e}")
+    log.info("   Проверьте настройки в config.py или переменные окружения")
 
 # Инициализация модуля договоров
 contract_templates = ContractTemplates()
@@ -73,9 +74,9 @@ try:
     if provider:
         contract_generator = ContractGenerator(provider=provider)
         contract_analyzer = ContractAnalyzer(provider=provider)
-        print("✅ Модуль договоров инициализирован")
+        log.info("Модуль договоров инициализирован")
 except Exception as e:
-    print(f"⚠️  Ошибка инициализации модуля договоров: {e}")
+    log.exception(f"Ошибка инициализации модуля договоров: {e}")
 
 # Инициализация валидатора данных и экспортера
 data_validator = DataValidator()
@@ -281,7 +282,7 @@ def initialize_rag_system():
     
     try:
         rag_initializing = True
-        print("🔄 Инициализация ИИ системы поиска по документам...")
+        log.info("Инициализация ИИ системы поиска по документам...")
         
         with app.app_context():
             doc_processor = DocumentProcessor(db_manager)
@@ -296,12 +297,12 @@ def initialize_rag_system():
         # поисковик нужен и ему — включая фоновый воркер, у которого нет
         # доступа к переменным этого модуля.
         app.config['RAG_RETRIEVER'] = retriever
-        print("✅ ИИ система успешно инициализирована")
+        log.info("ИИ система успешно инициализирована")
         return True
 
     except Exception as e:
         rag_initializing = False
-        print(f"❌ Ошибка инициализации ИИ системы: {e}")
+        log.exception(f"Ошибка инициализации ИИ системы: {e}")
         return False
 
 def ensure_rag_initialized():
@@ -434,7 +435,7 @@ if os.getenv('RAG_AUTOINIT', '1') == '1':
         try:
             initialize_rag_system()
         except Exception as e:
-            print(f"⚠️  Фоновая инициализация RAG не удалась: {e}")
+            log.warning(f"Фоновая инициализация RAG не удалась: {e}")
     threading.Thread(target=_bg_rag_init, daemon=True, name='rag-autoinit').start()
 
 
@@ -640,7 +641,7 @@ def chat():
                 search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
                 formatted_results = retriever.format_search_results(search_results)
             except Exception as e:
-                print(f"Ошибка при поиске документов: {e}")
+                log.exception(f"Ошибка при поиске документов: {e}")
                 error_msg = f"Ошибка при поиске документов: {str(e)}"
                 return jsonify({
                     'error': error_msg,
@@ -672,7 +673,7 @@ def chat():
                 )
                 response_data['model_type'] = 'ollama'
         except Exception as e:
-            print(f"Ошибка при генерации ответа: {e}")
+            log.exception(f"Ошибка при генерации ответа: {e}")
             error_msg = f"Ошибка при генерации ответа: {str(e)}"
             return jsonify({
                 'error': error_msg,
@@ -693,7 +694,7 @@ def chat():
                     response_data['sources']
                 )
             except Exception as e:
-                print(f"Ошибка сохранения истории: {e}")
+                log.exception(f"Ошибка сохранения истории: {e}")
             log_usage('chat', 'ask', details={
                 'query_len': len(user_query),
                 'sources_count': len(response_data.get('sources') or []),
@@ -715,7 +716,7 @@ def chat():
         
     except Exception as e:
         import traceback
-        print(f"Ошибка в чате: {e}")
+        log.exception(f"Ошибка в чате: {e}")
         traceback.print_exc()
         return jsonify({
             'error': f'Произошла ошибка: {str(e)}',
@@ -750,7 +751,7 @@ def search_documents():
         })
         
     except Exception as e:
-        print(f"Ошибка поиска: {e}")
+        log.exception(f"Ошибка поиска: {e}")
         return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
 
 @app.route('/api/document/<int:chunk_id>')
@@ -776,7 +777,7 @@ def get_document_chunk(chunk_id):
         })
         
     except Exception as e:
-        print(f"Ошибка получения чанка: {e}")
+        log.exception(f"Ошибка получения чанка: {e}")
         return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
 
 @app.route('/api/history')
@@ -791,7 +792,7 @@ def chat_history():
         return jsonify({'history': history})
         
     except Exception as e:
-        print(f"Ошибка получения истории: {e}")
+        log.exception(f"Ошибка получения истории: {e}")
         return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
 
 @app.route('/api/stats')
@@ -802,7 +803,7 @@ def get_stats():
         return jsonify(stats)
         
     except Exception as e:
-        print(f"Ошибка получения статистики: {e}")
+        log.exception(f"Ошибка получения статистики: {e}")
         return jsonify({'error': f'Произошла ошибка: {str(e)}'}), 500
 
 @app.route('/api/rag/initialize', methods=['POST'])
@@ -842,7 +843,7 @@ def initialize_rag():
             }), 500
             
     except Exception as e:
-        print(f"Ошибка инициализации системы поиска: {e}")
+        log.exception(f"Ошибка инициализации системы поиска: {e}")
         return jsonify({
             'success': False,
             'message': f'Произошла ошибка: {str(e)}',
@@ -1261,7 +1262,7 @@ def get_demo_analytics():
         })
         
     except Exception as e:
-        print(f"Ошибка загрузки демо-данных: {e}")
+        log.exception(f"Ошибка загрузки демо-данных: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -1370,7 +1371,7 @@ def get_advanced_metrics():
         })
         
     except Exception as e:
-        print(f"Ошибка получения расширенных метрик: {e}")
+        log.exception(f"Ошибка получения расширенных метрик: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -1419,7 +1420,7 @@ def get_ml_insights():
         })
         
     except Exception as e:
-        print(f"Ошибка получения ML-инсайтов: {e}")
+        log.exception(f"Ошибка получения ML-инсайтов: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -1530,7 +1531,7 @@ def export_contract():
             blob, filename = to_pdf(text, contract_type)
             mime = 'application/pdf'
     except Exception as e:
-        print(f"❌ contracts export ({fmt}): {e}")
+        log.exception(f"contracts export ({fmt}): {e}")
         return jsonify({'success': False, 'error': f'Ошибка экспорта: {e}'}), 500
 
     log_usage('contracts', 'export', details={'type': contract_type, 'format': fmt, 'size': len(blob)})
@@ -1554,61 +1555,58 @@ def internal_error(error):
 # Инициализация при запуске
 def initialize_app():
     """Инициализация приложения"""
-    print("🚀 Запуск LawVision — юридическая платформа")
-    print("=" * 60)
+    log.info("🚀 Запуск LawVision — юридическая платформа")
     
     # Проверяем наличие документов
     if os.path.exists(Config.DOCUMENTS_DIR):
         doc_count = len([f for f in os.listdir(Config.DOCUMENTS_DIR) if f.endswith('.txt')])
-        print(f"📁 Найдено {doc_count} документов в {Config.DOCUMENTS_DIR}")
+        log.info(f"📁 Найдено {doc_count} документов в {Config.DOCUMENTS_DIR}")
     else:
-        print(f"⚠️  Директория с документами {Config.DOCUMENTS_DIR} не найдена")
+        log.warning(f"Директория с документами {Config.DOCUMENTS_DIR} не найдена")
     
     # Проверяем базу данных (в контексте приложения)
     with app.app_context():
         stats = db_manager.get_documents_stats()
-        print(f"🗄️  База данных: {stats['documents_count']} документов, {stats['chunks_count']} чанков")
-        print(f"🧠 Embeddings: {stats['chunks_with_embeddings']} чанков ({stats['embedding_progress']:.1f}%)")
+        log.info(f"🗄️  База данных: {stats['documents_count']} документов, {stats['chunks_count']} чанков")
+        log.info(f"🧠 Embeddings: {stats['chunks_with_embeddings']} чанков ({stats['embedding_progress']:.1f}%)")
         
         # Автоматическая инициализация RAG системы
         if stats['chunks_with_embeddings'] > 0:
-            print("\n🔄 Автоматическая инициализация ИИ системы...")
+            log.info("\nАвтоматическая инициализация ИИ системы...")
             initialize_rag_system()
         elif stats['documents_count'] > 0 and stats['chunks_count'] == 0:
-            print("\n🔄 Обработка документов и инициализация ИИ системы...")
+            log.info("\nОбработка документов и инициализация ИИ системы...")
             initialize_rag_system()
             if doc_processor:
                 result = doc_processor.process_all_documents(Config.DOCUMENTS_DIR)
                 if result.get('processed', 0) > 0:
-                    print(f"✅ Обработано {result['processed']} документов")
+                    log.info(f"Обработано {result['processed']} документов")
 
         # Обновляем stats после возможной обработки
         stats = db_manager.get_documents_stats()
         if stats['chunks_with_embeddings'] > 0:
-            print(f"\n✅ База данных готова: {stats['documents_count']} документов, {stats['chunks_with_embeddings']} чанков с embeddings")
+            log.info(f"\nБаза данных готова: {stats['documents_count']} документов, {stats['chunks_with_embeddings']} чанков с embeddings")
         elif stats['documents_count'] > 0:
-            print("\n⚠️  Embeddings не созданы. Перейдите в /admin для обработки")
+            log.warning("\nEmbeddings не созданы. Перейдите в /admin для обработки")
     
     # Проверяем статус LLM провайдера
     try:
         from llm_providers.factory import LLMProviderFactory
         provider = LLMProviderFactory.get_current_provider()
         if provider and provider.is_available():
-            print(f"\n✅ LLM провайдер настроен: {Config.LLM_PROVIDER_TYPE} ({Config.LLM_MODEL})")
+            log.info(f"\nLLM провайдер настроен: {Config.LLM_PROVIDER_TYPE} ({Config.LLM_MODEL})")
         else:
-            print("\n⚠️  ВНИМАНИЕ: LLM провайдер не доступен!")
-            print(f"   Тип: {Config.LLM_PROVIDER_TYPE}")
-            print(f"   Убедитесь, что Ollama запущена на {Config.OLLAMA_BASE_URL}")
-            print("   Запустите: ollama serve")
-            print("   Установите модель: ollama pull gpt-oss:20b")
+            log.warning("\nВНИМАНИЕ: LLM провайдер не доступен!")
+            log.info(f"   Тип: {Config.LLM_PROVIDER_TYPE}")
+            log.info(f"   Убедитесь, что Ollama запущена на {Config.OLLAMA_BASE_URL}")
+            log.info("   Запустите: ollama serve")
+            log.info("   Установите модель: ollama pull gpt-oss:20b")
     except Exception as e:
-        print(f"\n⚠️  Ошибка проверки LLM провайдера: {e}")
+        log.exception(f"\nОшибка проверки LLM провайдера: {e}")
     
-    print("=" * 60)
-    print("🌐 LawVision готов к работе!")
-    print("   Интерфейс: http://localhost:5003")
-    print("   Админ панель: http://localhost:5003/admin")
-    print("=" * 60)
+    log.info("🌐 LawVision готов к работе!")
+    log.info("   Интерфейс: http://localhost:5003")
+    log.info("   Админ панель: http://localhost:5003/admin")
 
 if __name__ == '__main__':
     initialize_app()
