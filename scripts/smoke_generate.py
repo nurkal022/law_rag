@@ -85,12 +85,17 @@ def main() -> int:
           f'из {len(tree.sections)}')
     print(f'Пунктов: {sum(1 for _ in tree.walk_clauses())}')
 
-    issues = check(tree, passport, values)
+    # Замечания берём из самого дерева: там уже лежат провалы генерации,
+    # а отдельный вызов проверки их не видит и молча их скрывает.
+    issues = tree.issues or check(tree, passport, values)
     errors = [i for i in issues if i.level == 'error']
     warnings = [i for i in issues if i.level == 'warning']
     print(f'Замечания: {len(errors)} ошибок, {len(warnings)} предупреждений')
-    for i in errors[:5]:
-        print(f'  ошибка: {i.message}')
+    failed = [i for i in issues if i.code == 'section_failed']
+    if failed:
+        print(f'\nНЕ СГЕНЕРИРОВАНО РАЗДЕЛОВ: {len(failed)}')
+    for i in errors[:6]:
+        print(f'  ошибка: {i.message[:160]}')
     for i in warnings[:5]:
         print(f'  внимание: {i.message}')
 

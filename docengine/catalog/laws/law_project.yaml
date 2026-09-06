@@ -63,7 +63,10 @@ fields:
       - {value: government, label: {ru: Правительство, kk: Үкімет, en: Government}}
       - {value: ministry, label: {ru: Министерство, kk: Министрлік, en: Ministry}}
   - name: problem_description
-    label: {ru: Проблема, которую решает закон, kk: Заң шешетін мәселе, en: Problem addressed}
+    label:
+      ru: Проблема, которую решает закон
+      kk: Заң шешетін мәселе
+      en: Problem addressed
     type: textarea
     group: subject
     required: true

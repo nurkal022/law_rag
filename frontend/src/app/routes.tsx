@@ -28,8 +28,17 @@ const MattersPage = lazy(() =>
 const DocumentPage = lazy(() =>
   import('../features/workspace/DocumentPage').then((m) => ({ default: m.DocumentPage })),
 )
-const ContractsPage = lazy(() =>
-  import('../features/contracts/ContractsPage').then((m) => ({ default: m.ContractsPage })),
+const CatalogPage = lazy(() =>
+  import('../features/contracts/CatalogPage').then((m) => ({ default: m.CatalogPage })),
+)
+const ContractBuilderPage = lazy(() =>
+  import('../features/contracts/BuilderPage').then((m) => ({ default: m.BuilderPage })),
+)
+const ContractDocumentPage = lazy(() =>
+  import('../features/contracts/DocumentPage').then((m) => ({ default: m.DocumentPage })),
+)
+const MyContractsPage = lazy(() =>
+  import('../features/contracts/MyContractsPage').then((m) => ({ default: m.MyContractsPage })),
 )
 const LawsPage = lazy(() => import('../features/laws/LawsPage').then((m) => ({ default: m.LawsPage })))
 const AnalyticsPage = lazy(() =>
@@ -69,7 +78,12 @@ const pages: RouteObject[] = [
       { path: 'workspace', element: <Deferred><LibraryPage /></Deferred> },
       { path: 'workspace/documents/:id', element: <Deferred><DocumentPage /></Deferred> },
       { path: 'matters', element: <Deferred><MattersPage /></Deferred> },
-      { path: 'contracts', element: <Deferred><ContractsPage /></Deferred> },
+      // Порядок важен: 'new/:type' и 'mine' обязаны стоять до ':id',
+      // иначе конструктор откроется как документ с идентификатором «new».
+      { path: 'contracts', element: <Deferred><CatalogPage /></Deferred> },
+      { path: 'contracts/mine', element: <Deferred><MyContractsPage /></Deferred> },
+      { path: 'contracts/new/:type', element: <Deferred><ContractBuilderPage /></Deferred> },
+      { path: 'contracts/:id', element: <Deferred><ContractDocumentPage /></Deferred> },
       { path: 'laws', element: <Deferred><LawsPage /></Deferred> },
       { path: 'analytics', element: <Deferred><AnalyticsPage /></Deferred> },
       { path: 'admin', element: <Deferred><AdminPage /></Deferred> },

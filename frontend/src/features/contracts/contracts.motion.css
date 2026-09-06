@@ -1,66 +1,39 @@
 /* ============================================================
-   TURA — конструктор договоров: движение и состояния действий.
-
-   Отдельный файл: раскладка живёт в contracts.css и правится
-   независимо. Здесь только то, что связано с работой действий —
-   раскрытие находки, ошибка обязательного поля, выбор формата,
-   ход имитации. Значения — исключительно токенами.
+   TURA — договоры: движение.
+   Движение объясняет причину: откуда взялся пункт, что изменилось
+   в листе. Всё остальное стоит неподвижно.
    ============================================================ */
 
-/* ---------- Ход операции ----------
-   Полоса набора и подпись под ней: человек должен видеть, что
-   составление идёт, а не что экран замер. */
-.ctm-run {
-  display: grid;
-  gap: var(--s-2);
-  padding: var(--s-5) 0;
+/* Карточка типа: линия печати слева наливается при наведении */
+.ct-card { position: relative; }
+.ct-card::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--seal);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--motion-state);
+}
+.ct-card:hover::before { transform: scaleY(1); }
+
+/* Раздел листа, который ещё пишется: пунктир слегка дышит, как строка набора */
+.sheet__pending { animation: tura-pending 1.8s ease-in-out infinite; }
+@keyframes tura-pending {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-/* ---------- Незаполненное обязательное поле ----------
-   Рамка поля берёт цвет ошибки; подпись под полем даёт причину. */
-.ct-split .field__control[aria-invalid='true'] {
-  border-color: var(--err);
-}
+/* Пункт, только что применённый моделью, проявляется мягко */
+.sheet__clause { animation: none; }
+.sheet__clause--on .sheet__clause-body { transition: background-color var(--motion-state); }
 
-/* ---------- Выбор формата выгрузки ----------
-   Появляется по нажатию «Экспорт» и заменяет собой пустоту в ряду
-   действий, а не всплывает поверх экрана. */
-.ctm-export {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s-2);
-}
+/* Пункт правки в ленте и раскрытие версии — общий приём раскрытия */
+.ct-turn { animation: tura-unfold var(--motion-state) var(--ease) both; }
 
-/* ---------- Находка: строка-переключатель ----------
-   Свёрнутая находка — формулировка и уровень. Кнопка не выглядит
-   кнопкой: она занимает всю строку и подсвечивает только текст. */
-.ctm-toggle {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: 0;
-  padding: 0;
+@media (prefers-reduced-motion: reduce) {
+  .sheet__pending { animation: none; }
 }
-.ctm-toggle:hover .ct-finding__problem { color: var(--seal); }
-
-.ctm-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s-3);
-  margin-bottom: var(--s-2);
-}
-
-/* Знак раскрытия заменяет слово «развернуть», а не украшает строку */
-.ctm-mark {
-  margin-left: auto;
-  font-family: var(--font-sans);
-  font-size: var(--t-ui-size);
-  line-height: var(--t-ui-lh);
-  color: var(--mute);
-}
-
-/* Раскрытая часть находки отбивается от строки воздухом, не рамкой */
-.ctm-body { padding-top: var(--s-2); }
