@@ -1,0 +1,129 @@
+/* ============================================================
+   TURA — вид разговора.
+
+   Прямоугольные блоки со штампами «ВЫ»/«TURA» читались как таблица,
+   а не как беседа. Реплика человека — пузырь справа, ответ — просто
+   текст. Скругления берутся из --radius-bubble / --radius-pill:
+   это задокументированное исключение из нулевого радиуса, и живёт
+   оно только здесь.
+   ============================================================ */
+
+.chat__turn { margin-bottom: var(--s-8); }
+
+/* ---------- Реплика человека ---------- */
+.msg { display: flex; }
+.msg--you { justify-content: flex-end; margin-bottom: var(--s-6); }
+
+.msg__bubble {
+  max-width: 80%;
+  padding: var(--s-3) var(--s-5);
+  background: var(--surface);
+  border: var(--border);
+  border-radius: var(--radius-bubble);
+  font-family: var(--font-sans);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.chat-ask__file {
+  display: block;
+  margin-top: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
+  color: var(--mute);
+}
+
+/* ---------- Ответ ----------
+   Ни рамки, ни заливки: текст на бумаге, как в документе. */
+.chat__answer { border: 0; padding: 0; background: none; }
+
+/* ---------- Действия под ответом ----------
+   Неброский ряд: появляется, но не спорит с текстом. */
+.chat__acts {
+  display: flex;
+  gap: var(--s-1);
+  margin-top: var(--s-3);
+  opacity: 0.55;
+  transition: opacity var(--motion);
+}
+.chat__turn:hover .chat__acts,
+.chat__acts:focus-within { opacity: 1; }
+.chat__acts .btn { font-size: var(--t-caption-size); padding-inline: var(--s-2); }
+
+/* ---------- Строка ввода ---------- */
+.chat__composer { border-top: 0; }
+
+.chat__hint {
+  display: block;
+  text-align: center;
+  margin-bottom: var(--s-2);
+}
+
+.bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  transition: border-color var(--motion);
+}
+.bar:focus-within { border-color: var(--ink-2); }
+
+/* Компонент Textarea оборачивает поле в .field, поэтому растягивать надо
+   обёртку, а не сам textarea — иначе поле остаётся узкой коробкой. */
+.bar > .field { flex: 1; min-width: 0; }
+
+.bar .field__control {
+  border: 0;
+  border-radius: 0;
+  padding: var(--s-2) 0;
+  background: none;
+  min-height: 0;
+  font-size: var(--t-body-size);
+  resize: none;
+}
+.bar .field__control:focus { outline: none; border: 0; }
+.bar .field__control--area { min-height: 0; }
+.bar .field__hint { display: none; }
+
+.bar__attach,
+.bar__go {
+  flex: none;
+  width: var(--s-8);
+  height: var(--s-8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border: 0;
+  font-family: var(--font-sans);
+  font-size: var(--t-body-size);
+  line-height: 1;
+  transition: background-color var(--motion), color var(--motion), opacity var(--motion);
+}
+
+.bar__attach { background: none; color: var(--mute); }
+.bar__attach:hover { background: var(--ink-wash); color: var(--ink); }
+
+.bar__go { background: var(--ink); color: var(--paper); }
+.bar__go:hover:not(:disabled) { background: var(--ink-2); }
+.bar__go:disabled { opacity: 0.3; cursor: not-allowed; }
+.bar__go--stop { background: var(--seal); }
+
+/* Вложение — строкой над вводом */
+.chat-attach {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+  padding-inline: var(--s-4);
+}
+
+@media (max-width: 860px) {
+  .msg__bubble { max-width: 88%; }
+  .chat__acts { opacity: 1; }
+}

@@ -9,7 +9,6 @@ import {
   Label,
   Mono,
   Textarea,
-  UIText,
   useToast,
 } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
@@ -19,6 +18,7 @@ import { ANSWERS, EXAMPLES, pickAnswer } from './mock'
 import type { MockAnswer, Seg } from './mock'
 import './chat.css'
 import './sidebar.css'
+import './bubbles.css'
 import './chat.motion.css'
 import { Link } from '../../shared/nav'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -60,9 +60,9 @@ const dict: Dict = {
     en: 'Answer added to the matter',
   },
   placeholder: {
-    ru: 'Сформулируйте вопрос: обстоятельства, вид договора, что нужно выяснить',
-    kz: 'Сұрағыңызды тұжырымдаңыз: мән-жайлар, шарт түрі, нені анықтау қажет',
-    en: 'State your question: the facts, the type of contract, what you need to find out',
+    ru: 'Спросите о чём угодно по праву РК',
+    kz: 'ҚР құқығы бойынша кез келген нәрсені сұраңыз',
+    en: 'Ask anything about the law of Kazakhstan',
   },
   send: { ru: 'Спросить', kz: 'Сұрау', en: 'Ask' },
   stop: { ru: 'Остановить', kz: 'Тоқтату', en: 'Stop' },
@@ -341,19 +341,19 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
 
   return (
     <article className="chat__turn enter">
-      <Label className="chat__stamp">{t('you')}</Label>
-      <UIText className="chat__ask">
-        {qText}
-        {turn.attachment ? (
-          <span className="chat-ask__file">
-            {t('withFile')} {turn.attachment}
-          </span>
-        ) : null}
-      </UIText>
+      {/* Реплика человека — пузырём справа; штампы «ВЫ» и «TURA» убраны:
+          в разговоре и так видно, кто говорит. */}
+      <div className="msg msg--you">
+        <div className="msg__bubble">
+          {qText}
+          {turn.attachment ? (
+            <span className="chat-ask__file">
+              {t('withFile')} {turn.attachment}
+            </span>
+          ) : null}
+        </div>
+      </div>
 
-      <Label className="chat__stamp" style={{ marginTop: 'var(--s-5)' }}>
-        {t('assistant')}
-      </Label>
       <div
         className="chat__answer t-legal"
         aria-busy={busy || undefined}
@@ -410,10 +410,6 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
               {t('saveAct')}
             </Button>
           </div>
-
-          <Caption tone="mute" as="p" style={{ marginTop: 'var(--s-3)' }}>
-            {t('disclaimer')}
-          </Caption>
         </>
       ) : (
         <Caption tone="mute" as="p" style={{ marginTop: 'var(--s-3)' }} role="status">
@@ -677,28 +673,7 @@ export function ChatPage() {
               </div>
             ) : null}
 
-            <div ref={boxRef}>
-              <Textarea
-                className="chat__input"
-                rows={2}
-                value={draft}
-                aria-label={t('ariaInput')}
-                placeholder={t('placeholder')}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    send(draft)
-                  }
-                }}
-              />
-            </div>
-
-            <div className="chat__bar">
-              <Caption tone="mute" className="chat__hint">
-                {t('hint')}
-              </Caption>
-
+            <div className="bar" ref={boxRef}>
               <input
                 ref={fileRef}
                 type="file"
@@ -711,19 +686,51 @@ export function ChatPage() {
                   e.target.value = ''
                 }}
               />
-              <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-                {t('attach')}
-              </Button>
+              <button
+                type="button"
+                className="bar__attach"
+                aria-label={t('attach')}
+                title={t('attach')}
+                onClick={() => fileRef.current?.click()}
+              >
+                +
+              </button>
+
+              <Textarea
+                className="chat__input bar__field"
+                rows={1}
+                value={draft}
+                aria-label={t('ariaInput')}
+                placeholder={t('placeholder')}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    send(draft)
+                  }
+                }}
+              />
+
               {streamingId !== null ? (
-                <Button variant="secondary" onClick={stop}>
-                  {t('stop')}
-                </Button>
+                <button type="button" className="bar__go bar__go--stop" onClick={stop} aria-label={t('stop')}>
+                  ■
+                </button>
               ) : (
-                <Button variant="primary" onClick={() => send(draft)} disabled={!draft.trim()}>
-                  {t('send')}
-                </Button>
+                <button
+                  type="button"
+                  className="bar__go"
+                  onClick={() => send(draft)}
+                  disabled={!draft.trim()}
+                  aria-label={t('send')}
+                >
+                  ↑
+                </button>
               )}
             </div>
+
+            <Caption tone="mute" className="chat__hint">
+              {t('hint')}
+            </Caption>
           </div>
         </div>
       </div>
