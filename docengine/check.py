@@ -106,13 +106,20 @@ def check(tree: DocTree, passport: Passport, values: dict) -> list[Issue]:
     # ---- реквизиты сторон
     for i, party in enumerate(tree.requisites.parties):
         who = party.role or f'сторона {i + 1}'
-        for attr, label in (('name', 'наименование'), ('id_no', 'ИИН/БИН'), ('address', 'адрес')):
+        # Род существительного меняет глагол: «не заполнен адрес», но
+        # «не заполнено наименование». Хранить его рядом с подписью дешевле,
+        # чем потом объяснять юристу, почему система пишет с ошибками.
+        for attr, label, verb in (
+            ('name', 'наименование', 'не заполнено'),
+            ('id_no', 'ИИН/БИН', 'не заполнен'),
+            ('address', 'адрес', 'не заполнен'),
+        ):
             if not (getattr(party, attr, '') or '').strip():
                 issues.append(
                     Issue(
                         level='warning',
                         code=f'party_{attr}_empty',
-                        message=f'У стороны «{who}» не заполнено {label}.',
+                        message=f'У стороны «{who}» {verb} {label}.',
                     )
                 )
         id_no = (party.id_no or '').strip()

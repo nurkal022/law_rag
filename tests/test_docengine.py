@@ -446,3 +446,26 @@ def test_wrong_key_is_a_parse_miss_not_an_empty_section():
 
     with pytest.raises(ValidationError):
         SectionResult(**{'sections': [{'text': 'что-то'}]})
+
+
+def test_warnings_agree_in_gender():
+    """«не заполнен адрес», но «не заполнено наименование»: система, пишущая
+    с ошибками, теряет доверие юриста быстрее, чем на неверной норме."""
+    from docengine.check import check
+    from docengine.passport import Passport
+    from docengine.schema import DocTree, Meta, Party, Requisites
+
+    p = Passport(
+        id='x', name={'ru': 'Договор'}, family='services', summary={'ru': '—'},
+        form={'ru': 'простая письменная'},
+        parties=[{'role': {'ru': 'Заказчик'}}, {'role': {'ru': 'Исполнитель'}}],
+        sections=[{'key': 's', 'title': {'ru': 'Предмет'},
+                   'guidance': {'ru': 'Опиши предмет договора подробно и по существу'}}],
+    )
+    tree = DocTree(meta=Meta(kind='contract', type_id='x', title='Договор'),
+                   requisites=Requisites(parties=[Party(role='Заказчик')]))
+    messages = ' '.join(i.message for i in check(tree, p, {}))
+    assert 'не заполнен адрес' in messages
+    assert 'не заполнен ИИН/БИН' in messages
+    assert 'не заполнено наименование' in messages
+    assert 'не заполнено адрес' not in messages
