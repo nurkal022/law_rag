@@ -14,6 +14,7 @@ const ACTS: { ru: string; kz: string; en: string }[] = [
   { ru: 'Конституция РК', kz: 'ҚР Конституциясы', en: 'RK Constitution' },
   { ru: 'Договор о ЕАЭС', kz: 'ЕАЭО туралы шарт', en: 'EAEU Treaty' },
   { ru: 'ЗРК О ПА', kz: 'Құқықтық актілер туралы ҚР Заңы', en: 'RK Law on Legal Acts' },
+  { ru: 'ЗРК О госзакупках', kz: 'Мемлекеттік сатып алу туралы ҚР Заңы', en: 'RK Public Procurement Law' },
   { ru: 'АППК РК', kz: 'ҚР ӘРПК', en: 'APPC RK' },
   { ru: 'КоАП РК', kz: 'ҚР ӘҚБтК', en: 'CAO RK' },
   { ru: 'ГПК РК', kz: 'ҚР АІЖК', en: 'CPC RK' },

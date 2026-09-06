@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent } from 'react'
 import { Link } from '../../shared/nav'
 import { Reveal } from '../../shared/motion'
-import { Body, Caption, Cite, H2, H3, Label, Legal, Mono, UIText } from '../../shared/ui'
+import { Body, Button, Caption, Caret, Cite, H2, H3, Label, Legal, Mono, Status, UIText } from '../../shared/ui'
 import { useLang, useT, withLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
@@ -395,6 +395,171 @@ const dict: Dict = {
     en: 'Kazakh and Russian are supported equally — in the question, in the answer, and in retrieval across documents.',
   },
 
+  /* ---- Витрина модулей ---- */
+  showLine1: { ru: 'Вопрос — ответ — норма', kz: 'Сұрақ — жауап — норма', en: 'Question, answer, norm' },
+  showLine2: { ru: 'Проверка и сборка условий', kz: 'Талаптарды тексеру және құрастыру', en: 'Clause check and assembly' },
+  showLine3: { ru: 'Пакет по стандартам РК', kz: 'ҚР стандарттары бойынша топтама', en: 'A package to state standards' },
+  showLine4: { ru: 'Темы и тональность отзывов', kz: 'Пікірлердің тақырыбы мен реңкі', en: 'Topics and sentiment of feedback' },
+  showOpen: { ru: 'Открыть раздел', kz: 'Бөлімді ашу', en: 'Open the section' },
+  showAria: { ru: 'Модуль', kz: 'Модуль', en: 'Module' },
+
+  mcYou: { ru: 'Вы', kz: 'Сіз', en: 'You' },
+  mcTura: { ru: 'TURA', kz: 'TURA', en: 'TURA' },
+  mcQ: {
+    ru: 'Какой срок исковой давности по договору поставки?',
+    kz: 'Жеткізу шарты бойынша талап қою мерзімі қандай?',
+    en: 'What is the limitation period under a supply contract?',
+  },
+  mcA1: {
+    ru: 'Общий срок исковой давности — три года ',
+    kz: 'Талап қоюдың жалпы мерзімі — үш жыл ',
+    en: 'The general limitation period is three years ',
+  },
+  mcA2: {
+    ru: '. Он течёт со дня, когда лицо узнало или должно было узнать о нарушении права ',
+    kz: '. Ол тұлға құқығының бұзылғанын білген немесе білуге тиіс болған күннен бастап есептеледі ',
+    en: '. It runs from the day the person learned, or should have learned, of the violation ',
+  },
+  mcA3: { ru: '.', kz: '.', en: '.' },
+  mcSrc: { ru: 'Источники', kz: 'Дереккөздер', en: 'Sources' },
+
+  mkDoc: { ru: 'Договор поставки № 14-2026', kz: '№ 14-2026 жеткізу шарты', en: 'Supply contract No. 14-2026' },
+  mkCount: { ru: '3 замечания', kz: '3 ескерту', en: '3 findings' },
+  mkErr: { ru: 'риск', kz: 'тәуекел', en: 'risk' },
+  mkWarn: { ru: 'уточнить', kz: 'нақтылау', en: 'clarify' },
+  mkOk: { ru: 'в порядке', kz: 'дұрыс', en: 'in order' },
+  mk1: {
+    ru: 'Неустойка 5 % в день без верхнего предела — суд вправе её уменьшить',
+    kz: 'Күніне 5 % тұрақсыздық айыбы жоғарғы шегі жоқ — сот оны азайтуға құқылы',
+    en: 'A 5% daily penalty with no cap — the court may reduce it',
+  },
+  mk2: {
+    ru: 'Срок поставки не определён — будет считаться разумным сроком',
+    kz: 'Жеткізу мерзімі анықталмаған — қисынды мерзім деп есептеледі',
+    en: 'No delivery deadline — a reasonable period will be implied',
+  },
+  mk3: {
+    ru: 'Письменная форма соблюдена, реквизиты сторон полные',
+    kz: 'Жазбаша нысан сақталған, тараптардың деректемелері толық',
+    en: 'Written form observed, party details complete',
+  },
+  mk1n: { ru: 'Уменьшение неустойки', kz: 'Тұрақсыздық айыбын азайту', en: 'Reduction of a penalty' },
+  mk2n: { ru: 'Срок исполнения обязательства', kz: 'Міндеттемені орындау мерзімі', en: 'Time for performance' },
+  mk3n: { ru: 'Письменная форма сделки', kz: 'Мәміленің жазбаша нысаны', en: 'Written form of a transaction' },
+
+  mlDoc: {
+    ru: 'О внесении изменений в вопросы цифровых активов',
+    kz: 'Цифрлық активтер мәселелері бойынша өзгерістер енгізу туралы',
+    en: 'On amendments concerning digital assets',
+  },
+  mlReady: { ru: 'готово', kz: 'дайын', en: 'ready' },
+  mlWork: { ru: 'в работе', kz: 'жұмыста', en: 'in progress' },
+  mlWait: { ru: 'ожидает', kz: 'кезекте', en: 'pending' },
+  ml1: { ru: 'Текст закона', kz: 'Заң мәтіні', en: 'Text of the act' },
+  ml2: { ru: 'Пояснительная записка', kz: 'Түсіндірме жазба', en: 'Explanatory note' },
+  ml3: { ru: 'Финансово-экономическое обоснование', kz: 'Қаржы-экономикалық негіздеме', en: 'Financial justification' },
+  ml4: { ru: 'Сравнительная таблица', kz: 'Салыстырмалы кесте', en: 'Comparison table' },
+  ml5: { ru: 'Прогноз последствий', kz: 'Салдарды болжау', en: 'Impact forecast' },
+  ml6: { ru: 'Заключение научной экспертизы', kz: 'Ғылыми сараптама қорытындысы', en: 'Scientific review opinion' },
+
+  maDoc: { ru: 'Комментарии к законопроекту', kz: 'Заң жобасына пікірлер', en: 'Comments on the draft law' },
+  maCount: { ru: '1 247 отзывов', kz: '1 247 пікір', en: '1,247 responses' },
+  maPos: { ru: 'за', kz: 'қолдайды', en: 'for' },
+  maNeu: { ru: 'нейтрально', kz: 'бейтарап', en: 'neutral' },
+  maNeg: { ru: 'против', kz: 'қарсы', en: 'against' },
+  maThemes: { ru: 'Темы', kz: 'Тақырыптар', en: 'Topics' },
+  ma1: { ru: 'Сроки переходного периода', kz: 'Өтпелі кезең мерзімдері', en: 'Transition period deadlines' },
+  ma2: { ru: 'Размер штрафов', kz: 'Айыппұл мөлшері', en: 'Size of fines' },
+  ma3: { ru: 'Порядок уведомления', kz: 'Хабарлау тәртібі', en: 'Notification procedure' },
+
+  /* ---- Конвейер ---- */
+  pipeQ: {
+    ru: 'Можно ли расторгнуть аренду досрочно?',
+    kz: 'Жалдау шартын мерзімінен бұрын бұзуға бола ма?',
+    en: 'Can a lease be terminated early?',
+  },
+  pipeFound: { ru: 'Найдено в базе', kz: 'Базадан табылды', en: 'Found in the base' },
+  pipeAnswer: { ru: 'Ответ', kz: 'Жауап', en: 'Answer' },
+  pipeF1a: { ru: 'Гражданский кодекс РК, ст. 401', kz: 'ҚР Азаматтық кодексі, 401-бап', en: 'Civil Code RK, art. 401' },
+  pipeF1t: {
+    ru: 'Изменение и расторжение договора возможны по соглашению сторон, если иное не предусмотрено…',
+    kz: 'Шартты өзгерту және бұзу тараптардың келісімі бойынша мүмкін, егер өзгеше көзделмесе…',
+    en: 'A contract may be amended or terminated by agreement of the parties, unless otherwise…',
+  },
+  pipeF2a: { ru: 'Гражданский кодекс РК, ст. 556', kz: 'ҚР Азаматтық кодексі, 556-бап', en: 'Civil Code RK, art. 556' },
+  pipeF2t: {
+    ru: 'По требованию нанимателя договор может быть расторгнут судом досрочно в случаях, когда…',
+    kz: 'Жалдаушының талабы бойынша шартты сот мерзімінен бұрын бұза алады, егер…',
+    en: 'At the lessee’s request the court may terminate the contract early where…',
+  },
+  pipeF3a: { ru: 'Гражданский кодекс РК, ст. 545', kz: 'ҚР Азаматтық кодексі, 545-бап', en: 'Civil Code RK, art. 545' },
+  pipeF3t: {
+    ru: 'По требованию наймодателя договор может быть расторгнут судом досрочно, если наниматель…',
+    kz: 'Жалға берушінің талабы бойынша шартты сот мерзімінен бұрын бұза алады, егер жалдаушы…',
+    en: 'At the lessor’s request the court may terminate the contract early if the lessee…',
+  },
+  pipeA1: {
+    ru: 'Да, но не по одному лишь своему желанию. Договор расторгается по соглашению сторон ',
+    kz: 'Иә, бірақ тек өз қалауымен емес. Шарт тараптардың келісімі бойынша бұзылады ',
+    en: 'Yes, but not at will. The contract is terminated by agreement of the parties ',
+  },
+  pipeA2: {
+    ru: ', а без согласия наймодателя — только через суд и по основаниям, названным в законе ',
+    kz: ', ал жалға берушінің келісімінсіз — тек сот арқылы және заңда аталған негіздер бойынша ',
+    en: ', and without the lessor’s consent only through court, on the grounds the law names ',
+  },
+  pipeA3: { ru: '.', kz: '.', en: '.' },
+  pipeAgain: { ru: 'Показать ещё раз', kz: 'Тағы көрсету', en: 'Play again' },
+  pipeAria: { ru: 'Путь вопроса к ответу', kz: 'Сұрақтан жауапқа дейінгі жол', en: 'From question to answer' },
+
+  /* ---- Аудитории ---- */
+  audAria: { ru: 'Аудитория', kz: 'Аудитория', en: 'Audience' },
+  audDoes: { ru: 'Что делает TURA', kz: 'TURA не істейді', en: 'What TURA does' },
+  audNorm: { ru: 'Норма', kz: 'Норма', en: 'The norm' },
+  aud1role: { ru: 'госзакупки, акты, ответы заявителям', kz: 'мемлекеттік сатып алу, актілер, өтініш иелеріне жауап', en: 'procurement, regulations, replies to applicants' },
+  aud1q: {
+    ru: 'Конкурс не состоялся — можно ли заключить договор из одного источника?',
+    kz: 'Конкурс өтпеді — бір көзден шарт жасасуға бола ма?',
+    en: 'The tender failed — may we contract from a single source?',
+  },
+  aud1d1: { ru: 'Находит основания закупок из одного источника и условия их применения', kz: 'Бір көзден сатып алу негіздерін және оларды қолдану шарттарын табады', en: 'Finds the grounds for single-source procurement and the conditions attached' },
+  aud1d2: { ru: 'Сверяет ситуацию с перечнем: несостоявшийся конкурс — отдельный случай', kz: 'Жағдайды тізіммен салыстырады: өтпеген конкурс — жеке жағдай', en: 'Checks the case against the list: a failed tender is a separate ground' },
+  aud1d3: { ru: 'Готовит формулировку для протокола со ссылкой на норму', kz: 'Хаттама үшін нормаға сілтемесі бар тұжырым дайындайды', en: 'Drafts the wording for the minutes, with the norm cited' },
+  aud1n: { ru: 'Закупки из одного источника', kz: 'Бір көзден сатып алу', en: 'Single-source procurement' },
+
+  aud2role: { ru: 'позиция по делу, неустойка, практика', kz: 'іс бойынша ұстаным, тұрақсыздық айыбы, практика', en: 'case position, penalties, precedent' },
+  aud2q: {
+    ru: 'Неустойка 0,5 % в день уже превысила долг. Есть основания её снизить?',
+    kz: 'Күніне 0,5 % тұрақсыздық айыбы қарыздан асып кетті. Оны азайтуға негіз бар ма?',
+    en: 'A 0.5% daily penalty now exceeds the debt. Are there grounds to reduce it?',
+  },
+  aud2d1: { ru: 'Приводит критерий явной несоразмерности неустойки последствиям нарушения', kz: 'Тұрақсыздық айыбының бұзушылық салдарына айқын сәйкессіздігі өлшемін келтіреді', en: 'States the test of manifest disproportion to the consequences of the breach' },
+  aud2d2: { ru: 'Показывает, что оценка соразмерности — право суда, а не сторон', kz: 'Мөлшерлестікті бағалау тараптардың емес, соттың құқығы екенін көрсетеді', en: 'Shows that proportionality is for the court, not the parties, to assess' },
+  aud2d3: { ru: 'Собирает формулировку ходатайства с координатами норм', kz: 'Нормалардың координаталарымен өтінішхат тұжырымын құрастырады', en: 'Assembles the wording of the motion with the coordinates of the norms' },
+  aud2n: { ru: 'Уменьшение неустойки', kz: 'Тұрақсыздық айыбын азайту', en: 'Reduction of a penalty' },
+
+  aud3role: { ru: 'договоры, проверки, решения', kz: 'шарттар, тексерулер, шешімдер', en: 'contracts, audits, decisions' },
+  aud3q: {
+    ru: 'В договоре поставки не указан срок. Он вообще действует?',
+    kz: 'Жеткізу шартында мерзім көрсетілмеген. Ол мүлде күшінде ме?',
+    en: 'The supply contract names no deadline. Is it valid at all?',
+  },
+  aud3d1: { ru: 'Проверяет существенные условия: предмет есть, срок восполняется законом', kz: 'Елеулі талаптарды тексереді: мәні бар, мерзімді заң толықтырады', en: 'Checks the essential terms: the subject is there, the deadline is supplied by law' },
+  aud3d2: { ru: 'Отмечает риск: «разумный срок» будет спорить с вашими ожиданиями', kz: 'Тәуекелді белгілейді: «қисынды мерзім» сіздің күткеніңізбен дауласады', en: 'Flags the risk: a “reasonable period” will argue with your expectations' },
+  aud3d3: { ru: 'Предлагает редакцию пункта о сроке для дополнительного соглашения', kz: 'Қосымша келісім үшін мерзім туралы тармақтың редакциясын ұсынады', en: 'Proposes wording for a deadline clause in a supplementary agreement' },
+  aud3n: { ru: 'Срок исполнения обязательства', kz: 'Міндеттемені орындау мерзімі', en: 'Time for performance' },
+
+  aud4role: { ru: 'работа, аренда, семья', kz: 'жұмыс, жалдау, отбасы', en: 'work, housing, family' },
+  aud4q: {
+    ru: 'Зарплату задерживают второй месяц. Что я могу сделать?',
+    kz: 'Жалақы екінші ай кешігіп жатыр. Мен не істей аламын?',
+    en: 'My salary is two months late. What can I do?',
+  },
+  aud4d1: { ru: 'Объясняет: выплата — не позднее первой декады следующего месяца', kz: 'Түсіндіреді: төлем — келесі айдың бірінші онкүндігінен кешіктірілмей', en: 'Explains: payment is due no later than the first ten days of the following month' },
+  aud4d2: { ru: 'Называет пеню за каждый день задержки и как её посчитать', kz: 'Кешіктірген әр күн үшін өсімпұлды және оны қалай есептеуді атайды', en: 'Names the daily late-payment charge and how to compute it' },
+  aud4d3: { ru: 'Показывает, куда обратиться: инспекция труда, согласительная комиссия, суд', kz: 'Қайда жүгінуді көрсетеді: еңбек инспекциясы, келісім комиссиясы, сот', en: 'Shows where to turn: the labour inspectorate, the conciliation commission, the court' },
+  aud4n: { ru: 'Сроки выплаты заработной платы', kz: 'Жалақы төлеу мерзімдері', en: 'Wage payment deadlines' },
+
   /* ---- Финальный призыв ---- */
   finalTitle: {
     ru: 'Задайте первый вопрос — и посмотрите на источник',
@@ -659,12 +824,225 @@ function LiveSpec() {
   )
 }
 
-const MODULES = [
-  { n: '01', name: 'mod1', body: 'mod1d' },
-  { n: '02', name: 'mod2', body: 'mod2d' },
-  { n: '03', name: 'mod3', body: 'mod3d' },
-  { n: '04', name: 'mod4', body: 'mod4d' },
+/** Миллисекунды из токена движения: «220ms» → 220. Так JS-тайминги
+ *  живут в tokens.css вместе с CSS и гаснут при «меньше движения». */
+function tokenMs(name: string): number {
+  if (typeof window === 'undefined') return 0
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name)
+  return parseFloat(v) || 0
+}
+
+/* ============================================================
+   Витрина модулей: мини-экраны из настоящих элементов интерфейса
+   ============================================================ */
+
+const SHOW = [
+  { id: 'chat', name: 'mod1', line: 'showLine1', to: '/chat' },
+  { id: 'contracts', name: 'mod2', line: 'showLine2', to: '/contracts' },
+  { id: 'laws', name: 'mod3', line: 'showLine3', to: '/laws' },
+  { id: 'analytics', name: 'mod4', line: 'showLine4', to: '/analytics' },
 ] as const
+
+/** Витрина листает модули сама, пока читатель не выбрал свой. */
+const SHOW_MS = 6000
+
+function MiniChat() {
+  const { lang } = useLang()
+  const t = useT(dict)
+  return (
+    <div className="mini">
+      <Label className="mini__stamp">{t('mcYou')}</Label>
+      <UIText className="mini__ask">{t('mcQ')}</UIText>
+      <Label className="mini__stamp mini__stamp--gap">{t('mcTura')}</Label>
+      <Legal as="p" className="mini__answer">
+        {t('mcA1')}
+        <Cite code={citeCode('ГК РК 178.1', lang)} tabIndex={-1} />
+        {t('mcA2')}
+        <Cite code={citeCode('ГК РК 180.1', lang)} tabIndex={-1} />
+        {t('mcA3')}
+      </Legal>
+      <div className="mini__srcs">
+        <Label>{t('mcSrc')}</Label>
+        <span className="mini__src">
+          <Cite code={citeCode('ГК РК 178.1', lang)} tabIndex={-1} />
+          <Caption tone="mute">{t('n178t')}</Caption>
+        </span>
+        <span className="mini__src">
+          <Cite code={citeCode('ГК РК 180.1', lang)} tabIndex={-1} />
+          <Caption tone="mute">{t('n180t')}</Caption>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+const FINDINGS = [
+  { kind: 'err', mark: 'mkErr', text: 'mk1', cite: 'ГК РК 297', norm: 'mk1n' },
+  { kind: 'warn', mark: 'mkWarn', text: 'mk2', cite: 'ГК РК 277', norm: 'mk2n' },
+  { kind: 'ok', mark: 'mkOk', text: 'mk3', cite: 'ГК РК 152', norm: 'mk3n' },
+] as const
+
+function MiniContracts() {
+  const { lang } = useLang()
+  const t = useT(dict)
+  return (
+    <div className="mini">
+      <div className="mini__head">
+        <span className="mini__doc">{t('mkDoc')}</span>
+        <Caption tone="mute">{t('mkCount')}</Caption>
+      </div>
+      {FINDINGS.map((f, i) => (
+        <div className="mini__find enter-item" style={{ ['--i' as string]: i } as CSSProperties} key={f.cite}>
+          <Status kind={f.kind}>{t(f.mark)}</Status>
+          <span className="mini__find-text">{t(f.text)}</span>
+          <span className="mini__src">
+            <Cite code={citeCode(f.cite, lang)} tabIndex={-1} />
+            <Caption tone="mute">{t(f.norm)}</Caption>
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const TOC = [
+  { n: 'I', name: 'ml1', state: 'ok', mark: 'mlReady' },
+  { n: 'II', name: 'ml2', state: 'ok', mark: 'mlReady' },
+  { n: 'III', name: 'ml3', state: 'ok', mark: 'mlReady' },
+  { n: 'IV', name: 'ml4', state: 'warn', mark: 'mlWork' },
+  { n: 'V', name: 'ml5', state: 'idle', mark: 'mlWait' },
+  { n: 'VI', name: 'ml6', state: 'idle', mark: 'mlWait' },
+] as const
+
+function MiniLaws() {
+  const t = useT(dict)
+  return (
+    <div className="mini">
+      <div className="mini__head">
+        <span className="mini__doc">{t('mlDoc')}</span>
+      </div>
+      <ol className="mini__toc">
+        {TOC.map((s, i) => (
+          <li className="mini__sec enter-item" style={{ ['--i' as string]: i } as CSSProperties} key={s.n}>
+            <span className="mini__sec-num">{s.n}.</span>
+            <span className="mini__sec-name">{t(s.name)}</span>
+            <Status kind={s.state}>{t(s.mark)}</Status>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+const TONE = [
+  { k: 'pos', share: 54, label: 'maPos' },
+  { k: 'neu', share: 31, label: 'maNeu' },
+  { k: 'neg', share: 15, label: 'maNeg' },
+] as const
+
+const THEMES = [
+  { name: 'ma1', count: 412 },
+  { name: 'ma2', count: 287 },
+  { name: 'ma3', count: 163 },
+] as const
+
+function MiniAnalytics() {
+  const t = useT(dict)
+  const top = THEMES[0].count
+  return (
+    <div className="mini">
+      <div className="mini__head">
+        <span className="mini__doc">{t('maDoc')}</span>
+        <Caption tone="mute" className="tabular">
+          {t('maCount')}
+        </Caption>
+      </div>
+      <div className="mini__bar" aria-hidden="true">
+        {TONE.map((s) => (
+          <span className={`mini__seg mini__seg--${s.k}`} style={{ width: `${s.share}%` }} key={s.k} />
+        ))}
+      </div>
+      <div className="mini__legend">
+        {TONE.map((s) => (
+          <span className="mini__legend-item" key={s.k}>
+            <span className={`mini__swatch mini__seg--${s.k}`} aria-hidden="true" />
+            <Caption tone="ink2" className="tabular">
+              {s.share} % · {t(s.label)}
+            </Caption>
+          </span>
+        ))}
+      </div>
+      <Label className="mini__stamp mini__stamp--gap">{t('maThemes')}</Label>
+      <ol className="mini__themes">
+        {THEMES.map((th, i) => (
+          <li className="mini__theme enter-item" style={{ ['--i' as string]: i } as CSSProperties} key={th.name}>
+            <span className="mini__theme-name">{t(th.name)}</span>
+            <span className="mini__theme-track" aria-hidden="true">
+              <span className="mini__theme-fill" style={{ width: `${(th.count / top) * 100}%` }} />
+            </span>
+            <span className="mini__theme-num tabular">{th.count}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function Showcase() {
+  const t = useT(dict)
+  const [active, setActive] = useState(0)
+  const [held, setHeld] = useState(false)
+
+  useEffect(() => {
+    if (held || reducedMotion()) return
+    const id = window.setInterval(() => setActive((i) => (i + 1) % SHOW.length), SHOW_MS)
+    return () => window.clearInterval(id)
+  }, [held])
+
+  const mod = SHOW[active]
+
+  return (
+    <div className="show">
+      <div className="show__pick" role="tablist" aria-label={t('showAria')}>
+        {SHOW.map((m, i) => (
+          <button
+            key={m.id}
+            type="button"
+            role="tab"
+            aria-selected={i === active}
+            className={['show__tab', i === active ? 'show__tab--on' : ''].filter(Boolean).join(' ')}
+            onClick={() => {
+              setHeld(true)
+              setActive(i)
+            }}
+          >
+            <span className="show__tab-num" aria-hidden="true">
+              0{i + 1}
+            </span>
+            <span className="show__tab-name">{t(m.name)}</span>
+            <span className="show__tab-line">{t(m.line)}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="show__stage">
+        <div className="show__screen swap" key={mod.id} aria-live="polite">
+          {mod.id === 'chat' ? <MiniChat /> : null}
+          {mod.id === 'contracts' ? <MiniContracts /> : null}
+          {mod.id === 'laws' ? <MiniLaws /> : null}
+          {mod.id === 'analytics' ? <MiniAnalytics /> : null}
+        </div>
+        <Link to={mod.to} className="pub-link show__open">
+          {t('showOpen')} →
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+   Конвейер: вопрос → найденные фрагменты → ответ с координатами
+   ============================================================ */
 
 const STEPS = [
   { n: 'I', name: 'step1', body: 'step1d' },
@@ -672,18 +1050,199 @@ const STEPS = [
   { n: 'III', name: 'step3', body: 'step3d' },
 ] as const
 
-const WHO = [
-  { who: 'who1', what: 'who1d' },
-  { who: 'who2', what: 'who2d' },
-  { who: 'who3', what: 'who3d' },
-  { who: 'who4', what: 'who4d' },
+const FRAGS = [
+  { act: 'pipeF1a', text: 'pipeF1t' },
+  { act: 'pipeF2a', text: 'pipeF2t' },
+  { act: 'pipeF3a', text: 'pipeF3t' },
 ] as const
 
+/** Фаза сцены: 0 — не началась, 1 — набор вопроса, 2 — поиск, 3 — ответ. */
+type Phase = 0 | 1 | 2 | 3
+
+function Pipeline() {
+  const { lang } = useLang()
+  const t = useT(dict)
+  const [ref, shown] = useOnScreen<HTMLDivElement>()
+  const [phase, setPhase] = useState<Phase>(0)
+  const [typed, setTyped] = useState(0)
+  const [run, setRun] = useState(0)
+  const timers = useRef<number[]>([])
+
+  const question = t('pipeQ')
+  const chars = Array.from(question)
+
+  useEffect(() => {
+    if (!shown) return
+    const clear = () => {
+      timers.current.forEach((id) => window.clearTimeout(id))
+      timers.current = []
+    }
+    clear()
+
+    if (reducedMotion()) {
+      setTyped(chars.length)
+      setPhase(3)
+      return clear
+    }
+
+    const stagger = tokenMs('--stagger')
+    const dur3 = tokenMs('--dur-3')
+    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
+
+    setTyped(0)
+    setPhase(1)
+    /* Буквы набираются с шагом ленты: та же скорость, что у очереди появления. */
+    let clock = dur3
+    for (let i = 1; i <= chars.length; i++) {
+      clock += stagger
+      const n = i
+      at(clock, () => setTyped(n))
+    }
+    clock += dur3 * 2
+    at(clock, () => setPhase(2))
+    clock += FRAGS.length * stagger + dur3 * 4
+    at(clock, () => setPhase(3))
+
+    return clear
+    // chars.length зависит от языка: смена языка перезапускает сцену
+  }, [shown, run, chars.length])
+
+  const replay = useCallback(() => {
+    setPhase(0)
+    setRun((r) => r + 1)
+  }, [])
+
+  return (
+    <div className="pipe" ref={ref} aria-label={t('pipeAria')}>
+      <div className="pipe__scene" aria-live="polite">
+        {/* I. Поле с набирающимся вопросом */}
+        <div className={['pipe__ask', phase >= 1 ? 'pipe__ask--on' : ''].filter(Boolean).join(' ')}>
+          <span className="pipe__typed">{chars.slice(0, typed).join('')}</span>
+          {phase === 1 ? <Caret /> : null}
+        </div>
+
+        {/* II. Найденные фрагменты */}
+        {phase >= 2 ? (
+          <div className="pipe__found" key={`f-${run}`}>
+            <Label className="pipe__label">{t('pipeFound')}</Label>
+            {FRAGS.map((f, i) => (
+              <div className="pipe__frag enter-item" style={{ ['--i' as string]: i } as CSSProperties} key={f.act}>
+                <span className="pipe__frag-act">{t(f.act)}</span>
+                <span className="pipe__frag-text">{t(f.text)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {/* III. Ответ с координатами */}
+        {phase >= 3 ? (
+          <div className="pipe__answer enter" key={`a-${run}`}>
+            <Label className="pipe__label">{t('pipeAnswer')}</Label>
+            <Legal as="p" className="pipe__answer-text">
+              {t('pipeA1')}
+              <Cite code={citeCode('ГК РК 401.1', lang)} tabIndex={-1} />
+              {t('pipeA2')}
+              <Cite code={citeCode('ГК РК 556', lang)} tabIndex={-1} />
+              {t('pipeA3')}
+            </Legal>
+          </div>
+        ) : null}
+      </div>
+
+      <ol className="pipe__steps">
+        {STEPS.map((s, i) => {
+          const n = (i + 1) as Phase
+          const cls = ['pipe__step', phase >= n ? 'pipe__step--on' : '', phase === n ? 'pipe__step--now' : '']
+          return (
+            <li className={cls.filter(Boolean).join(' ')} key={s.n} aria-current={phase === n ? 'step' : undefined}>
+              <span className="pipe__num" aria-hidden="true">
+                {s.n}
+              </span>
+              <div className="pipe__step-body">
+                <H3 as="h3" className="pipe__name">
+                  {t(s.name)}
+                </H3>
+                <Body className="pipe__desc">{t(s.body)}</Body>
+              </div>
+            </li>
+          )
+        })}
+        <li className="pipe__again">
+          <Button variant="ghost" onClick={replay} disabled={!shown || phase < 3}>
+            {t('pipeAgain')}
+          </Button>
+        </li>
+      </ol>
+    </div>
+  )
+}
+
+/* ============================================================
+   Аудитории: четыре человека, четыре вопроса
+   ============================================================ */
+
+const AUD = [
+  { id: 'gov', who: 'who1', role: 'aud1role', q: 'aud1q', does: ['aud1d1', 'aud1d2', 'aud1d3'], cite: 'ЗРК О госзакупках 39', norm: 'aud1n' },
+  { id: 'law', who: 'who2', role: 'aud2role', q: 'aud2q', does: ['aud2d1', 'aud2d2', 'aud2d3'], cite: 'ГК РК 297', norm: 'aud2n' },
+  { id: 'biz', who: 'who3', role: 'aud3role', q: 'aud3q', does: ['aud3d1', 'aud3d2', 'aud3d3'], cite: 'ГК РК 277', norm: 'aud3n' },
+  { id: 'cit', who: 'who4', role: 'aud4role', q: 'aud4q', does: ['aud4d1', 'aud4d2', 'aud4d3'], cite: 'ТК РК 113', norm: 'aud4n' },
+] as const
+
+function Audiences() {
+  const { lang } = useLang()
+  const t = useT(dict)
+  const [active, setActive] = useState(0)
+  const a = AUD[active]
+
+  return (
+    <div className="aud">
+      <div className="aud__pick" role="tablist" aria-label={t('audAria')}>
+        {AUD.map((x, i) => (
+          <button
+            key={x.id}
+            type="button"
+            role="tab"
+            aria-selected={i === active}
+            className={['aud__tab', i === active ? 'aud__tab--on' : ''].filter(Boolean).join(' ')}
+            onClick={() => setActive(i)}
+          >
+            <span className="aud__tab-name">{t(x.who)}</span>
+            <span className="aud__tab-role">{t(x.role)}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="aud__scene swap" key={a.id} aria-live="polite">
+        <p className="aud__q">{t(a.q)}</p>
+        <div className="aud__side">
+          <Label className="aud__label">{t('audDoes')}</Label>
+          <ol className="aud__does">
+            {a.does.map((d, i) => (
+              <li className="aud__do enter-item" style={{ ['--i' as string]: i } as CSSProperties} key={d}>
+                <Body>{t(d)}</Body>
+              </li>
+            ))}
+          </ol>
+          <Label className="aud__label aud__label--gap">{t('audNorm')}</Label>
+          <span className="mini__src">
+            <Cite code={citeCode(a.cite, lang)} tabIndex={-1} />
+            <Caption tone="mute">{t(a.norm)}</Caption>
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+   Доверие: четыре принципа сеткой
+   ============================================================ */
+
 const TRUST = [
-  { term: 'trust1', def: 'trust1d' },
-  { term: 'trust2', def: 'trust2d' },
-  { term: 'trust3', def: 'trust3d' },
-  { term: 'trust4', def: 'trust4d' },
+  { n: '01', term: 'trust1', def: 'trust1d' },
+  { n: '02', term: 'trust2', def: 'trust2d' },
+  { n: '03', term: 'trust3', def: 'trust3d' },
+  { n: '04', term: 'trust4', def: 'trust4d' },
 ] as const
 
 /* ============================================================
@@ -695,8 +1254,7 @@ export function HomePage() {
   const [ask, setAsk] = useState('')
   const navigate = useNavigate()
   const t = useT(dict)
-  const [modsRef, modsShown] = useOnScreen<HTMLDivElement>()
-  const [stepsRef, stepsShown] = useOnScreen<HTMLOListElement>()
+  const [trustRef, trustShown] = useOnScreen<HTMLOListElement>()
 
   /** Якорь «Как это работает» ведёт к разделу, а не только меняет адрес. */
   const toHow = useCallback((e: MouseEvent<HTMLAnchorElement>) => {
@@ -805,7 +1363,7 @@ export function HomePage() {
         </div>
       </Reveal>
 
-      {/* ---------- Возможности ---------- */}
+      {/* ---------- Витрина модулей ---------- */}
       <Reveal as="section" className="pub-wrap pub-sec" aria-labelledby="mods-title">
         <div className="pub-sec__head">
           <H2 className="pub-sec__title" id="mods-title">
@@ -815,80 +1373,32 @@ export function HomePage() {
             {t('modsNote')}
           </Body>
         </div>
-
-        <div className="mods" ref={modsRef}>
-          {MODULES.map((m, i) => (
-            <article
-              className={['mod', modsShown ? 'enter-item' : 'pre-enter'].join(' ')}
-              style={{ ['--i' as string]: i } as CSSProperties}
-              key={m.n}
-            >
-              <span className="mod__num t-mono">{m.n}</span>
-              <H3 as="h3" className="mod__name">
-                {t(m.name)}
-              </H3>
-              <Body className="mod__body">{t(m.body)}</Body>
-            </article>
-          ))}
-        </div>
+        <Showcase />
       </Reveal>
 
-      {/* ---------- Как это работает ---------- */}
+      {/* ---------- Как это работает: конвейер ---------- */}
       <Reveal as="section" className="band band--surface" id="how" aria-labelledby="how-title">
         <div className="pub-wrap pub-sec">
-        <div className="pub-sec__head">
-          <H2 className="pub-sec__title" id="how-title">
-            {t('howTitle')}
-          </H2>
-          <Body tone="mute" className="pub-note">
-            {t('howNote')}
-          </Body>
-        </div>
-
-        <ol className="steps" ref={stepsRef}>
-          {STEPS.map((s, i) => (
-            <li
-              className={['step', stepsShown ? 'enter-item' : 'pre-enter'].join(' ')}
-              style={{ ['--i' as string]: i } as CSSProperties}
-              key={s.n}
-            >
-              <span className="step__num" aria-hidden="true">
-                {s.n}
-              </span>
-              <H3 as="h3" className="step__name">
-                {t(s.name)}
-              </H3>
-              <Body className="step__body">{t(s.body)}</Body>
-            </li>
-          ))}
-        </ol>
+          <div className="pub-sec__head">
+            <H2 className="pub-sec__title" id="how-title">
+              {t('howTitle')}
+            </H2>
+            <Body tone="mute" className="pub-note">
+              {t('howNote')}
+            </Body>
+          </div>
+          <Pipeline />
         </div>
       </Reveal>
 
-      {/* ---------- Для кого ---------- */}
+      {/* ---------- Для кого: аудитории ---------- */}
       <Reveal as="section" className="pub-wrap pub-sec" aria-labelledby="who-title">
         <div className="pub-sec__head">
           <H2 className="pub-sec__title" id="who-title">
             {t('whoTitle')}
           </H2>
         </div>
-
-        <table className="who">
-          <thead>
-            <tr>
-              <th scope="col">{t('whoCol1')}</th>
-              <th scope="col">{t('whoCol2')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {WHO.map((r) => (
-              <tr key={r.who}>
-                <td className="who__who">{t(r.who)}</td>
-                <td className="who__what">{t(r.what)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Audiences />
       </Reveal>
 
       {/* ---------- Доверие ---------- */}
@@ -901,14 +1411,21 @@ export function HomePage() {
 
         <div className="trust">
           <p className="trust__claim">{t('trustClaim')}</p>
-          <ul className="trust__list">
-            {TRUST.map((it) => (
-              <li className="trust__item" key={it.term}>
-                <span className="trust__term">{t(it.term)}</span>
-                <Body className="trust__def">{t(it.def)}</Body>
+          <ol className="trust-grid" ref={trustRef}>
+            {TRUST.map((it, i) => (
+              <li
+                className={['trust-cell', trustShown ? 'enter-item' : 'pre-enter'].join(' ')}
+                style={{ ['--i' as string]: i } as CSSProperties}
+                key={it.term}
+              >
+                <span className="trust-cell__num" aria-hidden="true">
+                  {it.n}
+                </span>
+                <span className="trust-cell__term">{t(it.term)}</span>
+                <Body className="trust-cell__def">{t(it.def)}</Body>
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
       </Reveal>
 
