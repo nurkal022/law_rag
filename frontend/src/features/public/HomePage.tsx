@@ -3,12 +3,13 @@ import type { CSSProperties, MouseEvent } from 'react'
 import { Link } from '../../shared/nav'
 import { Reveal } from '../../shared/motion'
 import { Body, Caption, Cite, H2, H3, Label, Legal, Mono, UIText } from '../../shared/ui'
-import { useLang, useT } from '../../i18n'
+import { useLang, useT, withLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { PublicPage } from './PublicChrome'
 import './public.css'
 import './public.motion.css'
+import { useNavigate } from 'react-router-dom'
 
 /**
  * Главная — лендинг направления «Документ».
@@ -41,6 +42,19 @@ const dict: Dict = {
   },
   ctaMain: { ru: 'Задать вопрос', kz: 'Сұрақ қою', en: 'Ask a question' },
   ctaSecond: { ru: 'Как это работает', kz: 'Қалай жұмыс істейді', en: 'How it works' },
+  askPlaceholder: {
+    ru: 'Спросите о чём угодно по праву РК — например, о сроке исковой давности',
+    kz: 'ҚР құқығы бойынша кез келген нәрсені сұраңыз — мысалы, талап қою мерзімі туралы',
+    en: 'Ask anything about the law of Kazakhstan — the limitation period, for instance',
+  },
+  askAria: { ru: 'Вопрос по праву Казахстана', kz: 'Қазақстан құқығы бойынша сұрақ', en: 'Question about Kazakhstan law' },
+  tryLabel: { ru: 'Попробуйте', kz: 'Байқап көріңіз', en: 'Try' },
+  stamp1: { ru: 'Ответ', kz: 'Жауап', en: 'Answer' },
+  stamp2: { ru: 'со ссылкой', kz: 'нормаға', en: 'with a link' },
+  stamp3: { ru: 'на норму', kz: 'сілтемемен', en: 'to the norm' },
+  meta1: { ru: 'Право РК', kz: 'ҚР құқығы', en: 'Law of Kazakhstan' },
+  meta2: { ru: 'Три языка', kz: 'Үш тіл', en: 'Three languages' },
+  meta3: { ru: 'Редакция 2026', kz: '2026 редакциясы', en: '2026 edition' },
 
   /* ---- Живая выписка ---- */
   specPick: { ru: 'Дело', kz: 'Іс', en: 'Matter' },
@@ -677,6 +691,9 @@ const TRUST = [
    ============================================================ */
 
 export function HomePage() {
+  const { lang } = useLang()
+  const [ask, setAsk] = useState('')
+  const navigate = useNavigate()
   const t = useT(dict)
   const [modsRef, modsShown] = useOnScreen<HTMLDivElement>()
   const [stepsRef, stepsShown] = useOnScreen<HTMLOListElement>()
@@ -691,22 +708,71 @@ export function HomePage() {
 
   return (
     <PublicPage>
-      {/* ---------- Первый экран: появляется сразу, лентой ---------- */}
-      <section className="pub-wrap hero" aria-labelledby="hero-title">
-        <Label className="hero__label enter">{t('eyebrow')}</Label>
-        <h1 className="pub-display enter" id="hero-title" style={step(1)}>
-          {t('h1')}
-        </h1>
-        <p className="t-legal hero__lede enter" style={step(2)}>
-          {t('lede')}
-        </p>
-        <div className="hero__actions enter" style={step(3)}>
-          <Link to="/chat" className="pub-cta pub-cta--wide">
-            {t('ctaMain')}
-          </Link>
-          <a href="#how" className="pub-link" onClick={toHow}>
-            {t('ctaSecond')}
-          </a>
+      {/* ---------- Обложка ----------
+          Первый экран — не описание продукта, а сам продукт: чернильный
+          разворот с полем ввода. Вопрос задаётся прямо здесь и уносится
+          в консультанта. Раньше здесь были две кнопки и полтора экрана
+          пустоты справа. */}
+      <section className="band band--ink cover" aria-labelledby="hero-title">
+        <div className="pub-wrap cover__inner">
+          <div className="cover__meta enter">
+            <span>{t('meta1')}</span>
+            <span>{t('meta2')}</span>
+            <span>{t('meta3')}</span>
+          </div>
+
+          <h1 className="cover__title enter" id="hero-title" style={step(1)}>
+            {t('h1')}
+          </h1>
+
+          <p className="cover__lede enter" style={step(2)}>
+            {t('lede')}
+          </p>
+
+          <form
+            className="ask enter"
+            style={step(3)}
+            onSubmit={(e) => {
+              e.preventDefault()
+              const q = ask.trim()
+              navigate(withLang(q ? `/chat?q=${encodeURIComponent(q)}` : '/chat', lang))
+            }}
+          >
+            <input
+              className="ask__field"
+              value={ask}
+              onChange={(e) => setAsk(e.target.value)}
+              placeholder={t('askPlaceholder')}
+              aria-label={t('askAria')}
+            />
+            <button type="submit" className="ask__go">
+              {t('ctaMain')}
+            </button>
+          </form>
+
+          <div className="cover__try enter" style={step(4)}>
+            <span className="cover__try-label">{t('tryLabel')}</span>
+            {SPECS.slice(0, 3).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className="cover__chip"
+                onClick={() => setAsk(t(c.q))}
+              >
+                {t(c.tab)}
+              </button>
+            ))}
+            <a href="#how" className="cover__how" onClick={toHow}>
+              {t('ctaSecond')}
+            </a>
+          </div>
+
+          {/* Печать: типографский штамп, как на правовом документе */}
+          <div className="stamp" aria-hidden="true">
+            <span>{t('stamp1')}</span>
+            <span>{t('stamp2')}</span>
+            <span>{t('stamp3')}</span>
+          </div>
         </div>
       </section>
 

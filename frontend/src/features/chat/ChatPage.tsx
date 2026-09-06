@@ -21,7 +21,7 @@ import './chat.css'
 import './sidebar.css'
 import './chat.motion.css'
 import { Link } from '../../shared/nav'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { withLang } from '../../i18n'
 
 const dict: Dict = {
@@ -435,7 +435,10 @@ export function ChatPage() {
   const navigate = useNavigate()
   const activeId = routeId ?? DRAFT_ID
   const [streamingId, setStreamingId] = useState<number | null>(null)
-  const [draft, setDraft] = useState('')
+  const [search, setSearch] = useSearchParams()
+  // Вопрос, заданный с обложки главной, подставляется в поле и сразу
+  // убирается из адреса — иначе он вернётся при любой перезагрузке.
+  const [draft, setDraft] = useState(() => search.get('q') ?? '')
   const [attachment, setAttachment] = useState<string | null>(null)
   const [listOpen, setListOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -456,6 +459,13 @@ export function ChatPage() {
   }, [])
 
   useEffect(grow, [draft, grow])
+
+  useEffect(() => {
+    if (!search.get('q')) return
+    const next = new URLSearchParams(search)
+    next.delete('q')
+    setSearch(next, { replace: true })
+  }, [search, setSearch])
 
   useEffect(() => {
     // На пустом диалоге не прокручиваем: иначе приветствие уезжает за верхний
