@@ -1,0 +1,342 @@
+/* ============================================================
+   TURA — рабочее место на живом сервере: приём файлов, реестр
+   с состояниями, дела и страница документа.
+
+   Отдельный файл от workspace.css: тот ведёт вёрстку прежних экранов,
+   и разводить правки по одному файлу двум рукам — верный конфликт.
+   Значения только токенами из tokens.css.
+   ============================================================ */
+
+/* ---------- Приём файлов во всю область экрана ---------- */
+
+.ws-page { min-height: 100%; }
+
+/* Пока файл несут над страницей, вся она — цель, а не одна полоска */
+.ws-page--over { outline: 1px dashed var(--seal); outline-offset: calc(var(--s-2) * -1); }
+
+.ws-drop__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  align-items: center;
+}
+
+/* ---------- Ход отправки по каждому файлу ---------- */
+
+.ws-uploads {
+  list-style: none;
+  margin: 0 0 var(--s-4);
+  padding: 0;
+  border-top: var(--border);
+}
+
+.ws-upload {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  border-bottom: var(--border);
+}
+
+.ws-upload__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.ws-upload__track {
+  flex: none;
+  width: 140px;
+  height: 2px;
+  background: var(--rule);
+}
+.ws-upload__bar {
+  display: block;
+  height: 100%;
+  background: var(--seal);
+  transition: width var(--motion);
+}
+
+/* ---------- Фильтры ---------- */
+
+/* Выравнивание по верху, а не по низу: у списков и ряда чипов разная
+   высота, и при выравнивании по низу разъезжались подписи — а глаз ведёт
+   именно по ним, не по нижней кромке. */
+.ws-filters { align-items: flex-start; gap: var(--s-4); }
+/* Поля-фильтры не сжимаются до нечитаемой ширины в общем ряду */
+.ws-filters > .field { min-width: 180px; }
+.ws-search .field { width: 100%; }
+
+.ws-filters__chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.ws-chiprow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+/* ---------- Общие состояния экранов ---------- */
+
+.ws-state { padding-top: var(--s-8); }
+
+.ws-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-5) 0;
+}
+
+.ws-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- Реестр: обработка и сбой ---------- */
+
+/* Полоска у строки «обрабатывается»: движение вместо слова «подождите» */
+.ws-progress {
+  display: inline-block;
+  width: 56px;
+  height: 2px;
+  background: var(--rule);
+  overflow: hidden;
+}
+.ws-progress__bar {
+  display: block;
+  height: 100%;
+  width: 40%;
+  background: var(--ochre);
+  animation: ws-run 1.2s ease-in-out infinite;
+}
+
+@keyframes ws-run {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-progress__bar { animation: none; width: 100%; opacity: 0.4; }
+}
+
+/* Причина сбоя — целиком, под строкой, а не значком с всплывающей подсказкой:
+   в причине написано, что делать дальше, и прятать её нельзя. */
+.ws-note-row td { padding-top: 0; }
+
+.ws-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3);
+  border-left: 2px solid var(--warn);
+  background: var(--surface);
+}
+
+.ws-note__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+}
+
+.ws-note--side { flex-direction: column; align-items: stretch; }
+
+/* Строка, о которой только что шла речь: загруженная или уже бывшая в списке */
+@keyframes ws-row-flash {
+  0% { background: var(--seal-wash); }
+  75% { background: var(--seal-wash); }
+  100% { background: transparent; }
+}
+.ws-row--flash { animation: ws-row-flash calc(var(--dur-3) * 8) var(--ease) both; }
+
+/* ---------- Найденное по тексту ---------- */
+
+.ws-found { display: flex; flex-direction: column; gap: var(--s-3); }
+
+.ws-hitdoc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4) 0;
+  border-bottom: var(--border);
+}
+
+.ws-hitdoc__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+.ws-hitdoc__head a { border-bottom-color: transparent; }
+.ws-hitdoc__head a:hover { border-bottom-color: var(--seal); }
+
+.ws-excerpt {
+  margin: 0;
+  padding-left: var(--s-3);
+  border-left: 1px solid var(--rule);
+  font-family: var(--font-serif);
+  font-size: var(--t-body-size);
+  line-height: var(--t-legal-lh);
+  color: var(--ink-2);
+  max-width: var(--measure);
+}
+
+.ws-hit {
+  background: var(--seal-wash);
+  color: var(--ink);
+  padding: 0 var(--s-1);
+}
+
+/* ---------- Дела ---------- */
+
+.ws-matter-row {
+  border-bottom: var(--border);
+  padding-bottom: var(--s-2);
+}
+.ws-matter-row--archived .ws-matter { opacity: 0.6; }
+
+/* Строка дела внутри блока с действиями свою линию уже не рисует */
+.ws-matter--flat { border-bottom: 0; }
+
+.ws-matter__acts,
+.ws-matter__confirm {
+  display: flex;
+  gap: var(--s-2);
+  padding: 0 var(--s-2) var(--s-2);
+}
+
+.ws-matter__confirm {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  max-width: var(--measure);
+  border-left: 2px solid var(--ink);
+  padding-left: var(--s-3);
+}
+
+.ws-form--inline { border-top: 0; margin-bottom: 0; }
+
+/* ---------- Страница документа ---------- */
+
+.ws-dp__crumbs { margin-bottom: var(--s-3); }
+
+.ws-dp__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--s-4);
+  border-bottom: var(--border);
+}
+
+/* Название правится на месте: поле без рамки, линия появляется при наведении */
+.ws-dp__title {
+  flex: 1;
+  min-width: 220px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  padding: var(--s-1) 0;
+  font-family: var(--font-serif);
+  font-size: var(--t-h1-size);
+  line-height: var(--t-h1-lh);
+  font-weight: var(--t-h1-weight);
+  color: var(--ink);
+}
+.ws-dp__title:hover { border-bottom-color: var(--rule); }
+.ws-dp__title:focus { border-bottom-color: var(--ink); outline: none; }
+
+.ws-dp__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.ws-dp__grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--s-8);
+  padding-top: var(--s-5);
+}
+
+.ws-dp__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.ws-dp__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+/* Текст документа: собственные переносы файла сохраняются, длина строки
+   ограничена мерой — иначе на широком экране строка не читается. */
+/* Ширина строки ограничена ради чтения. По центру свободного места не
+   ставим: заголовок раздела остаётся слева, и текст отрывается от него
+   разрывом шире, чем пустое поле справа. */
+.ws-dp__text { max-width: var(--measure); }
+.ws-dp__para { margin: 0 0 var(--s-3); overflow-wrap: anywhere; }
+.ws-dp__para:last-child { margin-bottom: 0; }
+
+.ws-props { margin: 0; display: flex; flex-direction: column; }
+
+.ws-prop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.ws-prop dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+
+.ws-versions {
+  list-style: none;
+  margin: var(--s-2) 0 0;
+  padding: 0;
+}
+
+.ws-version {
+  display: flex;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.ws-version:first-child { border-top: 0; }
+
+.ws-version__no { color: var(--mute); flex: none; }
+
+.ws-version__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Узкие экраны ---------- */
+
+@media (max-width: 1000px) {
+  .ws-dp__grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-6); }
+  /* Текст важнее свойств: на узком экране он идёт первым */
+  .ws-dp__main { order: -1; }
+}
+
+@media (max-width: 860px) {
+  .ws-filters { gap: var(--s-3); }
+  .ws-upload { flex-direction: column; align-items: stretch; gap: var(--s-2); }
+  .ws-upload__track { width: 100%; }
+  .ws-note { flex-direction: column; align-items: stretch; }
+  .ws-dp__title { font-size: var(--t-h2-size); line-height: var(--t-h2-lh); }
+}

@@ -19,7 +19,7 @@ import type { Dict } from '../../i18n'
 import { api, errorMessage } from '../../shared/api'
 import { LoadFailure, useLoader } from '../drafts/shared'
 import { SectionTabs } from './SectionTabs'
-import { WsSkeleton, localeOf, whenShort } from './common'
+import { WsSkeleton, localeOf, useDocsCount, whenShort } from './common'
 import type { DeleteMatterResponse, Matter, MatterResponse, MattersResponse } from './types'
 import './workspace.css'
 import './workspace.motion.css'
@@ -44,7 +44,6 @@ const dict: Dict = {
   create: { ru: 'Новое дело', kz: 'Жаңа іс', en: 'New matter' },
   active: { ru: 'В работе', kz: 'Жұмыста', en: 'Active' },
   archived: { ru: 'В архиве', kz: 'Мұрағатта', en: 'Archived' },
-  docs: { ru: 'документов', kz: 'құжат', en: 'documents' },
   updated: { ru: 'Изменено', kz: 'Өзгертілген', en: 'Updated' },
   noDesc: { ru: 'Описание не заполнено', kz: 'Сипаттама толтырылмаған', en: 'No description' },
 
@@ -79,9 +78,9 @@ const dict: Dict = {
   removeYes: { ru: 'Удалить дело', kz: 'Істі жою', en: 'Delete matter' },
   removed: { ru: 'Дело удалено', kz: 'Іс жойылды', en: 'Matter deleted' },
   freed: {
-    ru: 'документов вернулось в библиотеку без дела',
-    kz: 'құжат кітапханаға іссіз оралды',
-    en: 'documents returned to the library without a matter',
+    ru: 'теперь в библиотеке без дела',
+    kz: 'енді кітапханада іссіз тұр',
+    en: 'now sit in the library without a matter',
   },
   failRemove: { ru: 'Удалить не удалось', kz: 'Жою мүмкін болмады', en: 'Could not delete' },
 
@@ -100,6 +99,7 @@ export function MattersPage() {
   const { lang } = useLang()
   const locale = localeOf(lang)
   const toast = useToast()
+  const docsCount = useDocsCount()
 
   const { data, error, loading, reload, setData } = useLoader<MattersResponse>(
     () => api.get<MattersResponse>('/workspace/matters?archived=1'),
@@ -161,7 +161,7 @@ export function MattersPage() {
         setData({ matters: (data?.matters ?? []).filter((x) => x.id !== m.id) })
         toast(
           res.documents_freed
-            ? `${t('removed')}. ${res.documents_freed} ${t('freed')}`
+            ? `${t('removed')}. ${docsCount(res.documents_freed)} ${t('freed')}`
             : t('removed'),
           'ok',
         )
@@ -169,7 +169,7 @@ export function MattersPage() {
         toast(errorMessage(e, t('failRemove')), 'err')
       }
     },
-    [data, setData, t, toast],
+    [data, docsCount, setData, t, toast],
   )
 
   const active = matters.filter((m) => !m.is_archived)
@@ -218,9 +218,7 @@ export function MattersPage() {
                       </Body>
                     </span>
                     <span className="ws-matter__meta">
-                      <UIText tone="ink2">
-                        {m.documents_count} {t('docs')}
-                      </UIText>
+                      <UIText tone="ink2">{docsCount(m.documents_count)}</UIText>
                       <Caption tone="mute">
                         {t('updated')}: {whenShort(m.updated_at, locale)}
                       </Caption>

@@ -66,9 +66,9 @@ const dict: Dict = {
   },
 
   drop: {
-    ru: 'Перетащите PDF или DOCX — можно несколько сразу',
-    kz: 'PDF немесе DOCX сүйреп әкеліңіз — бірнешеуін бірден болады',
-    en: 'Drag PDF or DOCX files here — several at once is fine',
+    ru: 'Перетащите файлы — PDF, DOCX, TXT или RTF, можно несколько сразу',
+    kz: 'Файлдарды сүйреп әкеліңіз — PDF, DOCX, TXT немесе RTF, бірнешеуін бірден болады',
+    en: 'Drag files here — PDF, DOCX, TXT or RTF, several at once is fine',
   },
   dropOver: { ru: 'Отпустите файлы', kz: 'Файлдарды жіберіңіз', en: 'Drop the files' },
   choose: { ru: 'Выбрать файлы', kz: 'Файлдарды таңдау', en: 'Choose files' },
@@ -404,7 +404,7 @@ export function LibraryPage() {
       <input
         ref={fileRef}
         type="file"
-        accept=".pdf,.docx"
+        accept=".pdf,.docx,.txt,.rtf"
         multiple
         className="visually-hidden"
         tabIndex={-1}

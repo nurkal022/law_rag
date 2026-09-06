@@ -184,3 +184,43 @@ def test_someone_elses_matter_is_refused(app, client):
 
     r = client.post(f'/api/drafts/{public_id}/to-library', json={'matter_id': foreign})
     assert r.status_code == 404
+
+
+def test_identity_is_the_text_not_the_file_bytes(app, client):
+    """Word вписывает в файл метку времени, и две сборки одного договора
+    байт в байт не совпадают. Отпечаток берётся с содержания, иначе повторное
+    сохранение через секунду плодило бы копии."""
+    import time
+
+    public_id = make_draft(app, client)
+    first = client.post(f'/api/drafts/{public_id}/to-library', json={}).get_json()['document']
+    time.sleep(1.1)
+    again = client.post(f'/api/drafts/{public_id}/to-library', json={})
+
+    assert again.get_json().get('duplicate') is True
+    assert again.get_json()['document']['id'] == first['id']
+    assert len(client.get('/api/workspace/documents').get_json()['documents']) == 1
+
+
+def test_changed_document_is_saved_as_a_new_one(app, client):
+    """Изменившийся договор — другой документ, а не повтор прежнего."""
+    from database.models import Draft, DraftVersion, db
+    from docengine.ops import Op, apply_ops
+    from docengine.schema import DocTree
+
+    public_id = make_draft(app, client)
+    client.post(f'/api/drafts/{public_id}/to-library', json={})
+
+    with app.app_context():
+        draft = db.session.query(Draft).filter_by(public_id=public_id).first()
+        tree = DocTree(**draft.head().tree_json)
+        tree = apply_ops(tree, [Op(op='insert_clause', key='subject',
+                                   text='Срок выполнения — 30 календарных дней.')]).tree
+        draft.current_version = 2
+        db.session.add(DraftVersion(draft_id=draft.id, no=2,
+                                    tree_json=tree.model_dump(mode='json'), created_by='llm'))
+        db.session.commit()
+
+    r = client.post(f'/api/drafts/{public_id}/to-library', json={})
+    assert r.status_code == 201
+    assert len(client.get('/api/workspace/documents').get_json()['documents']) == 2

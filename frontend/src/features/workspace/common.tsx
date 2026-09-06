@@ -31,6 +31,17 @@ export const wsDict: Dict = {
   dash: { ru: '—', kz: '—', en: '—' },
 }
 
+/* Формы счётного оборота держатся отдельным словарём: в общий они не влезают
+   по смыслу — это не подписи интерфейса, а грамматика. */
+const countDict: Dict = {
+  ruOne: { ru: 'документ', kz: 'құжат', en: 'document' },
+  ruFew: { ru: 'документа', kz: 'құжат', en: 'documents' },
+  ruMany: { ru: 'документов', kz: 'құжат', en: 'documents' },
+  kzDocs: { ru: 'документов', kz: 'құжат', en: 'documents' },
+  enDoc: { ru: 'документ', kz: 'құжат', en: 'document' },
+  enDocs: { ru: 'документов', kz: 'құжат', en: 'documents' },
+}
+
 const STATUS_KEY: Record<DocStatus, string> = {
   pending: 'stPending',
   indexed: 'stIndexed',
@@ -143,6 +154,57 @@ export function Highlight({ text, query }: { text: string; query: string }) {
         ),
       )}
     </>
+  )
+}
+
+/**
+ * Сборка абзацев из текста файла.
+ *
+ * PDF отдаёт текст строками ровно там, где они переносились на странице, и
+ * набор «как есть» даёт рваный левый столбец вместо документа. Строка
+ * считается продолжением предыдущей только при двух признаках сразу:
+ * предыдущая не кончилась знаком конца предложения и текущая начинается со
+ * строчной. Признак консервативный: заголовки, пункты и всё, начинающееся с
+ * прописной или цифры, остаются отдельными абзацами, и текст не склеивается
+ * там, где в файле был настоящий перенос.
+ */
+export function reflow(text: string): string[] {
+  const out: string[] = []
+  for (const raw of text.split('\n')) {
+    const line = raw.trim()
+    if (!line) {
+      out.push('')
+      continue
+    }
+    const prev = out.length ? out[out.length - 1] : ''
+    const continues = prev && !/[.!?:;»)"]$/.test(prev) && /^[a-zа-яёәғқңөұүhі]/.test(line)
+    if (continues) out[out.length - 1] = `${prev} ${line}`
+    else out.push(line)
+  }
+  return out.filter((p) => p !== '')
+}
+
+/**
+ * Счётный оборот «12 документов».
+ *
+ * Русский требует трёх форм, и «1 документов» в списке дел выглядит как
+ * недоделка. Казахский и английский обходятся одной и двумя.
+ */
+export function useDocsCount() {
+  const t = useT(countDict)
+  const { lang } = useLang()
+  return useCallback(
+    (n: number) => {
+      if (lang === 'kz') return `${n} ${t('kzDocs')}`
+      if (lang === 'en') return `${n} ${n === 1 ? t('enDoc') : t('enDocs')}`
+      const tens = n % 100
+      const ones = n % 10
+      if (tens >= 11 && tens <= 14) return `${n} ${t('ruMany')}`
+      if (ones === 1) return `${n} ${t('ruOne')}`
+      if (ones >= 2 && ones <= 4) return `${n} ${t('ruFew')}`
+      return `${n} ${t('ruMany')}`
+    },
+    [lang, t],
   )
 }
 
