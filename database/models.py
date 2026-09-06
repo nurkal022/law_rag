@@ -441,6 +441,159 @@ class DraftTurn(db.Model):
         }
 
 
+class Matter(db.Model):
+    """Дело: папка, в которой юрист собирает всё по одному вопросу.
+
+    Не «проект» и не «папка»: юрист мыслит делами, и договор, переписка,
+    судебное решение и записка по одному спору должны лежать вместе.
+    """
+
+    __tablename__ = 'matters'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    is_archived = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    documents = db.relationship('UserDocument', backref='matter', lazy='dynamic')
+
+    def to_dict(self, counts: bool = True):
+        out = {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'is_archived': self.is_archived,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if counts:
+            out['documents_count'] = self.documents.count()
+        return out
+
+
+class UserDocument(db.Model):
+    """Документ пользователя.
+
+    Отдельно от Document, где лежит корпус нормативных актов. Смешивать их
+    нельзя ни при каких условиях: чужой договор, попавший в нормативную базу,
+    начнёт цитироваться как источник права всем остальным пользователям.
+    """
+
+    __tablename__ = 'user_documents'
+    __table_args__ = (
+        # Тот же файл, загруженный повторно, — тот же документ, а не дубль.
+        db.UniqueConstraint('user_id', 'sha256', name='uq_user_document_sha'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    matter_id = db.Column(db.Integer, db.ForeignKey('matters.id'), nullable=True, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255))
+    storage_path = db.Column(db.String(512))
+    file_size = db.Column(db.Integer, default=0)
+    sha256 = db.Column(db.String(64), index=True)
+    mime = db.Column(db.String(128))
+    pages = db.Column(db.Integer)
+    source = db.Column(db.String(32), default='upload', nullable=False)
+    # upload | contract | law_project | chat
+    draft_id = db.Column(db.Integer, db.ForeignKey('drafts.id'), nullable=True)
+    status = db.Column(db.String(16), default='pending', nullable=False, index=True)
+    status_error = db.Column(db.Text)
+    text_length = db.Column(db.Integer, default=0)
+    indexed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    versions = db.relationship('UserDocumentVersion', backref='document', lazy='dynamic',
+                               cascade='all, delete-orphan')
+    chunks = db.relationship('UserDocumentChunk', backref='document', lazy='dynamic',
+                             cascade='all, delete-orphan')
+
+    def to_dict(self, with_chunks: bool = False):
+        out = {
+            'id': self.id,
+            'title': self.title,
+            'original_filename': self.original_filename,
+            'file_size': self.file_size,
+            'mime': self.mime,
+            'pages': self.pages,
+            'source': self.source,
+            'status': self.status,
+            'status_error': self.status_error,
+            'text_length': self.text_length,
+            'matter_id': self.matter_id,
+            'draft_id': self.draft_id,
+            'versions_count': self.versions.count(),
+            'indexed_at': self.indexed_at.isoformat() if self.indexed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if with_chunks:
+            out['chunks_count'] = self.chunks.count()
+        return out
+
+
+class UserDocumentVersion(db.Model):
+    """Версия файла документа.
+
+    Заводится в двух случаях и ни в каких других: человек загрузил новый файл
+    в существующий документ, либо модуль договоров перегенерировал документ,
+    уже лежащий в библиотеке. Обычная загрузка создаёт новый документ.
+    """
+
+    __tablename__ = 'user_document_versions'
+    __table_args__ = (
+        db.UniqueConstraint('user_document_id', 'version_no', name='uq_user_doc_version_no'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_document_id = db.Column(db.Integer, db.ForeignKey('user_documents.id'),
+                                 nullable=False, index=True)
+    version_no = db.Column(db.Integer, nullable=False)
+    storage_path = db.Column(db.String(512))
+    file_size = db.Column(db.Integer, default=0)
+    sha256 = db.Column(db.String(64))
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'no': self.version_no,
+            'file_size': self.file_size,
+            'note': self.note,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class UserDocumentChunk(db.Model):
+    """Фрагмент документа пользователя с вектором.
+
+    Нарезка и модель эмбеддингов те же, что у корпуса НПА: сопоставлять пункт
+    договора с нормой можно только в одном векторном пространстве. Расхождение
+    здесь молча испортило бы перекрёстные ссылки, не вызвав ни одной ошибки.
+    """
+
+    __tablename__ = 'user_document_chunks'
+    __table_args__ = (
+        db.UniqueConstraint('user_document_id', 'chunk_index', name='uq_user_doc_chunk_index'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_document_id = db.Column(db.Integer, db.ForeignKey('user_documents.id'),
+                                 nullable=False, index=True)
+    chunk_index = db.Column(db.Integer, nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    start_position = db.Column(db.Integer)
+    end_position = db.Column(db.Integer)
+    chunk_size = db.Column(db.Integer)
+    embedding = db.Column(Vector(1024))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class Job(db.Model):
     """Фоновая задача: генерация документа, индексация, тяжёлый экспорт.
 

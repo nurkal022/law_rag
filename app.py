@@ -297,6 +297,7 @@ def initialize_rag_system():
         # поисковик нужен и ему — включая фоновый воркер, у которого нет
         # доступа к переменным этого модуля.
         app.config['RAG_RETRIEVER'] = retriever
+        app.config['DOC_PROCESSOR'] = doc_processor
         log.info("ИИ система успешно инициализирована")
         return True
 
@@ -335,6 +336,11 @@ app.config['CONTRACT_ANALYZER'] = globals().get('contract_analyzer')
 from blueprints.drafts import drafts_bp
 from docengine import tasks as _docengine_tasks  # регистрирует обработчики очереди
 app.register_blueprint(drafts_bp)
+
+# ─── Рабочее место: библиотека документов и дела ───────────────────────────
+from blueprints.workspace import workspace_bp
+from workspace import indexing as _workspace_indexing  # регистрирует обработчик очереди
+app.register_blueprint(workspace_bp)
 
 if os.getenv('DOCENGINE_INLINE_WORKER', '1') == '1' and not os.getenv('WERKZEUG_RUN_MAIN_DONE'):
     # В разработке воркер живёт в потоке того же процесса. На производстве

@@ -109,6 +109,14 @@ class Config:
     # занимает очередь целиком, и остальные ждут неизвестно сколько.
     DRAFT_GENERATIONS_PER_HOUR = int(os.getenv('DRAFT_GENERATIONS_PER_HOUR', '20'))
     DRAFT_EDITS_PER_HOUR = int(os.getenv('DRAFT_EDITS_PER_HOUR', '60'))
+
+    # Библиотека документов пользователя. Файлы на диске, не в базе:
+    # двоичные данные раздули бы PostgreSQL и сломали схему резервных копий.
+    WORKSPACE_UPLOAD_DIR = os.getenv('WORKSPACE_UPLOAD_DIR', 'uploads')
+    WORKSPACE_MAX_FILE_MB = int(os.getenv('WORKSPACE_MAX_FILE_MB', '50'))
+    # Документ, застрявший в обработке дольше этого срока, считается
+    # неудавшимся: воркер мог погибнуть посреди индексации.
+    WORKSPACE_PENDING_TIMEOUT_MIN = int(os.getenv('WORKSPACE_PENDING_TIMEOUT_MIN', '15'))
     TEMPERATURE = 0.1  # Температура для более точных ответов
     TOP_K_RESULTS = 5  # Количество релевантных чанков для контекста
     
