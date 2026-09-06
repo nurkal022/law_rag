@@ -458,14 +458,14 @@ def add_no_cache_headers(response):
     return response
 
 
-@app.route('/')
-def index():
-    """Главная страница - дашборд с инструментами"""
+@app.route('/legacy/')
+def legacy_index():
+    """Прежняя главная на шаблонах. Удаляется вместе с остальными шаблонами."""
     return render_template('index.html')
 
-@app.route('/chat')
-def chat_page():
-    """Страница чата с поиском по документам"""
+@app.route('/legacy/chat')
+def legacy_chat_page():
+    """Прежний чат на шаблонах."""
     # Создаем новую сессию если её нет
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
@@ -489,9 +489,9 @@ def tools_page():
     """Страница инструментов"""
     return render_template('tools.html')
 
-@app.route('/about')
-def about_page():
-    """Страница о платформе"""
+@app.route('/legacy/about')
+def legacy_about_page():
+    """Прежняя страница о платформе."""
     return render_template('about.html')
 
 @app.route('/api/chat/upload', methods=['POST'])
@@ -867,7 +867,7 @@ def rag_status():
 
 # Маршруты для генерации законопроектов
 
-@app.route('/law-generator')
+@app.route('/legacy/law-generator')
 def law_generator_page():
     """Страница генератора законопроектов"""
     if not law_generator:
@@ -1434,7 +1434,7 @@ def get_ml_insights():
 
 # ==================== Договоры ====================
 
-@app.route('/contracts')
+@app.route('/legacy/contracts')
 def contracts_page():
     """Страница анализа и генерации договоров"""
     types = contract_templates.get_all_types()
@@ -1549,6 +1549,59 @@ def export_contract():
         as_attachment=True,
         download_name=filename,
     )
+
+# ─── Одностраничное приложение TURA ────────────────────────────────────────
+#
+# Сборка фронтенда лежит в static/app. Без этих маршрутов новый интерфейс в
+# производственной среде недостижим: адреса продукта занимали прежние
+# страницы на шаблонах, и человек, открывший /contracts, попадал на прежний
+# экран, а не на переписанный.
+#
+# Прежние страницы не удалены, а перенесены под /legacy — удаление шаблонов
+# идёт отдельным шагом, когда все экраны переведены на новый API.
+
+SPA_INDEX = os.path.join(app.static_folder, 'app', 'index.html')
+
+# Разделы продукта. Каждый существует на трёх языках: русский без префикса,
+# казахский под /kk, английский под /en — так же, как в маршрутизаторе React.
+SPA_PATHS = [
+    '/', '/about', '/login', '/register',
+    '/chat', '/chat/<path:rest>',
+    '/contracts', '/contracts/<path:rest>',
+    '/laws', '/laws/<path:rest>',
+    '/workspace', '/workspace/<path:rest>',
+    '/matters', '/analytics', '/admin-panel',
+]
+
+
+def _serve_spa(**_kwargs):
+    """Отдаёт оболочку приложения; дальше маршрут разбирает React.
+
+    Идентификатор сессии заводится здесь, а не в браузере: на нём держится
+    история чата, и прежняя страница чата делала ровно это. Без него первый
+    же вопрос уходил бы в никуда.
+    """
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    if not os.path.exists(SPA_INDEX):
+        return (
+            'Интерфейс не собран. Выполните: cd frontend && npm run build',
+            503,
+            {'Content-Type': 'text/plain; charset=utf-8'},
+        )
+    return send_file(SPA_INDEX)
+
+
+for _i, _path in enumerate(SPA_PATHS):
+    for _prefix in ('', '/kk', '/en'):
+        _rule = f'{_prefix}{_path}' if _path != '/' else (_prefix or '/')
+        app.add_url_rule(_rule, endpoint=f'spa_{_i}_{_prefix.strip("/") or "ru"}',
+                         view_func=_serve_spa)
+
+# Прежние точки входа, на которые ссылается вход в систему.
+app.add_url_rule('/', endpoint='index', view_func=_serve_spa)
+app.add_url_rule('/chat', endpoint='chat_page', view_func=_serve_spa)
+
 
 @app.errorhandler(404)
 def not_found(error):
