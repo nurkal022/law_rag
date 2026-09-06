@@ -5,7 +5,6 @@ import {
   Caption,
   Caret,
   Cite,
-  Empty,
   H2,
   Label,
   Mono,
@@ -491,7 +490,10 @@ export function ChatPage() {
   return (
     <div className="chat-shell">
       <aside className="chat-convs" aria-label={t('convsAria')}>
-        <Label className="chat-convs__label">{t('convs')}</Label>
+        {/* Новый диалог — действие, а не строка списка: так его находят сразу */}
+        <Button variant="secondary" className="chat-convs__new" onClick={() => openConv(DRAFT_ID)}>
+          + {t('convNew')}
+        </Button>
         <Button
           variant="ghost"
           className="chat-convs__toggle"
@@ -502,17 +504,6 @@ export function ChatPage() {
         </Button>
 
         <div className={listOpen ? 'chat-convs__list' : 'chat-convs__list chat-convs__list--off'}>
-          <button
-            type="button"
-            className={activeId === DRAFT_ID ? 'chat-conv chat-conv--on' : 'chat-conv'}
-            onClick={() => openConv(DRAFT_ID)}
-          >
-            <span className="chat-conv__title">{t('convNew')}</span>
-            <Caption tone="mute" className="chat-conv__date">
-              {t('today')}
-            </Caption>
-          </button>
-
           {convs.map((c) => (
             <button
               key={c.id}
@@ -534,7 +525,10 @@ export function ChatPage() {
         <div className="chat__feed" ref={feedRef} aria-label={t('ariaFeed')}>
           {turns.length === 0 ? (
             <div className="chat__empty enter">
-              <Empty title={t('emptyTitle')}>{t('emptyBody')}</Empty>
+              <div className="chat__greeting">
+                <h2 className="t-display">{t('emptyTitle')}</h2>
+                <p className="t-legal tone-mute">{t('emptyBody')}</p>
+              </div>
               <div className="chat__examples">
                 <Label style={{ paddingTop: 'var(--s-3)' }}>{t('examples')}</Label>
                 {EXAMPLES.map((ex) => (

@@ -144,3 +144,17 @@
     display: none;
   }
 }
+
+/* Новый диалог — действие в начале списка, во всю его ширину */
+.chat-convs__new { width: 100%; justify-content: flex-start; margin-bottom: var(--s-3); }
+
+/* Приветствие пустого экрана: без рамки-заглушки, по центру полосы */
+.chat__greeting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-16) 0 var(--s-8);
+  text-align: center;
+  align-items: center;
+}
+.chat__greeting .t-legal { max-width: 48ch; }
