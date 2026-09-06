@@ -146,3 +146,21 @@
 @media (min-width: 1200px) {
   .pub-display { font-size: calc(var(--t-display-size) * 2.35); max-width: 20ch; }
 }
+
+/* Вторая плоскость: разбивает череду бежевых блоков в середине страницы */
+.band--surface {
+  background: var(--surface);
+  border-top: var(--border);
+  border-bottom: var(--border);
+}
+.band--surface .pub-sec { padding-block: var(--s-12); }
+
+/* Действия на чернильной полосе: заливка меняется местами */
+.pub-cta--onink { background: var(--paper); color: var(--ink); }
+.pub-cta--onink:hover { background: var(--on-ink); }
+.pub-link--onink { color: var(--on-ink); border-bottom-color: var(--ink-2); }
+.pub-link--onink:hover { color: var(--paper); border-bottom-color: var(--paper); }
+
+.band--ink .final { padding-block: var(--s-16); text-align: center; }
+.band--ink .final__title { color: var(--paper); }
+.band--ink .final__lede { color: var(--on-ink); }

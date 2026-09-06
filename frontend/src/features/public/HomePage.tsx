@@ -768,7 +768,8 @@ export function HomePage() {
       </Reveal>
 
       {/* ---------- Как это работает ---------- */}
-      <Reveal as="section" className="pub-wrap pub-sec" id="how" aria-labelledby="how-title">
+      <Reveal as="section" className="band band--surface" id="how" aria-labelledby="how-title">
+        <div className="pub-wrap pub-sec">
         <div className="pub-sec__head">
           <H2 className="pub-sec__title" id="how-title">
             {t('howTitle')}
@@ -795,6 +796,7 @@ export function HomePage() {
             </li>
           ))}
         </ol>
+        </div>
       </Reveal>
 
       {/* ---------- Для кого ---------- */}
@@ -845,18 +847,20 @@ export function HomePage() {
       </Reveal>
 
       {/* ---------- Призыв в конце ---------- */}
-      <Reveal as="section" className="pub-wrap final" aria-labelledby="final-title">
-        <h2 className="final__title" id="final-title">
-          {t('finalTitle')}
-        </h2>
-        <p className="t-body final__lede">{t('finalLede')}</p>
-        <div className="final__actions">
-          <Link to="/register" className="pub-cta pub-cta--wide">
-            <UIText>{t('ctaMain')}</UIText>
-          </Link>
-          <Link to="/about" className="pub-link">
-            {t('finalAbout')}
-          </Link>
+      <Reveal as="section" className="band band--ink" aria-labelledby="final-title">
+        <div className="pub-wrap final">
+          <h2 className="final__title" id="final-title">
+            {t('finalTitle')}
+          </h2>
+          <p className="t-body final__lede">{t('finalLede')}</p>
+          <div className="final__actions">
+            <Link to="/register" className="pub-cta pub-cta--wide pub-cta--onink">
+              <UIText>{t('ctaMain')}</UIText>
+            </Link>
+            <Link to="/about" className="pub-link pub-link--onink">
+              {t('finalAbout')}
+            </Link>
+          </div>
         </div>
       </Reveal>
     </PublicPage>
