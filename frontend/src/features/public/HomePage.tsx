@@ -257,6 +257,11 @@ const dict: Dict = {
   },
 
   /* ---- Возможности ---- */
+  figsLabel: { ru: 'Система в цифрах', kz: 'Жүйе сандармен', en: 'The system in numbers' },
+  fig1: { ru: 'нормативных актов в базе', kz: 'дерекқордағы нормативтік акт', en: 'legal acts indexed' },
+  fig2: { ru: 'обязательных разделов в пакете законопроекта', kz: 'заң жобасы топтамасындағы міндетті бөлім', en: 'mandatory sections in a draft-law package' },
+  fig3: { ru: 'типов договоров', kz: 'шарт түрі', en: 'contract types' },
+  fig4: { ru: 'языка без потери качества', kz: 'сапасын жоғалтпайтын тіл', en: 'languages, without loss of quality' },
   modsTitle: { ru: 'Четыре модуля', kz: 'Төрт модуль', en: 'Four modules' },
   modsNote: {
     ru: 'Одна база документов, один поиск, четыре способа применить его к работе.',
@@ -709,6 +714,30 @@ export function HomePage() {
       <section className="pub-wrap enter" aria-label={t('specALabel')} style={step(4)}>
         <LiveSpec />
       </section>
+
+      {/* ---------- Цифры продукта на чернильной полосе ----------
+          Единственный контрастный блок страницы: без него вся полоса от
+          шапки до подвала идёт одним тоном и читается плоско. */}
+      <Reveal as="section" className="band band--ink" aria-label={t('figsLabel')}>
+        <div className="pub-wrap figs">
+          <div className="fig">
+            <span className="fig__num">400+</span>
+            <span className="fig__cap">{t('fig1')}</span>
+          </div>
+          <div className="fig">
+            <span className="fig__num">13</span>
+            <span className="fig__cap">{t('fig2')}</span>
+          </div>
+          <div className="fig">
+            <span className="fig__num">9</span>
+            <span className="fig__cap">{t('fig3')}</span>
+          </div>
+          <div className="fig">
+            <span className="fig__num">3</span>
+            <span className="fig__cap">{t('fig4')}</span>
+          </div>
+        </div>
+      </Reveal>
 
       {/* ---------- Возможности ---------- */}
       <Reveal as="section" className="pub-wrap pub-sec" aria-labelledby="mods-title">

@@ -77,3 +77,72 @@
 
 /* Подсказка под источниками — тише самой выписки */
 .spec__hint { display: block; margin-top: var(--s-4); }
+
+/* ---------- Контрастная полоса ----------
+   Во всю ширину окна, содержимое — по общей сетке страницы. */
+.band { width: 100%; }
+.band--ink {
+  background: var(--ink);
+  color: var(--paper);
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+
+/* Цифры продукта */
+.figs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-block: var(--s-12);
+}
+.fig {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-inline: var(--s-5);
+  border-left: 1px solid var(--ink-2);
+}
+.fig:first-child { border-left: 0; padding-left: 0; }
+
+.fig__num {
+  font-family: var(--font-serif);
+  font-size: calc(var(--t-display-size) * 1.5);
+  line-height: 1;
+  font-weight: 700;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}
+.fig__cap {
+  font-family: var(--font-sans);
+  font-size: var(--t-ui-size);
+  line-height: var(--t-body-lh);
+  color: var(--on-ink);
+}
+
+@media (max-width: 860px) {
+  .figs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-8); padding-block: var(--s-8); }
+  .fig:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .fig__num { font-size: var(--t-display-size); }
+}
+@media (max-width: 480px) {
+  .figs { grid-template-columns: minmax(0, 1fr); }
+  .fig { border-left: 0; padding-left: 0; }
+}
+
+/* ---------- Заголовки разделов ----------
+   Были кеглем h2 (19px) против героя в 63px — иерархия проваливалась
+   в середине страницы. Поднимаем и добавляем порядковый номер. */
+.pub-sec__title {
+  font-size: calc(var(--t-display-size) * 1.05);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 860px) {
+  .pub-sec__title { font-size: calc(var(--t-display-size) * 0.85); }
+}
+
+/* Герой: на широком экране кегль растёт, иначе заголовок занимает половину
+   полосы и справа остаётся пустота, читаемая как незавёрстанное место. */
+@media (min-width: 1200px) {
+  .pub-display { font-size: calc(var(--t-display-size) * 2.35); max-width: 20ch; }
+}
