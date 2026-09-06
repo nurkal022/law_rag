@@ -435,6 +435,12 @@ export function ChatPage() {
   useEffect(grow, [draft, grow])
 
   useEffect(() => {
+    // На пустом диалоге не прокручиваем: иначе приветствие уезжает за верхний
+    // край — на узком экране от него оставался один подзаголовок.
+    if (turns.length === 0) {
+      feedRef.current?.scrollTo({ top: 0 })
+      return
+    }
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight })
   }, [turns.length, activeId])
 
