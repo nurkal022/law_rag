@@ -47,10 +47,6 @@ const dict: Dict = {
   perk3d: { ru: 'на собственных серверах', kz: 'меншікті серверлерде', en: 'on our own servers' },
 
   /* ---- Макет окна консультанта ---- */
-  mockChat: { ru: 'Консультант', kz: 'Кеңесші', en: 'Assistant' },
-  mockDocs: { ru: 'Договоры', kz: 'Шарттар', en: 'Contracts' },
-  mockLaws: { ru: 'Законопроекты', kz: 'Заң жобалары', en: 'Draft laws' },
-  mockStats: { ru: 'Аналитика', kz: 'Талдау', en: 'Analytics' },
   mockQ: {
     ru: 'Купил квартиру, а через два года выяснилось, что продавец не имел права её продавать. Сколько у меня времени, чтобы оспорить сделку?',
     kz: 'Пәтер сатып алдым, ал екі жылдан кейін сатушының оны сатуға құқығы болмағаны белгілі болды. Мәмілені даулауға қанша уақытым бар?',
@@ -71,12 +67,28 @@ const dict: Dict = {
     kz: ', демек мерзім өткен жоқ.',
     en: ', so the period has not expired.',
   },
-  mockSrc: { ru: 'Источники', kz: 'Дереккөздер', en: 'Sources' },
   n178t: { ru: 'Общий срок исковой давности', kz: 'Талап қоюдың жалпы мерзімі', en: 'General limitation period' },
   n180t: { ru: 'Начало течения срока', kz: 'Мерзімнің басталуы', en: 'Start of the period' },
-  mockPlaceholder: { ru: 'Задайте вопрос…', kz: 'Сұрақ қойыңыз…', en: 'Ask a question…' },
-  floatCheck: { ru: 'Проверка договора', kz: 'Шартты тексеру', en: 'Contract check' },
-  floatCheckD: { ru: '12 условий · 1 замечание', kz: '12 талап · 1 ескертпе', en: '12 clauses · 1 issue' },
+  n178: {
+    ru: 'Общий срок исковой давности устанавливается в три года.',
+    kz: 'Талап қоюдың жалпы мерзімі үш жыл болып белгіленеді.',
+    en: 'The general limitation period is set at three years.',
+  },
+  n180: {
+    ru: 'Течение срока исковой давности начинается со дня, когда лицо узнало или должно было узнать о нарушении своего права.',
+    kz: 'Талап қою мерзімінің өтуі адам өз құқығының бұзылғанын білген немесе білуге тиіс болған күннен басталады.',
+    en: 'The limitation period starts on the day the person learned, or should have learned, that their right was violated.',
+  },
+  pageCode: { ru: 'Гражданский кодекс РК', kz: 'ҚР Азаматтық кодексі', en: 'Civil Code of Kazakhstan' },
+  pageArt1: { ru: 'Статья 178', kz: '178-бап', en: 'Article 178' },
+  pageArt2: { ru: 'Статья 180', kz: '180-бап', en: 'Article 180' },
+  ansStatus: { ru: 'Ответ с источниками', kz: 'Дереккөздері бар жауап', en: 'Sourced answer' },
+  ansQLabel: { ru: 'Ваш вопрос', kz: 'Сіздің сұрағыңыз', en: 'Your question' },
+  stampText: {
+    ru: 'СВЕРЕНО С РЕДАКЦИЕЙ · ГК РК · ',
+    kz: 'РЕДАКЦИЯМЕН САЛЫСТЫРЫЛДЫ · ҚР АК · ',
+    en: 'CHECKED AGAINST VERSION · CIVIL CODE · ',
+  },
   floatNorm: { ru: 'Норма найдена', kz: 'Норма табылды', en: 'Norm found' },
   floatNormD: { ru: 'редакция от 01.07.2026', kz: '01.07.2026 редакциясы', en: 'version of 01.07.2026' },
 
@@ -451,60 +463,79 @@ function Donut({
 
 function HeroArt() {
   const t = useT(dict)
-  const [ref, shown] = useOnScreen<HTMLDivElement>('0px')
   return (
-    <div className="art" ref={ref} aria-hidden="true">
+    <div className="art" aria-hidden="true">
       <span className="art__blob art__blob--a" />
       <span className="art__blob art__blob--b" />
       <span className="art__blob art__blob--c" />
       <span className="art__grid" />
 
-      <div className="win enter" style={step(4)}>
-        <div className="win__bar">
-          <span className="win__dot" />
-          <span className="win__dot" />
-          <span className="win__dot" />
-          <span className="win__addr">dalel.kz / chat</span>
+      {/* Страницы кодекса веером за ответом: из них он и собран */}
+      <div className="page page--1 enter" style={step(3)}>
+        <span className="page__code">{t('pageCode')}</span>
+        <span className="page__art">{t('pageArt1')}</span>
+        <span className="page__line" style={{ width: '84%' }} />
+        <span className="page__line" style={{ width: '62%' }} />
+        <p className="page__hi">
+          <span className="page__hi-num">1.</span>
+          {t('n178')}
+        </p>
+        <span className="page__line" style={{ width: '90%' }} />
+        <span className="page__line" style={{ width: '74%' }} />
+        <span className="page__line" style={{ width: '56%' }} />
+      </div>
+      <div className="page page--2 enter" style={step(5)}>
+        <span className="page__code">{t('pageCode')}</span>
+        <span className="page__art">{t('pageArt2')}</span>
+        <span className="page__line" style={{ width: '70%' }} />
+        <p className="page__hi">
+          <span className="page__hi-num">1.</span>
+          {t('n180')}
+        </p>
+        <span className="page__line" style={{ width: '88%' }} />
+        <span className="page__line" style={{ width: '66%' }} />
+        <span className="page__line" style={{ width: '48%' }} />
+      </div>
+
+      {/* Ответ: карточка без окна и без боковой панели */}
+      <div className="ans enter" style={step(8)}>
+        <div className="ans__head">
+          <span className="ans__avatar"><Icon name="sparkle" size={14} /></span>
+          <span className="ans__brand">Dalel</span>
+          <span className="ans__status">
+            <span className="ans__status-dot" />
+            {t('ansStatus')}
+          </span>
         </div>
-        <div className="win__body">
-          <aside className="win__side">
-            <span className="win__nav win__nav--on"><Icon name="chat" size={14} />{t('mockChat')}</span>
-            <span className="win__nav"><Icon name="doc" size={14} />{t('mockDocs')}</span>
-            <span className="win__nav"><Icon name="gavel" size={14} />{t('mockLaws')}</span>
-            <span className="win__nav"><Icon name="chart" size={14} />{t('mockStats')}</span>
-          </aside>
-          <div className="win__main">
-            <div className="win__q enter" style={step(8)}>{t('mockQ')}</div>
-            <div className="win__a enter" style={step(12)}>
-              <span className="win__avatar"><Icon name="sparkle" size={14} /></span>
-              <div>
-                <p className="win__text">
-                  {t('mockA1')}<Norm code="ГК РК 178.1" />{t('mockA2')}<Norm code="ГК РК 180.1" />{t('mockA3')}
-                </p>
-                <div className="win__srcs">
-                  <span className="win__srcs-label">{t('mockSrc')}</span>
-                  <span className="win__src"><Norm code="ГК РК 178.1" /><span>{t('n178t')}</span></span>
-                  <span className="win__src"><Norm code="ГК РК 180.1" /><span>{t('n180t')}</span></span>
-                </div>
-              </div>
-            </div>
-            <div className="win__ask">
-              <span>{t('mockPlaceholder')}</span>
-              <span className="win__send"><Icon name="arrow" size={14} /></span>
-            </div>
-          </div>
+        <div className="ans__q">
+          <span className="ans__q-label">{t('ansQLabel')}</span>
+          <span className="ans__q-text">{t('mockQ')}</span>
+        </div>
+        <p className="ans__text">
+          {t('mockA1')}<Norm code="ГК РК 178.1" />{t('mockA2')}<Norm code="ГК РК 180.1" />{t('mockA3')}
+        </p>
+        <div className="ans__srcs">
+          <span className="ans__src"><Norm code="ГК РК 178.1" /><span>{t('n178t')}</span></span>
+          <span className="ans__src"><Norm code="ГК РК 180.1" /><span>{t('n180t')}</span></span>
         </div>
       </div>
 
-      <div className="float float--a enter" style={step(14)}>
-        <Donut value={92} shown={shown} size={56} className="float__donut">92%</Donut>
-        <div>
-          <span className="float__title">{t('floatCheck')}</span>
-          <span className="float__sub">{t('floatCheckD')}</span>
-        </div>
+      {/* Печать: кольцо текста медленно вращается, как штамп на документе */}
+      <div className="stamp enter" style={step(13)}>
+        <svg viewBox="0 0 100 100" className="stamp__ring">
+          <defs>
+            <path id="stamp-arc" d="M50 50 m-38 0 a38 38 0 1 1 76 0 a38 38 0 1 1 -76 0" />
+          </defs>
+          <circle cx="50" cy="50" r="47" className="stamp__outer" />
+          <circle cx="50" cy="50" r="29" className="stamp__inner" />
+          <text className="stamp__text">
+            <textPath href="#stamp-arc" startOffset="0">{t('stampText')}{t('stampText')}</textPath>
+          </text>
+        </svg>
+        <span className="stamp__mark"><Icon name="check" size={22} /></span>
       </div>
 
-      <div className="float float--b enter" style={step(17)}>
+      <div className="float float--b enter" style={step(16)}>
         <span className="float__ok"><Icon name="check" size={16} /></span>
         <div>
           <span className="float__title">{t('floatNorm')}</span>
