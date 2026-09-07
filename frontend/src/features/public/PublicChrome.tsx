@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from '../../shared/nav'
-import { useLocation } from 'react-router-dom'
 import { Caption, Label, UIText } from '../../shared/ui'
-import { LANGS, useLang, useT, stripLang } from '../../i18n'
+import { LANGS, useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import './public.css'
 import './public.chrome.css'
@@ -106,25 +105,19 @@ export function PublicHeader() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // На главной под шапкой лежит чернильная обложка: пока страница не
-  // прокручена, шапка того же тона, иначе светлая полоса режет разворот.
-  const { pathname } = useLocation()
-  const onCover = stripLang(pathname) === '/'
-  const ink = onCover && atTop
-
   return (
-    <header
-      className={['pub-hdr', atTop ? 'pub-hdr--top' : '', ink ? 'pub-hdr--ink' : '']
-        .filter(Boolean)
-        .join(' ')}
-    >
+    <header className={['pub-hdr', atTop ? 'pub-hdr--top' : ''].filter(Boolean).join(' ')}>
       <div className="pub-wrap pub-hdr__in">
-        <Link to="/" className="pub-wordmark">
-          TURA
+        <Link to="/" className="pub-wordmark" aria-label="TURA">
+          <Logo />
+          <span>TURA</span>
         </Link>
-        <Link to="/about" className="pub-link">
-          {t('about')}
-        </Link>
+        <nav className="pub-hdr__nav" aria-label={t('colProduct')}>
+          <Link to="/chat" className="pub-link">{t('navAssistant')}</Link>
+          <Link to="/contracts" className="pub-link">{t('navContracts')}</Link>
+          <Link to="/laws" className="pub-link">{t('navLaws')}</Link>
+          <Link to="/about" className="pub-link">{t('about')}</Link>
+        </nav>
         <div className="pub-hdr__spacer" />
         <Langs />
         <div className="pub-hdr__actions">
@@ -140,6 +133,33 @@ export function PublicHeader() {
   )
 }
 
+/**
+ * Знак TURA: раскрытая книга, сведённая к двум страницам и закладке.
+ * Рисуется текущим цветом, поэтому одинаково живёт на бумаге и на индиго.
+ */
+export function Logo({ className }: { className?: string }) {
+  return (
+    <svg
+      className={['pub-logo', className ?? ''].filter(Boolean).join(' ')}
+      viewBox="0 0 28 28"
+      width="28"
+      height="28"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x="1.5" y="1.5" width="25" height="25" rx="7" fill="currentColor" opacity="0.12" />
+      <path
+        d="M7.5 9.2c2.4-.9 4.6-.6 6.5.9 1.9-1.5 4.1-1.8 6.5-.9v10.3c-2.4-.9-4.6-.6-6.5.9-1.9-1.5-4.1-1.8-6.5-.9z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M14 10.1v10.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function PublicFooter() {
   const t = useT(dict)
   return (
@@ -147,8 +167,14 @@ export function PublicFooter() {
       <div className="pub-wrap">
         <div className="pub-ftr__cols">
           <div className="pub-ftr__brand">
-            <span className="pub-wordmark">TURA</span>
+            <span className="pub-wordmark">
+              <Logo />
+              <span>TURA</span>
+            </span>
             <p className="t-body pub-ftr__tag">{t('ftrTag')}</p>
+            <div className="pub-ftr__langs">
+              <Langs />
+            </div>
           </div>
 
           <nav className="pub-ftr__col" aria-label={t('colProduct')}>
@@ -164,6 +190,7 @@ export function PublicFooter() {
             <Link to="/about" className="pub-link">{t('navAbout')}</Link>
             <Link to="/about#contacts" className="pub-link">{t('navContacts')}</Link>
             <Link to="/register" className="pub-link">{t('navRegister')}</Link>
+            <Link to="/login" className="pub-link">{t('login')}</Link>
           </nav>
 
           <nav className="pub-ftr__col" aria-label={t('colLegal')}>
@@ -188,11 +215,15 @@ export function PublicFooter() {
   )
 }
 
-/** Каркас публичной страницы: шапка, содержание, подвал. */
-export function PublicPage({ children }: { children: ReactNode }) {
+/**
+ * Каркас публичной страницы: шапка, содержание, подвал.
+ * Вариант «home» включает витринное оформление обвязки — прозрачную шапку
+ * над первым экраном и цветной подвал; см. home.css.
+ */
+export function PublicPage({ children, variant }: { children: ReactNode; variant?: 'home' }) {
   const t = useT(dict)
   return (
-    <div className="pub">
+    <div className={['pub', variant === 'home' ? 'pub--home' : ''].filter(Boolean).join(' ')}>
       <a href="#content" className="pub-skip">
         <UIText>{t('skip')}</UIText>
       </a>

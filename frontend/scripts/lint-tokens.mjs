@@ -17,6 +17,14 @@ const SRC = join(ROOT, 'src')
 /** Единственный файл, где литеральные значения разрешены и обязаны быть. */
 const ALLOWED = new Set(['src/styles/tokens.css'])
 
+/**
+ * Публичная главная — витрина, а не документ: ей разрешены мягкая тень и
+ * градиент, но только через токены --h-shadow / --h-accent. Цвета, кегли и
+ * гарнитуры проверяются там так же строго, как везде.
+ */
+const SHOWCASE = new Set(['src/features/public/home.css'])
+const SHOWCASE_RELAXED = new Set(['shadow', 'gradient'])
+
 const RULES = [
   {
     id: 'hex-color',
@@ -139,6 +147,7 @@ for (const file of walk(SRC)) {
   })
 
   for (const rule of RULES) {
+    if (SHOWCASE.has(rel) && SHOWCASE_RELAXED.has(rule.id)) continue
     lines.forEach((line, i) => {
       // Комментарии не проверяем — в них токены объясняют сами себя
       const code = line.replace(/\/\*.*?\*\//g, '').replace(/\/\/.*$/, '')

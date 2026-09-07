@@ -68,6 +68,11 @@
   flex: none;
 }
 .pub-wordmark:hover { border: 0; color: var(--ink-2); }
+.pub-wordmark { display: inline-flex; align-items: center; gap: var(--s-2); }
+.pub-logo { flex: none; display: block; }
+
+.pub-hdr__nav { display: flex; align-items: center; gap: var(--s-5); }
+.pub-ftr__langs { margin-top: var(--s-5); }
 
 .pub-hdr__spacer { flex: 1 1 auto; }
 
@@ -149,137 +154,18 @@
   text-wrap: balance;
 }
 
-/* ---------- Первый экран ---------- */
-.hero { padding-block: var(--s-16) var(--s-12); }
-.hero__label { margin-bottom: var(--s-5); }
-.hero__lede {
-  margin-top: var(--s-6);
-  max-width: var(--measure);
-  color: var(--ink-2);
-}
-.hero__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--s-6);
-  flex-wrap: wrap;
-  margin-top: var(--s-8);
-}
-
-/* ---------- Живой пример: выписка, а не карточка ---------- */
-.spec {
-  margin: 0;
-  border-top: var(--border);
-  border-bottom: var(--border);
-  background: var(--surface);
-}
-.spec__row { padding: var(--s-6) var(--s-6); }
-.spec__row + .spec__row { border-top: 1px solid var(--rule); }
-.spec__label { margin-bottom: var(--s-3); }
-.spec__q {
-  font-family: var(--font-serif);
-  font-size: var(--t-h2-size);
-  line-height: var(--t-h2-lh);
-  font-weight: var(--t-h2-weight);
-  color: var(--ink);
-  max-width: var(--measure);
-}
-.spec__a { color: var(--ink); }
-.spec__a + .spec__a { margin-top: var(--s-4); }
-.spec__srcs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2) var(--s-5);
-  align-items: center;
-}
-.spec__src { display: inline-flex; align-items: baseline; gap: var(--s-2); }
-
-/* ---------- Возможности: строки, разделённые линиями ---------- */
-.mods { border-top: var(--border); }
-.mod {
-  display: grid;
-  grid-template-columns: calc(var(--s-16) * 1.5) 1fr minmax(0, 2fr);
-  gap: var(--s-6);
-  align-items: baseline;
-  padding-block: var(--s-8);
-  border-bottom: var(--border);
-}
-.mod__num { font-family: var(--font-mono); color: var(--mute); }
-.mod__name { font-family: var(--font-serif); }
-.mod__body { max-width: var(--measure); color: var(--ink-2); }
-
-/* ---------- Как это работает: три шага ---------- */
-.steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s-8);
-}
-.step { border-top: 2px solid var(--ink); padding-top: var(--s-5); }
-.step__num {
+/* Крупная антиква первого экрана — производная от токена display */
+.pub-display {
   font-family: var(--font-serif);
   font-weight: var(--t-display-weight);
-  font-size: calc(var(--t-display-size) * 1.4);
-  line-height: 1;
-  color: var(--ochre-ink);
-  display: block;
-  margin-bottom: var(--s-4);
-}
-.step__name { font-family: var(--font-serif); margin-bottom: var(--s-3); }
-.step__body { color: var(--ink-2); }
-
-/* ---------- Для кого: таблица ---------- */
-.who { width: 100%; border-collapse: collapse; }
-.who th {
-  text-align: left;
-  padding: var(--s-2) var(--s-4) var(--s-2) 0;
-  border-bottom: 1px solid var(--ink);
-  font-family: var(--font-sans);
-  font-size: var(--t-label-size);
-  line-height: var(--t-label-lh);
-  font-weight: var(--t-label-weight);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--mute);
-}
-.who td {
-  padding: var(--s-5) var(--s-4) var(--s-5) 0;
-  border-bottom: var(--border);
-  vertical-align: top;
-}
-.who td:last-child, .who th:last-child { padding-right: 0; }
-.who__who {
-  font-family: var(--font-serif);
-  font-size: var(--t-h3-size);
-  font-weight: var(--t-h2-weight);
+  font-size: calc(var(--t-display-size) * 1.85);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
   color: var(--ink);
-  white-space: nowrap;
+  max-width: 17ch;
+  margin: 0;
+  text-wrap: balance;
 }
-.who__what {
-  font-family: var(--font-sans);
-  font-size: var(--t-body-size);
-  line-height: var(--t-body-lh);
-  color: var(--ink-2);
-}
-
-/* ---------- Доверие ---------- */
-.trust { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-16); }
-.trust__claim {
-  font-family: var(--font-serif);
-  font-weight: var(--t-display-weight);
-  font-size: var(--t-display-size);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-  border-left: 2px solid var(--seal);
-  padding-left: var(--s-5);
-}
-.trust__list { list-style: none; margin: 0; padding: 0; }
-.trust__item { padding-block: var(--s-5); border-bottom: var(--border); }
-.trust__item:first-child { border-top: var(--border); }
-.trust__term { font-family: var(--font-serif); font-weight: var(--t-h2-weight); color: var(--ink); }
-.trust__def { margin-top: var(--s-2); color: var(--ink-2); max-width: var(--measure); }
 
 /* ---------- Призыв в конце ---------- */
 .final { padding-block: var(--s-16); border-top: 2px solid var(--ink); text-align: center; }
@@ -380,25 +266,17 @@
 /* ---------- Адаптив: до 860px — одна колонка ---------- */
 @media (max-width: 860px) {
   .pub { --pub-gutter: var(--s-5); }
-
   .pub-display { font-size: calc(var(--t-display-size) * 1.15); max-width: none; }
-  .trust__claim { font-size: var(--t-h1-size); }
-  .final__title { font-size: var(--t-h1-size); }
-  .step__num { font-size: var(--t-display-size); }
 
-  .hero { padding-block: var(--s-12) var(--s-8); }
+  .final__title { font-size: var(--t-h1-size); }
+
   .pub-sec { padding-block: var(--s-12); }
 
-  .mod { grid-template-columns: 1fr; gap: var(--s-3); padding-block: var(--s-6); }
-  .steps { grid-template-columns: 1fr; gap: var(--s-6); }
-  .trust { grid-template-columns: 1fr; gap: var(--s-8); }
   .pub-ftr__cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-8) var(--s-6); }
 
-  .spec__row { padding: var(--s-5) var(--s-4); }
-  .who td { padding: var(--s-4) var(--s-3) var(--s-4) 0; }
-  .who__who { white-space: normal; }
 
   .pub-hdr__in { flex-wrap: wrap; gap: var(--s-3) var(--s-4); }
+  .pub-hdr__nav { display: none; }
   .pub-hdr__actions { gap: var(--s-3); }
   .contacts li { flex-direction: column; gap: var(--s-1); }
 }
@@ -415,8 +293,4 @@
   .pub-langs__item { display: inline-flex; align-items: center; min-height: 44px; padding-inline: var(--s-2); }
 
   .pub-ftr__cols { grid-template-columns: 1fr; }
-  .who thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .who tr { display: block; border-bottom: var(--border); padding-block: var(--s-4); }
-  .who td { display: block; border: 0; padding: 0; }
-  .who td + td { margin-top: var(--s-2); }
 }
