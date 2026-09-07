@@ -1002,7 +1002,7 @@ export function HomePage() {
                 {t('lede')}
               </p>
               <div className="hero__actions enter" style={step(6)}>
-                <Link to="/register" className="hbtn hbtn--primary">
+                <Link to="/chat" className="hbtn hbtn--primary">
                   {t('ctaMain')}
                   <Icon name="arrow" size={18} />
                 </Link>
@@ -1102,7 +1102,7 @@ export function HomePage() {
             <h2 className="cta__title" id="cta-title">{t('finalTitle')}</h2>
             <p className="cta__lede">{t('finalLede')}</p>
             <div className="cta__actions">
-              <Link to="/register" className="hbtn hbtn--light">
+              <Link to="/chat" className="hbtn hbtn--light">
                 {t('ctaMain')}
                 <Icon name="arrow" size={18} />
               </Link>
