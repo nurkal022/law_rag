@@ -126,6 +126,12 @@ class Config:
     EMBEDDING_API_KEY = os.getenv('EMBEDDING_API_KEY', 'not-needed')
     EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 'bge-m3')
     EMBEDDING_DIMENSION = 1024  # BGE-M3 → 1024
+    # OpenAI-модели text-embedding-3-* отдают 1536/3072 измерений, но умеют
+    # усечь вектор до нужного через параметр `dimensions`. Схема БД — vector(1024),
+    # поэтому при работе через OpenAI флаг включается и клиент просит ровно 1024.
+    # По умолчанию выключен: у vLLM/BGE-M3 размерность и так совпадает, а лишнее
+    # поле в запросе он не ждёт.
+    EMBEDDING_SEND_DIMENSIONS = os.getenv('EMBEDDING_SEND_DIMENSIONS', 'false').lower() == 'true'
     # Rerank того же сервиса (BGE-M3 умеет /v1/rerank) — переупорядочивает кандидатов
     EMBEDDING_RERANK_MODEL = os.getenv('EMBEDDING_RERANK_MODEL', 'bge-m3')
     USE_RERANK = os.getenv('USE_RERANK', 'true').lower() == 'true'

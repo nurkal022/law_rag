@@ -28,6 +28,7 @@ class EmbeddingClient:
         self.api_key = api_key or Config.EMBEDDING_API_KEY or 'not-needed'
         self.model = model or Config.EMBEDDING_MODEL
         self.rerank_model = rerank_model or Config.EMBEDDING_RERANK_MODEL
+        self.send_dimensions = Config.EMBEDDING_SEND_DIMENSIONS
         self._headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}',
@@ -58,10 +59,13 @@ class EmbeddingClient:
         vectors: List[List[float]] = []
         for i in range(0, len(inputs), batch_size):
             batch = inputs[i:i + batch_size]
+            payload = {"model": self.model, "input": batch}
+            if self.send_dimensions:
+                payload["dimensions"] = Config.EMBEDDING_DIMENSION
             resp = requests.post(
                 f"{self.base_url}/embeddings",
                 headers=self._headers,
-                json={"model": self.model, "input": batch},
+                json=payload,
                 timeout=120,
             )
             resp.raise_for_status()
