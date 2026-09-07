@@ -59,7 +59,7 @@ export function Shell() {
     <div className="shell">
       <header className="hdr">
         <Link to="/" className="wordmark">
-          TURA
+          DALEL
         </Link>
 
         <nav className="nav" aria-label={t('sections')}>

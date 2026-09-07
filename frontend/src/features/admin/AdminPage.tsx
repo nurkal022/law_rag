@@ -139,9 +139,9 @@ const dict: Dict = {
   confirmNo: { ru: 'Нет', kz: 'Жоқ', en: 'No' },
   noKeysTitle: { ru: 'Действующих ключей нет', kz: 'Қолданыстағы кілт жоқ', en: 'No active keys' },
   noKeysBody: {
-    ru: 'Выпустите ключ, чтобы подключить внешнюю систему к правовому поиску TURA.',
-    kz: 'Сыртқы жүйені TURA құқықтық іздеуіне қосу үшін кілт шығарыңыз.',
-    en: 'Issue a key to connect an external system to TURA legal search.',
+    ru: 'Выпустите ключ, чтобы подключить внешнюю систему к правовому поиску Dalel.',
+    kz: 'Сыртқы жүйені Dalel құқықтық іздеуіне қосу үшін кілт шығарыңыз.',
+    en: 'Issue a key to connect an external system to Dalel legal search.',
   },
 }
 
@@ -161,18 +161,18 @@ const metrics: { key: string; value: number; kind: 'int' | 'sec'; delta: string 
 const feed = [
   { time: '14:52', who: 'a.suleimenova@vsk.kz', key: 'evAsk' },
   { time: '14:47', who: 'd.omarov@kazlex.kz', key: 'evUpload' },
-  { time: '14:41', who: 'n.kurmanov@tura.kz', key: 'evContract' },
+  { time: '14:41', who: 'n.kurmanov@dalel.kz', key: 'evContract' },
   { time: '14:30', who: 'system', key: 'evIndex' },
   { time: '14:12', who: 'g.iskakova@aifc.kz', key: 'evKey' },
   { time: '13:58', who: 'm.zhaksylyk@gmail.com', key: 'evSignup' },
-  { time: '13:36', who: 'n.kurmanov@tura.kz', key: 'evExport' },
+  { time: '13:36', who: 'n.kurmanov@dalel.kz', key: 'evExport' },
 ]
 
 const users = [
   { email: 'a.suleimenova@vsk.kz', name: 'Айгүл Сүлейменова', signup: '2026-02-11', seen: '2026-09-05 14:52', asks: 412 },
   { email: 'd.omarov@kazlex.kz', name: 'Дархан Омаров', signup: '2026-03-04', seen: '2026-09-05 14:47', asks: 288 },
   { email: 'g.iskakova@aifc.kz', name: 'Гүлнар Ысқақова', signup: '2026-04-19', seen: '2026-09-05 14:12', asks: 176 },
-  { email: 'n.kurmanov@tura.kz', name: 'Нұрлыхан Құрманов', signup: '2025-11-02', seen: '2026-09-05 14:41', asks: 1043 },
+  { email: 'n.kurmanov@dalel.kz', name: 'Нұрлыхан Құрманов', signup: '2025-11-02', seen: '2026-09-05 14:41', asks: 1043 },
   { email: 'm.zhaksylyk@gmail.com', name: 'Мадина Жақсылық', signup: '2026-09-05', seen: '2026-09-05 13:58', asks: 3 },
   { email: 's.abenov@kaspi.kz', name: 'Санжар Әбенов', signup: '2026-06-27', seen: '2026-09-04 18:20', asks: 94 },
 ]

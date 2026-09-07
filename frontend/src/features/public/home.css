@@ -424,7 +424,7 @@
 .band { width: 100%; }
 .band--soft { background: var(--h-card); border-top: 1px solid var(--h-line); border-bottom: 1px solid var(--h-line); }
 
-.ticker { padding-top: var(--s-12); text-align: center; }
+.ticker { padding-block: var(--s-12); text-align: center; }
 .ticker__label {
   margin: 0 0 var(--s-5);
   font-family: var(--font-sans);
@@ -463,32 +463,6 @@
   color: var(--h-ink-2);
 }
 .ticker__item .ico { color: var(--h-accent); }
-
-.figs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--s-8);
-  padding-block: var(--s-12);
-}
-.fig { display: flex; flex-direction: column; gap: var(--s-2); padding-left: var(--s-5); position: relative; }
-.fig::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: var(--s-1);
-  bottom: var(--s-1);
-  width: 3px;
-  border-radius: var(--h-radius-pill);
-  background: linear-gradient(var(--h-accent), var(--h-accent-2));
-}
-.fig__num {
-  font-family: var(--font-serif);
-  font-size: calc(var(--t-display-size) * 1.6);
-  line-height: 1;
-  font-weight: var(--t-display-weight);
-  color: var(--h-ink);
-}
-.fig__cap { font-family: var(--font-sans); font-size: var(--t-ui-size); line-height: var(--t-body-lh); color: var(--h-mute); }
 
 /* ============================================================
    Разделы
@@ -1033,8 +1007,6 @@
   .sec { padding-block: var(--s-12); }
   .sec__head { gap: var(--s-4); margin-bottom: var(--s-8); }
   .sec__title { font-size: calc(var(--t-display-size) * 1.1); }
-  .figs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-6); padding-block: var(--s-8); }
-  .fig__num { font-size: calc(var(--t-display-size) * 1.25); }
   .mods { grid-template-columns: 1fr; }
   .trust__claim { font-size: var(--t-h1-size); }
   .cta { padding: var(--s-12) var(--s-6); }
@@ -1053,7 +1025,6 @@
   .hero__actions { align-items: stretch; flex-direction: column; }
   .hbtn { justify-content: center; }
   .aud { grid-template-columns: 1fr; }
-  .figs { grid-template-columns: 1fr; }
   .sec__num { display: none; }
   .diag__cap { display: none; }
   .diag__node span { display: none; }

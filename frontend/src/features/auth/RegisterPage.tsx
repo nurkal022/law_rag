@@ -159,7 +159,7 @@ export function RegisterPage() {
       <aside className="auth__aside enter">
         <div>
           <Link to="/" className="auth__mark">
-            TURA
+            DALEL
           </Link>
           <Legal className="auth__claim">{t('claim')}</Legal>
         </div>
@@ -180,7 +180,7 @@ export function RegisterPage() {
           style={{ animationDelay: 'calc(var(--stagger) * 1)' }}
         >
           <Link to="/" className="auth__mark auth__mark-narrow">
-            TURA
+            DALEL
           </Link>
 
           <div className="auth__head">

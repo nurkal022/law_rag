@@ -552,7 +552,7 @@ export function ChatPage() {
       <aside className="cs" aria-label={t('convsAria')}>
         <div className="cs__brand">
           <Link to="/" className="wordmark">
-            TURA
+            DALEL
           </Link>
         </div>
 

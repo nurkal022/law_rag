@@ -25,9 +25,9 @@ const dict: Dict = {
     en: 'Law should not be a privilege',
   },
   lede: {
-    ru: 'TURA — правовая система для Казахстана. Она отвечает на вопрос по действующим нормативным актам Республики Казахстан и указывает источник каждого утверждения, чтобы ответ можно было проверить, а не принять на веру.',
-    kz: 'TURA — Қазақстанға арналған құқықтық жүйе. Ол Қазақстан Республикасының қолданыстағы нормативтік актілері бойынша сұраққа жауап беріп, әрбір тұжырымның дереккөзін көрсетеді: жауапты сеніммен қабылдамай, тексеруге болады.',
-    en: 'TURA is a legal system for Kazakhstan. It answers questions from the regulatory acts of the Republic in force and names the source of every statement, so the answer can be checked rather than taken on trust.',
+    ru: 'Dalel — правовая система для Казахстана. Она отвечает на вопрос по действующим нормативным актам Республики Казахстан и указывает источник каждого утверждения, чтобы ответ можно было проверить, а не принять на веру.',
+    kz: 'Dalel — Қазақстанға арналған құқықтық жүйе. Ол Қазақстан Республикасының қолданыстағы нормативтік актілері бойынша сұраққа жауап беріп, әрбір тұжырымның дереккөзін көрсетеді: жауапты сеніммен қабылдамай, тексеруге болады.',
+    en: 'Dalel is a legal system for Kazakhstan. It answers questions from the regulatory acts of the Republic in force and names the source of every statement, so the answer can be checked rather than taken on trust.',
   },
 
   /* ---- Задача ---- */
@@ -43,9 +43,9 @@ const dict: Dict = {
     en: 'For a lawyer that is routine work eating up the day. For a civil servant it is weeks spent preparing a single draft law. For a citizen or a small business it is the barrier that keeps law out of reach without an intermediary.',
   },
   task3: {
-    ru: 'TURA убирает не право, а посредника между вопросом и нормой.',
-    kz: 'TURA құқықты емес, сұрақ пен норманың арасындағы делдалды алып тастайды.',
-    en: 'TURA removes not the law but the intermediary between a question and the norm.',
+    ru: 'Dalel убирает не право, а посредника между вопросом и нормой.',
+    kz: 'Dalel құқықты емес, сұрақ пен норманың арасындағы делдалды алып тастайды.',
+    en: 'Dalel removes not the law but the intermediary between a question and the norm.',
   },
 
   /* ---- Технология ---- */
@@ -56,9 +56,9 @@ const dict: Dict = {
     en: 'A language model left to itself answers from training memory and can name, with total confidence, an article that does not exist. In law that is unacceptable: the error looks exactly as convincing as the correct answer.',
   },
   tech2: {
-    ru: 'Поэтому в основе TURA лежит поиск с последующей генерацией — RAG. Простыми словами: прежде чем отвечать, система читает документы.',
-    kz: 'Сондықтан TURA-ның негізінде іздеу мен одан кейінгі генерация — RAG жатыр. Қарапайым тілмен: жауап берер алдында жүйе құжаттарды оқиды.',
-    en: 'That is why TURA is built on retrieval-augmented generation — RAG. In plain words: before answering, the system reads the documents.',
+    ru: 'Поэтому в основе Dalel лежит поиск с последующей генерацией — RAG. Простыми словами: прежде чем отвечать, система читает документы.',
+    kz: 'Сондықтан Dalel-дің негізінде іздеу мен одан кейінгі генерация — RAG жатыр. Қарапайым тілмен: жауап берер алдында жүйе құжаттарды оқиды.',
+    en: 'That is why Dalel is built on retrieval-augmented generation — RAG. In plain words: before answering, the system reads the documents.',
   },
   flow1: {
     ru: 'Правовые акты разбиваются на смысловые фрагменты и индексируются — так, чтобы искать по смыслу, а не по совпадению слов.',
@@ -132,9 +132,9 @@ const dict: Dict = {
   /* ---- Кто делал ---- */
   teamTitle: { ru: 'Кто делает проект', kz: 'Жобаны кім жасайды', en: 'Who builds it' },
   team1: {
-    ru: 'TURA делает небольшая команда разработчиков и юристов из Казахстана. Инженерная часть — поиск, модель, инфраструктура; правовая — отбор источников, разбор терминологии и проверка того, что система отвечает по действующей редакции документа.',
-    kz: 'TURA-ны Қазақстандағы шағын әзірлеушілер мен заңгерлер тобы жасайды. Инженерлік бөлігі — іздеу, модель, инфрақұрылым; құқықтық бөлігі — дереккөздерді іріктеу, терминологияны талдау және жүйенің құжаттың қолданыстағы редакциясы бойынша жауап беретінін тексеру.',
-    en: 'TURA is built by a small team of engineers and lawyers in Kazakhstan. The engineering side covers retrieval, the model and the infrastructure; the legal side selects sources, works through terminology and verifies that answers follow the wording currently in force.',
+    ru: 'Dalel делает небольшая команда разработчиков и юристов из Казахстана. Инженерная часть — поиск, модель, инфраструктура; правовая — отбор источников, разбор терминологии и проверка того, что система отвечает по действующей редакции документа.',
+    kz: 'Dalel-ді Қазақстандағы шағын әзірлеушілер мен заңгерлер тобы жасайды. Инженерлік бөлігі — іздеу, модель, инфрақұрылым; құқықтық бөлігі — дереккөздерді іріктеу, терминологияны талдау және жүйенің құжаттың қолданыстағы редакциясы бойынша жауап беретінін тексеру.',
+    en: 'Dalel is built by a small team of engineers and lawyers in Kazakhstan. The engineering side covers retrieval, the model and the infrastructure; the legal side selects sources, works through terminology and verifies that answers follow the wording currently in force.',
   },
   team2: {
     ru: 'Проект развивается открыто к замечаниям: если система ошиблась в норме, об этом стоит написать — исправление источника важнее любой формулировки.',
@@ -146,15 +146,15 @@ const dict: Dict = {
   /* ---- Условия использования ---- */
   termsTitle: { ru: 'Условия использования', kz: 'Пайдалану шарттары', en: 'Terms of use' },
   termsLede: {
-    ru: 'Коротко и без мелкого шрифта: чем является сервис, чего от него ждать нельзя и что остаётся вашим. Пользуясь TURA, вы принимаете эти условия.',
-    kz: 'Қысқа әрі ұсақ қаріпсіз: сервис не болып табылады, одан нені күтуге болмайды және не сіздікі болып қалады. TURA-ны пайдалана отырып, сіз осы шарттарды қабылдайсыз.',
-    en: 'Short, and with no fine print: what the service is, what it must not be expected to do, and what stays yours. By using TURA you accept these terms.',
+    ru: 'Коротко и без мелкого шрифта: чем является сервис, чего от него ждать нельзя и что остаётся вашим. Пользуясь Dalel, вы принимаете эти условия.',
+    kz: 'Қысқа әрі ұсақ қаріпсіз: сервис не болып табылады, одан нені күтуге болмайды және не сіздікі болып қалады. Dalel-ді пайдалана отырып, сіз осы шарттарды қабылдайсыз.',
+    en: 'Short, and with no fine print: what the service is, what it must not be expected to do, and what stays yours. By using Dalel you accept these terms.',
   },
   tm1k: { ru: 'Что это за сервис.', kz: 'Бұл қандай сервис.', en: 'What the service is.' },
   tm1d: {
-    ru: 'TURA — информационная система: она готовит справку по действующим правовым актам Республики Казахстан и указывает источник каждого утверждения. Это инструмент работы с текстами права, а не оказание юридической помощи.',
-    kz: 'TURA — ақпараттық жүйе: ол Қазақстан Республикасының қолданыстағы құқықтық актілері бойынша анықтама дайындап, әрбір тұжырымның дереккөзін көрсетеді. Бұл құқық мәтіндерімен жұмыс істеу құралы, заң көмегін көрсету емес.',
-    en: 'TURA is an information system: it prepares a summary from the legal acts of the Republic of Kazakhstan in force and names the source of every statement. It is a tool for working with legal texts, not the provision of legal assistance.',
+    ru: 'Dalel — информационная система: она готовит справку по действующим правовым актам Республики Казахстан и указывает источник каждого утверждения. Это инструмент работы с текстами права, а не оказание юридической помощи.',
+    kz: 'Dalel — ақпараттық жүйе: ол Қазақстан Республикасының қолданыстағы құқықтық актілері бойынша анықтама дайындап, әрбір тұжырымның дереккөзін көрсетеді. Бұл құқық мәтіндерімен жұмыс істеу құралы, заң көмегін көрсету емес.',
+    en: 'Dalel is an information system: it prepares a summary from the legal acts of the Republic of Kazakhstan in force and names the source of every statement. It is a tool for working with legal texts, not the provision of legal assistance.',
   },
   tm2k: { ru: 'Ответ требует проверки человеком.', kz: 'Жауапты адам тексеруі керек.', en: 'The answer needs a human check.' },
   tm2d: {
@@ -232,9 +232,9 @@ const dict: Dict = {
   },
   pv6k: { ru: 'Ваши права.', kz: 'Сіздің құқықтарыңыз.', en: 'Your rights.' },
   pv6d: {
-    ru: 'Вы можете получить копию своих данных, исправить их или удалить учётную запись вместе с содержимым — напишите на hello@tura.kz, ответ приходит в течение рабочей недели.',
-    kz: 'Деректеріңіздің көшірмесін алуға, оларды түзетуге немесе тіркелгіні мазмұнымен бірге жоюға болады — hello@tura.kz мекенжайына жазыңыз, жауап бір жұмыс аптасы ішінде келеді.',
-    en: 'You may obtain a copy of your data, correct it, or delete your account together with its content — write to hello@tura.kz and we answer within a working week.',
+    ru: 'Вы можете получить копию своих данных, исправить их или удалить учётную запись вместе с содержимым — напишите на hello@dalel.kz, ответ приходит в течение рабочей недели.',
+    kz: 'Деректеріңіздің көшірмесін алуға, оларды түзетуге немесе тіркелгіні мазмұнымен бірге жоюға болады — hello@dalel.kz мекенжайына жазыңыз, жауап бір жұмыс аптасы ішінде келеді.',
+    en: 'You may obtain a copy of your data, correct it, or delete your account together with its content — write to hello@dalel.kz and we answer within a working week.',
   },
   pv7k: { ru: 'Когда данные могут быть раскрыты.', kz: 'Деректер қашан ашылуы мүмкін.', en: 'When data may be disclosed.' },
   pv7d: {
@@ -251,9 +251,9 @@ const dict: Dict = {
   /* ---- Оговорка ---- */
   discTitle: { ru: 'Оговорка', kz: 'Ескертпе', en: 'Disclaimer' },
   disc: {
-    ru: 'Ответ TURA — справка по правовым актам, а не юридическая консультация. Он не заменяет решение уполномоченного органа или суда и не учитывает всех обстоятельств конкретного дела. Перед применением сверяйтесь с официальной редакцией документа, а в спорной ситуации обращайтесь к юристу.',
-    kz: 'TURA жауабы — құқықтық актілер бойынша анықтама, заң консультациясы емес. Ол уәкілетті органның не соттың шешімін алмастырмайды және нақты істің барлық мән-жайын ескермейді. Қолданар алдында құжаттың ресми редакциясымен салыстырыңыз, ал даулы жағдайда заңгерге жүгініңіз.',
-    en: 'A TURA answer is a summary of legal acts, not legal advice. It does not replace a decision of a competent authority or a court, and it does not account for every circumstance of a particular case. Check the official wording before relying on it, and consult a lawyer where the matter is contested.',
+    ru: 'Ответ Dalel — справка по правовым актам, а не юридическая консультация. Он не заменяет решение уполномоченного органа или суда и не учитывает всех обстоятельств конкретного дела. Перед применением сверяйтесь с официальной редакцией документа, а в спорной ситуации обращайтесь к юристу.',
+    kz: 'Dalel жауабы — құқықтық актілер бойынша анықтама, заң консультациясы емес. Ол уәкілетті органның не соттың шешімін алмастырмайды және нақты істің барлық мән-жайын ескермейді. Қолданар алдында құжаттың ресми редакциясымен салыстырыңыз, ал даулы жағдайда заңгерге жүгініңіз.',
+    en: 'A Dalel answer is a summary of legal acts, not legal advice. It does not replace a decision of a competent authority or a court, and it does not account for every circumstance of a particular case. Check the official wording before relying on it, and consult a lawyer where the matter is contested.',
   },
 
   /* ---- Контакты ---- */
@@ -502,14 +502,14 @@ export function AboutPage() {
         <ul className="contacts">
           <li>
             <Label className="contacts__key">{t('contactMailK')}</Label>
-            <a href="mailto:hello@tura.kz" className="t-body">
-              hello@tura.kz
+            <a href="mailto:hello@dalel.kz" className="t-body">
+              hello@dalel.kz
             </a>
           </li>
           <li>
             <Label className="contacts__key">{t('contactPressK')}</Label>
-            <a href="mailto:partners@tura.kz" className="t-body">
-              partners@tura.kz
+            <a href="mailto:partners@dalel.kz" className="t-body">
+              partners@dalel.kz
             </a>
           </li>
           <li>

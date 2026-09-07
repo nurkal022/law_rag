@@ -46,15 +46,15 @@ const dict: Dict = {
   navDisclaimer: { ru: 'Оговорка', kz: 'Ескертпе', en: 'Disclaimer' },
 
   disclaimer: {
-    ru: 'TURA готовит справку по действующим правовым актам Республики Казахстан и указывает источник каждого утверждения. Ответ системы не является юридической консультацией и не заменяет решение уполномоченного органа или суда. Перед применением сверяйтесь с официальной редакцией документа.',
-    kz: 'TURA Қазақстан Республикасының қолданыстағы құқықтық актілері бойынша анықтама дайындайды және әрбір тұжырымның дереккөзін көрсетеді. Жүйенің жауабы заң консультациясы болып саналмайды және уәкілетті органның не соттың шешімін алмастырмайды. Қолданар алдында құжаттың ресми редакциясымен салыстырыңыз.',
-    en: 'TURA prepares a summary from the legal acts of the Republic of Kazakhstan in force and names the source of every statement. Its answer is not legal advice and does not replace a decision of a competent authority or a court. Check the official wording of the document before relying on it.',
+    ru: 'Dalel готовит справку по действующим правовым актам Республики Казахстан и указывает источник каждого утверждения. Ответ системы не является юридической консультацией и не заменяет решение уполномоченного органа или суда. Перед применением сверяйтесь с официальной редакцией документа.',
+    kz: 'Dalel Қазақстан Республикасының қолданыстағы құқықтық актілері бойынша анықтама дайындайды және әрбір тұжырымның дереккөзін көрсетеді. Жүйенің жауабы заң консультациясы болып саналмайды және уәкілетті органның не соттың шешімін алмастырмайды. Қолданар алдында құжаттың ресми редакциясымен салыстырыңыз.',
+    en: 'Dalel prepares a summary from the legal acts of the Republic of Kazakhstan in force and names the source of every statement. Its answer is not legal advice and does not replace a decision of a competent authority or a court. Check the official wording of the document before relying on it.',
   },
 
   rights: {
-    ru: '© 2026 TURA. Республика Казахстан.',
-    kz: '© 2026 TURA. Қазақстан Республикасы.',
-    en: '© 2026 TURA. Republic of Kazakhstan.',
+    ru: '© 2026 Dalel. Республика Казахстан.',
+    kz: '© 2026 Dalel. Қазақстан Республикасы.',
+    en: '© 2026 Dalel. Republic of Kazakhstan.',
   },
   built: {
     ru: 'Данные обрабатываются на собственных серверах',
@@ -108,9 +108,9 @@ export function PublicHeader() {
   return (
     <header className={['pub-hdr', atTop ? 'pub-hdr--top' : ''].filter(Boolean).join(' ')}>
       <div className="pub-wrap pub-hdr__in">
-        <Link to="/" className="pub-wordmark" aria-label="TURA">
+        <Link to="/" className="pub-wordmark" aria-label="DALEL">
           <Logo />
-          <span>TURA</span>
+          <span>DALEL</span>
         </Link>
         <nav className="pub-hdr__nav" aria-label={t('colProduct')}>
           <Link to="/chat" className="pub-link">{t('navAssistant')}</Link>
@@ -169,7 +169,7 @@ export function PublicFooter() {
           <div className="pub-ftr__brand">
             <span className="pub-wordmark">
               <Logo />
-              <span>TURA</span>
+              <span>DALEL</span>
             </span>
             <p className="t-body pub-ftr__tag">{t('ftrTag')}</p>
             <div className="pub-ftr__langs">

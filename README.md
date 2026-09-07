@@ -98,7 +98,7 @@ law_generator/          законопроекты: шаблоны, валида
 legal_analytics/        анализ общественных комментариев
 llm_providers/          абстракция над LLM
 database/models.py      модели данных
-frontend/               React-приложение TURA
+frontend/               React-приложение Dalel
 docs/superpowers/specs/ проектные спецификации
 scripts/                миграции, индексация, обслуживание
 ```

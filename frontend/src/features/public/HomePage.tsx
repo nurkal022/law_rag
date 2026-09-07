@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 import { Link } from '../../shared/nav'
-import { Reveal, useCountUp } from '../../shared/motion'
+import { Reveal } from '../../shared/motion'
 import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
@@ -33,9 +33,9 @@ const dict: Dict = {
   h1a: { ru: 'Право, у которого', kz: 'Дереккөзі', en: 'Law with its source' },
   h1b: { ru: 'видно источник', kz: 'көрініп тұратын құқық', en: 'in plain sight' },
   lede: {
-    ru: 'TURA отвечает на правовой вопрос простым языком и рядом с каждым утверждением ставит норму, из которой оно следует: закон, статью, пункт. Ответ можно проверить, не выходя из него.',
-    kz: 'TURA құқықтық сұраққа қарапайым тілмен жауап береді және әрбір тұжырымның қасына оның негізі болған норманы қояды: заң, бап, тармақ. Жауапты одан шықпай-ақ тексеруге болады.',
-    en: 'TURA answers a legal question in plain language and puts the norm each statement follows from right beside it: the act, the article, the clause. You can verify the answer without leaving it.',
+    ru: 'Dalel отвечает на правовой вопрос простым языком и рядом с каждым утверждением ставит норму, из которой оно следует: закон, статью, пункт. Ответ можно проверить, не выходя из него.',
+    kz: 'Dalel құқықтық сұраққа қарапайым тілмен жауап береді және әрбір тұжырымның қасына оның негізі болған норманы қояды: заң, бап, тармақ. Жауапты одан шықпай-ақ тексеруге болады.',
+    en: 'Dalel answers a legal question in plain language and puts the norm each statement follows from right beside it: the act, the article, the clause. You can verify the answer without leaving it.',
   },
   ctaMain: { ru: 'Начать бесплатно', kz: 'Тегін бастау', en: 'Start for free' },
   ctaHow: { ru: 'Как это работает', kz: 'Бұл қалай жұмыс істейді', en: 'See how it works' },
@@ -80,23 +80,19 @@ const dict: Dict = {
   floatNorm: { ru: 'Норма найдена', kz: 'Норма табылды', en: 'Norm found' },
   floatNormD: { ru: 'редакция от 01.07.2026', kz: '01.07.2026 редакциясы', en: 'version of 01.07.2026' },
 
-  /* ---- Лента актов и цифры ---- */
+  /* ---- Лента актов ---- */
   tickerLabel: {
     ru: 'Работает с действующими актами Республики Казахстан',
     kz: 'Қазақстан Республикасының қолданыстағы актілерімен жұмыс істейді',
     en: 'Works with the acts of the Republic of Kazakhstan in force',
   },
-  fig1: { ru: 'нормативных актов в базе', kz: 'дерекқордағы нормативтік акт', en: 'legal acts indexed' },
-  fig2: { ru: 'разделов в пакете законопроекта', kz: 'заң жобасы топтамасындағы бөлім', en: 'sections in a draft-law package' },
-  fig3: { ru: 'типов договоров', kz: 'шарт түрі', en: 'contract types' },
-  fig4: { ru: 'языка интерфейса и ответа', kz: 'интерфейс және жауап тілі', en: 'languages of interface and answer' },
 
   /* ---- Как это работает ---- */
   howTitle: { ru: 'Как это работает', kz: 'Бұл қалай жұмыс істейді', en: 'How it works' },
   howNote: {
-    ru: 'Задайте вопрос своими словами. TURA найдёт нормы, соберёт ответ и покажет, откуда взято каждое утверждение.',
-    kz: 'Сұрағыңызды өз сөзіңізбен қойыңыз. TURA нормаларды табады, жауап құрастырады және әрбір тұжырымның қайдан алынғанын көрсетеді.',
-    en: 'Ask in your own words. TURA finds the norms, composes the answer and shows where every statement comes from.',
+    ru: 'Задайте вопрос своими словами. Dalel найдёт нормы, соберёт ответ и покажет, откуда взято каждое утверждение.',
+    kz: 'Сұрағыңызды өз сөзіңізбен қойыңыз. Dalel нормаларды табады, жауап құрастырады және әрбір тұжырымның қайдан алынғанын көрсетеді.',
+    en: 'Ask in your own words. Dalel finds the norms, composes the answer and shows where every statement comes from.',
   },
   step1: { ru: 'Задайте вопрос', kz: 'Сұрақ қойыңыз', en: 'Ask a question' },
   step1d: {
@@ -155,7 +151,7 @@ const dict: Dict = {
   pipeAgain: { ru: 'Показать ещё раз', kz: 'Қайта көрсету', en: 'Play again' },
 
   /* ---- Модули ---- */
-  modsTitle: { ru: 'Что умеет TURA', kz: 'TURA не істей алады', en: 'What TURA does' },
+  modsTitle: { ru: 'Что умеет Dalel', kz: 'Dalel не істей алады', en: 'What Dalel does' },
   modsNote: {
     ru: 'Четыре инструмента на одной базе действующего права. Каждый показывает источник.',
     kz: 'Қолданыстағы құқықтың бір базасындағы төрт құрал. Әрқайсысы дереккөзін көрсетеді.',
@@ -251,9 +247,9 @@ const dict: Dict = {
   /* ---- Почему можно верить ---- */
   trustTitle: { ru: 'Почему можно верить', kz: 'Неге сенуге болады', en: 'Why you can trust it' },
   trustClaim: {
-    ru: 'TURA не выдумывает нормы и не даёт уверенных ответов без источника.',
-    kz: 'TURA нормаларды ойдан шығармайды және дереккөзі жоқ сенімді жауап бермейді.',
-    en: 'TURA does not invent norms and gives no confident answer without a source.',
+    ru: 'Dalel не выдумывает нормы и не даёт уверенных ответов без источника.',
+    kz: 'Dalel нормаларды ойдан шығармайды және дереккөзі жоқ сенімді жауап бермейді.',
+    en: 'Dalel does not invent norms and gives no confident answer without a source.',
   },
   trustNote: {
     ru: 'Ответ собирается только из найденных фрагментов действующих актов. Если нормы нет — система так и скажет.',
@@ -291,9 +287,9 @@ const dict: Dict = {
 
   /* ---- Призыв ---- */
   finalTitle: {
-    ru: 'Попробуйте TURA на своём вопросе',
-    kz: 'TURA-ны өз сұрағыңызда байқап көріңіз',
-    en: 'Try TURA on your own question',
+    ru: 'Попробуйте Dalel на своём вопросе',
+    kz: 'Dalel-ді өз сұрағыңызда байқап көріңіз',
+    en: 'Try Dalel on your own question',
   },
   finalLede: {
     ru: 'Бесплатно, без карты. Первый ответ с источниками — через минуту после регистрации.',
@@ -468,7 +464,7 @@ function HeroArt() {
           <span className="win__dot" />
           <span className="win__dot" />
           <span className="win__dot" />
-          <span className="win__addr">tura.kz / chat</span>
+          <span className="win__addr">dalel.kz / chat</span>
         </div>
         <div className="win__body">
           <aside className="win__side">
@@ -554,38 +550,6 @@ function Ticker() {
           ))}
         </div>
       </div>
-    </div>
-  )
-}
-
-function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
-  const v = useCountUp(to, 1400)
-  return (
-    <>
-      {Math.round(v).toLocaleString('ru-RU')}
-      {suffix}
-    </>
-  )
-}
-
-const FIGS = [
-  { n: 400, suffix: '+', cap: 'fig1' },
-  { n: 13, suffix: '', cap: 'fig2' },
-  { n: 9, suffix: '', cap: 'fig3' },
-  { n: 3, suffix: '', cap: 'fig4' },
-] as const
-
-function Figures() {
-  const t = useT(dict)
-  const [ref, shown] = useOnScreen<HTMLDivElement>()
-  return (
-    <div className="figs" ref={ref}>
-      {FIGS.map((f, i) => (
-        <div className={['fig', shown ? 'enter-item' : 'pre-enter'].join(' ')} style={idx(i)} key={f.cap}>
-          <span className="fig__num tabular">{shown ? <Counter to={f.n} suffix={f.suffix} /> : `0${f.suffix}`}</span>
-          <span className="fig__cap">{t(f.cap)}</span>
-        </div>
-      ))}
     </div>
   )
 }
@@ -1026,12 +990,9 @@ export function HomePage() {
           </div>
         </section>
 
-        {/* ---------- Лента актов и цифры ---------- */}
+        {/* ---------- Лента актов ---------- */}
         <section className="band band--soft" aria-label={t('tickerLabel')}>
           <Ticker />
-          <div className="pub-wrap">
-            <Figures />
-          </div>
         </section>
 
         {/* ---------- Как это работает ---------- */}

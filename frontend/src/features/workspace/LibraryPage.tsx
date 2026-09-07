@@ -60,9 +60,9 @@ import './workspace.pages.css'
 const dict: Dict = {
   title: { ru: 'Мои документы', kz: 'Менің құжаттарым', en: 'My documents' },
   subtitle: {
-    ru: 'Личная библиотека: загруженные файлы и составленное в TURA',
-    kz: 'Жеке кітапхана: жүктелген файлдар және TURA-да жасалғаны',
-    en: 'Personal library: uploaded files and documents drafted in TURA',
+    ru: 'Личная библиотека: загруженные файлы и составленное в Dalel',
+    kz: 'Жеке кітапхана: жүктелген файлдар және Dalel-де жасалғаны',
+    en: 'Personal library: uploaded files and documents drafted in Dalel',
   },
 
   drop: {
@@ -135,9 +135,9 @@ const dict: Dict = {
 
   emptyTitle: { ru: 'Библиотека пуста', kz: 'Кітапхана бос', en: 'The library is empty' },
   emptyBody: {
-    ru: 'Загрузите договор, устав или доверенность — TURA разберёт текст, и по документу можно будет искать и задавать вопросы.',
-    kz: 'Шартты, жарғыны немесе сенімхатты жүктеңіз — TURA мәтінді талдайды, содан кейін құжаттан іздеуге және сұрақ қоюға болады.',
-    en: 'Upload a contract, charter or power of attorney — TURA parses the text so you can search it and ask questions.',
+    ru: 'Загрузите договор, устав или доверенность — Dalel разберёт текст, и по документу можно будет искать и задавать вопросы.',
+    kz: 'Шартты, жарғыны немесе сенімхатты жүктеңіз — Dalel мәтінді талдайды, содан кейін құжаттан іздеуге және сұрақ қоюға болады.',
+    en: 'Upload a contract, charter or power of attorney — Dalel parses the text so you can search it and ask questions.',
   },
   emptyFilterTitle: { ru: 'Ничего не найдено', kz: 'Ештеңе табылмады', en: 'Nothing found' },
   emptyFilterBody: {
