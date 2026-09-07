@@ -1,0 +1,77 @@
+# Демо-стенд Dalel на общей машине.
+#
+# Отличия от основного docker-compose.yml: собственная bridge-сеть вместо
+# network_mode: host, свои имена контейнеров и том, наружу торчит один порт
+# приложения. Postgres порт не публикует вообще — он виден только приложению.
+# Так стенд не пересекается с чужими сервисами, живущими на этой же машине.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: dalel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lawai
+      POSTGRES_USER: lawai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - dalel_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lawai -d lawai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - dalel
+
+  app:
+    build: .
+    image: dalel-app
+    container_name: dalel-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${DEMO_PORT:-5003}:5003"
+    environment:
+      DATABASE_URL: postgresql://lawai:${POSTGRES_PASSWORD}@postgres:5432/lawai
+
+      # LLM и эмбеддинги — оба через OpenAI: на машине нет GPU, а ollama на CPU
+      # для живого показа слишком медленная.
+      LLM_PROVIDER_TYPE: openai
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      EMBEDDING_BASE_URL: https://api.openai.com/v1
+      EMBEDDING_API_KEY: ${OPENAI_API_KEY}
+      EMBEDDING_MODEL: text-embedding-3-small
+      # Схема БД — vector(1024); OpenAI усекает вектор до этой размерности.
+      EMBEDDING_SEND_DIMENSIONS: "true"
+      # У OpenAI нет /v1/rerank — переранжирование выключено.
+      USE_RERANK: "false"
+
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DEBUG: "False"
+      APP_PORT: 5003
+      DOCUMENTS_DIR: docs
+      MAX_TOKENS: 4000
+      TEMPERATURE: 0.1
+      TOP_K_RESULTS: 5
+      NLTK_NO_DOWNLOAD: "1"
+    volumes:
+      - ./docs:/app/docs
+      - ./exports:/app/exports
+      - hf_cache:/app/.cache
+    networks:
+      - dalel
+
+volumes:
+  dalel_pgdata:
+  hf_cache:
+
+networks:
+  dalel:
+    driver: bridge
