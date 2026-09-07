@@ -700,7 +700,9 @@ export function ChatPage() {
                 title={t('attach')}
                 onClick={() => fileRef.current?.click()}
               >
-                +
+                <svg viewBox="0 0 18 18" width="16" height="16" aria-hidden="true" focusable="false">
+                  <path d="M9 2.5v13M2.5 9h13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
               </button>
 
               <Textarea
