@@ -797,7 +797,7 @@
 .ring__track { fill: none; stroke: var(--h-bg-2); stroke-width: 5; }
 .ring__seg { fill: none; stroke-width: 5; transition: stroke-dasharray var(--h-draw) var(--ease-out); }
 .ring__seg--pos { stroke: var(--h-ok); background: var(--h-ok); }
-.ring__seg--neu { stroke: var(--h-accent-2); background: var(--h-accent-2); }
+.ring__seg--neu { stroke: var(--h-neu); background: var(--h-neu); }
 .ring__seg--neg { stroke: var(--h-err); background: var(--h-err); }
 .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
 .legend li { display: flex; align-items: center; gap: var(--s-2); font-size: var(--t-caption-size); color: var(--h-ink); }
