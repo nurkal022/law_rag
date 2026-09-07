@@ -1664,9 +1664,9 @@ def initialize_app():
         log.exception(f"\nОшибка проверки LLM провайдера: {e}")
     
     log.info("🌐 LawVision готов к работе!")
-    log.info("   Интерфейс: http://localhost:5003")
-    log.info("   Админ панель: http://localhost:5003/admin")
+    log.info(f"   Интерфейс: http://localhost:{Config.APP_PORT}")
+    log.info(f"   Админ панель: http://localhost:{Config.APP_PORT}/admin")
 
 if __name__ == '__main__':
     initialize_app()
-    app.run(host='0.0.0.0', port=5003, debug=Config.DEBUG) 
+    app.run(host='0.0.0.0', port=Config.APP_PORT, debug=Config.DEBUG) 

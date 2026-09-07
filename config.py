@@ -133,6 +133,9 @@ class Config:
     # Flask настройки
     SECRET_KEY = os.getenv('SECRET_KEY', 'lawai-secret-key')
     DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+    # Порт задаётся окружением, чтобы на одной машине уживались несколько
+    # инстансов (например старый lawvision и новая версия).
+    APP_PORT = int(os.getenv('APP_PORT', '5003'))
 
     # Администратор
     ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
