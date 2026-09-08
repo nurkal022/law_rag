@@ -326,6 +326,10 @@ app.register_blueprint(auth_bp)
 from blueprints.public_api import public_api_bp
 app.register_blueprint(public_api_bp)
 
+# Расшифровка голоса в чате (/api/chat/transcribe)
+from blueprints.voice import voice_bp
+app.register_blueprint(voice_bp)
+
 # ─── Документный движок: договоры и законопроекты ──────────────────────────
 # Провайдер и поисковик кладём в конфиг приложения, а не импортируем из app:
 # фоновый воркер поднимает то же приложение отдельным процессом, и глобальные

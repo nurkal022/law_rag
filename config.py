@@ -143,6 +143,10 @@ class Config:
     # инстансов (например старый lawvision и новая версия).
     APP_PORT = int(os.getenv('APP_PORT', '5003'))
 
+    # Распознавание речи. gpt-4o-transcribe разбирает казахскую речь заметно
+    # лучше whisper-1, а аудитория у системы двуязычная.
+    TRANSCRIPTION_MODEL = os.getenv('TRANSCRIPTION_MODEL', 'gpt-4o-transcribe')
+
     # Администратор
     ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
     ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'changeme')

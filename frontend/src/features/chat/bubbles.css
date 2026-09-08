@@ -123,6 +123,23 @@
 .bar__attach svg,
 .bar__mic svg { display: block; }
 
+/* Идёт запись: кнопка окрашена печатью — тем же цветом, что и остановка
+   ответа, потому что действие такое же прерывающее. Пульсация показывает,
+   что микрофон включён прямо сейчас. */
+.bar__mic--live,
+.bar__mic--live:hover { background: var(--seal); color: var(--paper); }
+.bar__mic--live { animation: mic-live var(--dur-3) var(--ease) infinite alternate; }
+.bar__mic:disabled { opacity: 0.4; cursor: progress; }
+
+@keyframes mic-live {
+  from { opacity: 1; }
+  to { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar__mic--live { animation: none; }
+}
+
 .bar__go { background: var(--ink); color: var(--paper); }
 .bar__go:hover:not(:disabled) { background: var(--ink-2); }
 .bar__go:disabled { opacity: 0.3; cursor: not-allowed; }

@@ -14,6 +14,7 @@ import {
 import { useLang, useT } from '../../i18n'
 import type { Dict, Lang } from '../../i18n'
 import { citeCode } from '../legal/cite'
+import { useVoiceInput } from './useVoiceInput'
 import { ANSWERS, EXAMPLES, pickAnswer } from './mock'
 import type { MockAnswer, Seg } from './mock'
 import './chat.css'
@@ -60,10 +61,28 @@ const dict: Dict = {
     en: 'Answer added to the matter',
   },
   voice: { ru: 'Голосовой ввод', kz: 'Дауыспен енгізу', en: 'Voice input' },
-  voiceSoon: {
-    ru: 'Голосовой ввод скоро появится',
-    kz: 'Дауыспен енгізу жақында қосылады',
-    en: 'Voice input is coming soon',
+  voiceStop: { ru: 'Остановить запись', kz: 'Жазуды тоқтату', en: 'Stop recording' },
+  voiceListening: { ru: 'Слушаю…', kz: 'Тыңдап тұрмын…', en: 'Listening…' },
+  voiceDecoding: { ru: 'Расшифровываю…', kz: 'Мәтінге айналдырудамын…', en: 'Transcribing…' },
+  voiceInsecure: {
+    ru: 'Микрофон работает только по HTTPS — откройте защищённый адрес',
+    kz: 'Микрофон тек HTTPS арқылы жұмыс істейді — қорғалған мекенжайды ашыңыз',
+    en: 'The microphone needs HTTPS — open the secure address',
+  },
+  voiceDenied: {
+    ru: 'Доступ к микрофону не дан',
+    kz: 'Микрофонға рұқсат берілмеді',
+    en: 'Microphone access was denied',
+  },
+  voiceEmpty: {
+    ru: 'Ничего не записалось — попробуйте ещё раз',
+    kz: 'Ештеңе жазылмады — қайта көріңіз',
+    en: 'Nothing was recorded — try again',
+  },
+  voiceFailed: {
+    ru: 'Не удалось расшифровать запись',
+    kz: 'Жазбаны мәтінге айналдыру мүмкін болмады',
+    en: 'Could not transcribe the recording',
   },
   placeholder: {
     ru: 'Спросите о чём угодно по праву РК',
@@ -533,6 +552,20 @@ export function ChatPage() {
     [navigate, lang],
   )
 
+  const voice = useVoiceInput({
+    // Расшифровку дописываем к набранному, а не затираем его: человек мог
+    // начать печатать и договорить голосом.
+    onText: (text) => setDraft((prev) => (prev ? `${prev} ${text}` : text)),
+    onError: (reason) => {
+      const known: Record<string, string> = {
+        denied: t('voiceDenied'),
+        empty: t('voiceEmpty'),
+        failed: t('voiceFailed'),
+      }
+      toast(known[reason] ?? reason, 'err')
+    },
+  })
+
   const focusInput = () => boxRef.current?.querySelector('textarea')?.focus()
 
   /** Диалоги, отобранные поиском и разложенные по группам. */
@@ -720,14 +753,16 @@ export function ChatPage() {
                 }}
               />
 
-              {/* Голосовой ввод заложен в раскладку: место занято, обработчик
-                  подключим вместе с распознаванием речи. */}
               <button
                 type="button"
-                className="bar__mic"
-                aria-label={t('voice')}
-                title={t('voice')}
-                onClick={() => toast(t('voiceSoon'))}
+                className={
+                  voice.state === 'recording' ? 'bar__mic bar__mic--live' : 'bar__mic'
+                }
+                aria-label={voice.state === 'recording' ? t('voiceStop') : t('voice')}
+                title={voice.state === 'recording' ? t('voiceStop') : t('voice')}
+                aria-pressed={voice.state === 'recording'}
+                disabled={voice.state === 'transcribing'}
+                onClick={() => (voice.supported ? voice.toggle() : toast(t('voiceInsecure'), 'err'))}
               >
                 <svg viewBox="0 0 16 22" width="15" height="18" aria-hidden="true" focusable="false">
                   <rect x="5" y="1" width="6" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -754,7 +789,11 @@ export function ChatPage() {
             </div>
 
             <Caption tone="mute" className="chat__hint">
-              {t('hint')}
+              {voice.state === 'recording'
+                ? t('voiceListening')
+                : voice.state === 'transcribing'
+                  ? t('voiceDecoding')
+                  : t('hint')}
             </Caption>
           </div>
         </div>
