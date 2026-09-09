@@ -82,20 +82,14 @@ def extract_json(raw: str) -> dict:
     if not raw:
         raise ValueError('пустой ответ модели')
     text = raw.strip()
-    try:
-        data = json.loads(text)
-        if isinstance(data, dict):
-            return data
-    except (ValueError, TypeError):
-        pass
+    data = _forgive_stray_closers(text)
+    if data is not None:
+        return data
 
     for candidate in _FENCE.findall(text):
-        try:
-            data = json.loads(candidate)
-            if isinstance(data, dict):
-                return data
-        except (ValueError, TypeError):
-            continue
+        data = _forgive_stray_closers(candidate)
+        if data is not None:
+            return data
 
     chunk = _balanced_object(text)
     if chunk is not None:
@@ -103,6 +97,27 @@ def extract_json(raw: str) -> dict:
         if isinstance(data, dict):
             return data
     raise ValueError('в ответе нет объекта JSON')
+
+
+def _forgive_stray_closers(text: str, limit: int = 8) -> Optional[dict]:
+    """Разбирает JSON, прощая лишние «}» и «]».
+
+    Модель промахивается мимо синтаксиса одинаково: после вложенного массива
+    дописывает ещё одну закрывающую скобку — и так дважды подряд, так что
+    повторный запрос не спасает, а человек ждёт ещё двадцать секунд. Убираем
+    ровно тот символ, на котором споткнулся разбор, не больше limit раз;
+    любую другую ошибку не трогаем — там уже не опечатка, а другой ответ.
+    """
+    for _ in range(limit):
+        try:
+            data = json.loads(text)
+            return data if isinstance(data, dict) else None
+        except json.JSONDecodeError as e:
+            stray = e.msg.startswith("Expecting ',' delimiter") and e.pos < len(text) and text[e.pos] in '}]'
+            if not stray:
+                return None
+            text = text[:e.pos] + text[e.pos + 1:]
+    return None
 
 
 def _balanced_object(text: str) -> Optional[str]:
