@@ -13,8 +13,11 @@
 """
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, Field, field_validator
 
+from .generate import _ask_json, _context_text, _retrieve_chunks
 from .passport import Passport
 from .schema import Ref
 
@@ -315,3 +318,100 @@ def clarifications_payload(passport: Passport, lang: str, domain_key: str) -> di
     if 'budget_impact' in fields:
         out['budget_impact'] = {'kind': 'chips', 'chips': _chips(BUDGET_CHIPS, lang)}
     return out
+
+
+BRIEF_TEXT_LIMIT = 4000
+ATTACHMENT_LIMIT = 8000
+ATTACHMENTS_LIMIT = 5
+
+LANG_NAME = {'ru': 'русском', 'kk': 'казахском', 'en': 'английском'}
+
+CONCEPTS_SCHEMA = (
+    '{"concepts":[{"title_ru":"О …","title_kz":"… туралы","summary":"одна фраза сути",'
+    '"problem_description":"…","goals":["…","…"],"target_audience":"…",'
+    '"current_legislation_gaps":"…","constitutional_basis":"…",'
+    '"key_provisions":["…","…","…"],"refs":[{"act":"ГК РК","article":"178","note":null}]}]}'
+)
+
+
+def _clip_attachments(attachments: list[dict]) -> list[dict]:
+    out = []
+    for a in (attachments or [])[:ATTACHMENTS_LIMIT]:
+        text = str(a.get('text') or '')[:ATTACHMENT_LIMIT]
+        if text.strip():
+            out.append({'filename': str(a.get('filename') or 'файл'), 'text': text})
+    return out
+
+
+def brief_query(text: str, domain_key: str, attachments: list[dict]) -> str:
+    """Запрос в корпус: акты сферы, бриф и начало каждого файла."""
+    d = domain(domain_key)
+    parts = [' '.join(d['corpus']) if d else '', (text or '')[:1000]]
+    parts += [a['text'][:500] for a in _clip_attachments(attachments)]
+    return ' '.join(p for p in parts if p).strip()
+
+
+def _keep_only_context_refs(concepts: list[Concept], context: str) -> None:
+    """Ссылка остаётся, если её статья есть среди найденных фрагментов.
+
+    Модель охотно дописывает правдоподобные номера статей; выдуманная ссылка
+    в карточке хуже отсутствующей — её примут за проверенную.
+    """
+    for c in concepts:
+        c.refs = [r for r in c.refs if re.search(rf'Статья\s+{re.escape(r.article)}\b', context)]
+
+
+def propose_concepts(
+    provider,
+    retriever,
+    passport: Passport,
+    *,
+    text: str,
+    domain_key: str,
+    attachments: list[dict],
+    lang: str,
+    avoid: tuple[str, ...] | list[str] = (),
+) -> BriefResult:
+    """Три концепта законопроекта по брифу. Один вызов модели, строгий JSON."""
+    lang = _lang(lang)
+    text = (text or '')[:BRIEF_TEXT_LIMIT]
+    files = _clip_attachments(attachments)
+    d = domain(domain_key)
+
+    chunks = _retrieve_chunks(retriever, brief_query(text, domain_key, files), top_k=12)
+    context = _context_text(chunks)
+
+    system = (
+        'Ты — юрист-законопроектчик Республики Казахстан. По брифу предлагаешь три РАЗНЫХ '
+        'концепции законопроекта: разные подходы к решению, а не перефразировки одного.\n'
+        f'Тексты пиши на {LANG_NAME[lang]} языке; title_ru всегда на русском, title_kz — на казахском.\n'
+        'Возвращай ТОЛЬКО JSON по схеме, без markdown и без ```:\n'
+        f'{CONCEPTS_SCHEMA}\n'
+        'Правила:\n'
+        '- title_ru — как заголовок закона, начинается с «О …» или «Об …», без слова «проект».\n'
+        '- Каждая концепция опирается на бриф и материалы; не выдумывай фактов, которых там нет.\n'
+        '- goals — 2–4 цели, key_provisions — 3–5 новелл, каждая одним предложением.\n'
+        '- refs — только нормы из блока НОРМЫ ИЗ КОРПУСА; нет подходящей — пустой список.\n'
+        '- summary — одна фраза, по которой варианты различают с первого взгляда.'
+    )
+    user_parts = [
+        f'СФЕРА: {d["label"]["ru"]} (акты: {", ".join(d["corpus"])})' if d else 'СФЕРА: не указана',
+        f'БРИФ:\n{text.strip() or "— (сформулируй по сфере и материалам)"}',
+    ]
+    if files:
+        user_parts.append('МАТЕРИАЛЫ:\n' + '\n\n'.join(f'--- {f["filename"]} ---\n{f["text"]}' for f in files))
+    if avoid:
+        user_parts.append('УЖЕ ПРЕДЛОЖЕНО (не повторять эти подходы):\n' + '\n'.join(f'- {t}' for t in avoid))
+    user_parts.append('НОРМЫ ИЗ КОРПУСА:\n' + (context or '(ничего не найдено)'))
+    user_parts.append('Верни только JSON по схеме.')
+
+    result, _raw = _ask_json(
+        provider,
+        [{'role': 'system', 'content': system}, {'role': 'user', 'content': '\n\n'.join(user_parts)}],
+        BriefResult,
+        temperature=0.6,
+        max_tokens=4000,
+        what='концепты законопроекта',
+    )
+    _keep_only_context_refs(result.concepts, context)
+    return result

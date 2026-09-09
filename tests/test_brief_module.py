@@ -141,3 +141,133 @@ def test_budget_and_timeline_chips_expand_into_real_sentences(catalog):
     assert 'десяти' in timeline['ten_days']
     kk = brief.clarifications_payload(get_passport('law_project'), 'kk', 'civil')
     assert kk['budget_impact']['chips'][0]['label'] != c['budget_impact']['chips'][0]['label']
+
+
+# ------------------------------------------------------- запрос концептов
+
+import json  # noqa: E402
+
+
+class FakeProvider:
+    """Отдаёт заготовленные ответы по очереди и запоминает, о чём спросили."""
+
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.calls = []
+
+    def chat_completion(self, messages, **kw):
+        self.calls.append(messages)
+        return {'content': self.replies.pop(0) if self.replies else '{}'}
+
+
+class FakeRetriever:
+    def __init__(self):
+        self.queries = []
+
+    def hybrid_search(self, query, top_k=4):
+        self.queries.append(query)
+        return [
+            {'title': 'Конституция Республики Казахстан',
+             'content': 'Статья 13. Каждый имеет право на получение квалифицированной юридической помощи.'},
+            {'title': 'Гражданский кодекс РК (Общая часть)',
+             'content': 'Статья 178. Общий срок исковой давности устанавливается в три года.'},
+        ]
+
+
+def _two_concepts_json(**over):
+    c = _concept(**over).model_dump(mode='json')
+    d = _concept(title_ru='О реестре операторов юридических платформ').model_dump(mode='json')
+    return json.dumps({'concepts': [c, d]}, ensure_ascii=False)
+
+
+def test_concepts_come_from_the_model(catalog):
+    provider = FakeProvider(_two_concepts_json())
+    result = brief.propose_concepts(
+        provider, FakeRetriever(), get_passport('law_project'),
+        text='платформы юридической помощи', domain_key='civil', attachments=[], lang='ru',
+    )
+    assert len(result.concepts) == 2
+    assert result.concepts[1].title_ru.startswith('О реестре')
+    assert len(provider.calls) == 1
+
+
+def test_brief_and_domain_documents_drive_the_corpus_search(catalog):
+    retriever = FakeRetriever()
+    brief.propose_concepts(
+        FakeProvider(_two_concepts_json()), retriever, get_passport('law_project'),
+        text='ответственность консультанта', domain_key='civil',
+        attachments=[{'filename': 'записка.pdf', 'text': 'Обзор рынка онлайн-консультаций'}], lang='ru',
+    )
+    q = retriever.queries[0]
+    assert 'Гражданский кодекс РК' in q
+    assert 'ответственность консультанта' in q
+    assert 'Обзор рынка' in q
+
+
+def test_prompt_carries_brief_files_norms_and_avoid_list(catalog):
+    provider = FakeProvider(_two_concepts_json())
+    brief.propose_concepts(
+        provider, FakeRetriever(), get_passport('law_project'),
+        text='платформы', domain_key='civil',
+        attachments=[{'filename': 'записка.pdf', 'text': 'текст записки'}], lang='ru',
+        avoid=['О цифровых платформах оказания юридической помощи'],
+    )
+    prompt = ' '.join(m['content'] for m in provider.calls[0])
+    assert 'платформы' in prompt
+    assert 'записка.pdf' in prompt and 'текст записки' in prompt
+    assert 'Статья 13' in prompt, 'нормы из корпуса должны быть перед глазами модели'
+    assert 'О цифровых платформах оказания юридической помощи' in prompt
+    assert 'не повторя' in prompt.lower()
+
+
+def test_refs_outside_the_corpus_context_are_dropped(catalog):
+    invented = _two_concepts_json(refs=[
+        {'act': 'Конституция РК', 'article': '13', 'note': None},
+        {'act': 'ГК РК', 'article': '999', 'note': None},
+    ])
+    result = brief.propose_concepts(
+        FakeProvider(invented), FakeRetriever(), get_passport('law_project'),
+        text='платформы', domain_key='civil', attachments=[], lang='ru',
+    )
+    articles = [r.article for r in result.concepts[0].refs]
+    assert articles == ['13'], 'статья 999 в корпусе не найдена — ссылка выдумана'
+
+
+def test_garbage_twice_raises_generation_error(catalog):
+    from docengine.generate import GenerationError
+    with pytest.raises(GenerationError):
+        brief.propose_concepts(
+            FakeProvider('мусор', 'снова мусор'), FakeRetriever(), get_passport('law_project'),
+            text='платформы', domain_key='civil', attachments=[], lang='ru',
+        )
+
+
+def test_attachment_text_is_capped(catalog):
+    provider = FakeProvider(_two_concepts_json())
+    brief.propose_concepts(
+        provider, FakeRetriever(), get_passport('law_project'),
+        text='', domain_key='civil',
+        attachments=[{'filename': 'big.pdf', 'text': 'x' * 20000}], lang='ru',
+    )
+    prompt = ' '.join(m['content'] for m in provider.calls[0])
+    assert prompt.count('x') <= 8000 + 100
+
+
+# ------------------------------------------------------------- generate.py
+
+
+def test_retrieve_chunks_extract_article_numbers():
+    from docengine.generate import _retrieve_chunks, found_norms
+    chunks = _retrieve_chunks(FakeRetriever(), 'что угодно', top_k=2)
+    assert [c['article'] for c in chunks] == ['13', '178']
+    assert found_norms(chunks) == [
+        {'title': 'Конституция Республики Казахстан', 'article': '13'},
+        {'title': 'Гражданский кодекс РК (Общая часть)', 'article': '178'},
+    ]
+
+
+def test_retrieve_text_contract_is_unchanged():
+    from docengine.generate import _retrieve
+    text = _retrieve(FakeRetriever(), 'что угодно', top_k=2)
+    assert text.startswith('[Конституция Республики Казахстан]\nСтатья 13.')
+    assert _retrieve(None, 'что угодно') == ''

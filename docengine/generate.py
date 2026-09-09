@@ -267,23 +267,60 @@ def _tree_outline(tree: DocTree, limit: int = 600) -> str:
     return '\n'.join(out)
 
 
-def _retrieve(retriever, query: str, top_k: int = 4) -> str:
-    """Правовой контекст под конкретный раздел. Ошибка поиска не рушит генерацию."""
+# Номер статьи из текста фрагмента. Близнец этой регулярки живёт в
+# rag/generator.py: движок документов не тянет модуль чата ради трёх строк.
+_ARTICLE_RE = re.compile(r'Статья\s+(\d+(?:-\d+)*)')
+
+
+def _retrieve_chunks(retriever, query: str, top_k: int = 4) -> list[dict]:
+    """Фрагменты корпуса под запрос: название акта, номер статьи, текст.
+
+    Ошибка поиска не рушит генерацию — раздел пишется без норм, и это видно
+    по пустому списку найденного.
+    """
     if retriever is None:
-        return ''
+        return []
     try:
         results = retriever.hybrid_search(query, top_k=top_k) or []
     except Exception:
-        return ''
-    chunks = []
+        return []
+    chunks: list[dict] = []
     for r in results:
         if not isinstance(r, dict):
             continue
-        title = r.get('title', '')
-        content = (r.get('content') or '')[:900]
-        if content:
-            chunks.append(f'[{title}]\n{content}')
-    return '\n\n'.join(chunks)
+        content = r.get('content') or ''
+        if not content:
+            continue
+        m = _ARTICLE_RE.search(content)
+        chunks.append({
+            'title': r.get('title', ''),
+            'article': m.group(1) if m else '',
+            'content': content[:900],
+        })
+    return chunks
+
+
+def _context_text(chunks: list[dict]) -> str:
+    """Фрагменты — в блок промпта: заголовок акта в скобках, ниже текст."""
+    return '\n\n'.join(f'[{c["title"]}]\n{c["content"]}' for c in chunks)
+
+
+def found_norms(chunks: list[dict]) -> list[dict]:
+    """Что нашлось — для строки хода генерации: акт и статья, без повторов."""
+    out: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for c in chunks:
+        key = (c['title'], c['article'])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({'title': c['title'], 'article': c['article']})
+    return out
+
+
+def _retrieve(retriever, query: str, top_k: int = 4) -> str:
+    """Правовой контекст под конкретный раздел — прежний контракт, текстом."""
+    return _context_text(_retrieve_chunks(retriever, query, top_k))
 
 
 SECTION_SCHEMA = (
