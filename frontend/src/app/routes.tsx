@@ -47,7 +47,7 @@ const LawsRegistryPage = lazy(() =>
   import('../features/laws/RegistryPage').then((m) => ({ default: m.RegistryPage })),
 )
 const LawWizardPage = lazy(() =>
-  import('../features/laws/WizardPage').then((m) => ({ default: m.WizardPage })),
+  import('../features/laws/BriefPage').then((m) => ({ default: m.BriefPage })),
 )
 const LawDocumentPage = lazy(() =>
   import('../features/laws/DocumentPage').then((m) => ({ default: m.DocumentPage })),
