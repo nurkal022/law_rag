@@ -6,6 +6,7 @@ import io
 import hashlib
 from datetime import datetime
 from functools import wraps
+import threading
 from config import Config
 from database.models import DatabaseManager, db
 from embeddings.processor import DocumentProcessor
@@ -39,6 +40,7 @@ doc_processor = None
 retriever = None
 rag_initialized = False
 rag_initializing = False
+_rag_lock = threading.Lock()
 
 # Инициализация генераторов с поддержкой провайдеров
 generator = None
@@ -275,11 +277,24 @@ def track_visit():
 
 def initialize_rag_system():
     """Инициализация системы поиска по документам по требованию"""
-    global doc_processor, retriever, rag_initialized, rag_initializing
-    
-    if rag_initialized or rag_initializing:
+    if rag_initialized:
         return True
-    
+
+    # Под замком: запрос, пришедший во время инициализации, дождётся её здесь
+    # и уйдёт с готовым поисковиком. Прежде он получал True по флагу
+    # «инициализация идёт» и падал на retriever, которого ещё не было —
+    # а инициализация занимает до сорока секунд, потому что создание клиента
+    # эмбеддингов ходит в сеть.
+    with _rag_lock:
+        if rag_initialized:
+            return True
+        return _initialize_rag_locked()
+
+
+def _initialize_rag_locked():
+    """Собственно инициализация. Вызывается только под _rag_lock."""
+    global doc_processor, retriever, rag_initialized, rag_initializing
+
     try:
         rag_initializing = True
         log.info("Инициализация ИИ системы поиска по документам...")
