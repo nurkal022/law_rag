@@ -120,13 +120,18 @@ def run_once(app) -> bool:
             log.error('job %s: no handler for %s', job_id, kind)
             return True
 
-        def progress(done: int, total: int, label: str = '') -> None:
+        def progress(done: int, total: int, label: str = '', meta: dict | None = None) -> None:
             # Отдельная короткая транзакция: прогресс должен быть виден
             # клиенту немедленно, а не после завершения всей задачи.
             j = db.session.get(Job, job.id)
             if j is None:
                 return
             j.progress_done, j.progress_total, j.progress_label = done, total, label
+            # Содержание хода — стадия, найденные нормы, частичное дерево —
+            # едет в result_json: колонка уже есть, поток событий её отдаёт,
+            # а по завершении сюда ляжет итог задачи.
+            if meta is not None:
+                j.result_json = meta
             j.heartbeat_at = datetime.utcnow()
             db.session.commit()
 

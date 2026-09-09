@@ -32,7 +32,7 @@ def generate_draft(app, payload: dict, progress) -> dict:
     исход, чем отдать документ с одной дырой, про которую честно сказано.
     """
     from database.models import Draft, DraftVersion, db
-    from .generate import GenerationError, _retrieve, _section_query, generate_section
+    from .generate import GenerationError, _context_text, _retrieve_chunks, _section_query, found_norms, generate_section
 
     with app.app_context():
         draft = db.session.get(Draft, payload['draft_id'])
@@ -65,33 +65,43 @@ def generate_draft(app, payload: dict, progress) -> dict:
         ]
 
         for i, spec in enumerate(specs):
-            progress(i, total, spec.title.get(draft.lang))
+            title = spec.title.get(draft.lang)
             section = tree.section_by_key(spec.key)
             if section is None:
                 continue
+            progress(i, total, title, {'stage': 'retrieving', 'section': spec.key})
             try:
                 # Нормы под раздел достаём здесь, как и generate_document:
                 # сама generate_section корпуса не знает и получает уже текст.
-                legal_context = _retrieve(retriever, _section_query(passport, spec, draft.lang))
+                chunks = _retrieve_chunks(retriever, _section_query(passport, spec, draft.lang))
+                found = found_norms(chunks)
+                progress(i, total, title, {'stage': 'drafting', 'section': spec.key, 'found': found})
                 clauses = generate_section(
                     provider, passport, spec, tree, values, draft.lang,
-                    legal_context=legal_context, hint=payload.get('hint') or '',
+                    legal_context=_context_text(chunks), hint=payload.get('hint') or '',
                 )
                 # Пункты, правленные человеком, переживают перегенерацию.
                 kept = [c for c in section.clauses if c.locked]
                 section.clauses = clauses + kept
                 section.pending = False
+                # Готовый раздел уходит на экран сразу, пронумерованным: лист
+                # наполняется по мере работы, а не после всех разделов.
+                renumber(tree)
+                progress(i + 1, total, title, {
+                    'stage': 'drafting', 'section': spec.key, 'found': found,
+                    'partial': tree.model_dump(mode='json'),
+                })
             except Exception as e:
                 log.error('раздел «%s» документа %s не сгенерирован: %s',
                           spec.key, draft.public_id, e)
                 failed.append(spec.key)
                 tree.issues.append(Issue(
                     level='error', code='section_failed', section_key=spec.key,
-                    message=f'Раздел «{spec.title.get(draft.lang)}» не удалось составить. '
+                    message=f'Раздел «{title}» не удалось составить. '
                             f'Попробуйте сгенерировать его отдельно.',
                 ))
 
-        progress(total, total, 'проверка документа')
+        progress(total, total, 'проверка документа', {'stage': 'checking'})
         renumber(tree)
         tree.issues = [i for i in tree.issues if i.code == 'section_failed'] + \
                       check(tree, passport, values)

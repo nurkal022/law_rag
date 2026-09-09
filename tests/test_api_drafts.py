@@ -707,6 +707,42 @@ def test_document_response_carries_the_running_job(app, client):
     assert job['status'] == 'queued'
 
 
+def test_generation_reports_stages_found_norms_and_a_growing_tree(app, client):
+    """Полторы минуты генерации должны что-то показывать: какие нормы найдены,
+    какой раздел пишется, что уже готово. Всё это уходит в meta прогресса."""
+    app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
+    app.config['RAG_RETRIEVER'] = FakeRetriever()
+    public_id = _create(client).get_json()['draft']['id']
+    started = client.post(f'/api/drafts/{public_id}/generate', json={})
+    from database.models import Job, db
+    from docengine.tasks import generate_draft
+    with app.app_context():
+        job = db.session.query(Job).filter_by(public_id=started.get_json()['job']['id']).one()
+        payload = dict(job.payload_json or {})
+
+    calls = []
+    generate_draft(app, payload, lambda done, total, label, meta=None: calls.append((done, total, label, meta)))
+
+    metas = [m for *_, m in calls if m]
+    assert [m['stage'] for m in metas[:2]] == ['retrieving', 'drafting']
+    assert metas[1]['section'] == 'subject'
+    assert metas[1]['found'] == [{'title': 'ГК РК', 'article': '406'}]
+
+    partials = [m['partial'] for m in metas if m.get('partial')]
+    filled = [sum(1 for s in p['sections'] if not s['pending']) for p in partials]
+    assert filled == [1, 2, 3], 'после каждого раздела дерево растёт на один раздел'
+    assert partials[0]['sections'][0]['clauses'][0]['no'] == '1.1', 'частичное дерево уже пронумеровано'
+    assert metas[-1] == {'stage': 'checking'}
+
+
+def test_progress_callback_without_meta_is_still_accepted(app, client):
+    """Прежние вызывающие передают три аргумента — обработчик не должен их ронять."""
+    app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
+    public_id = _create(client).get_json()['draft']['id']
+    tree = _generate_in_background(app, client, public_id)['tree']
+    assert all(not s['pending'] for s in tree['sections'])
+
+
 def test_background_generation_fills_every_section(app, client):
     app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
     public_id = _create(client).get_json()['draft']['id']
