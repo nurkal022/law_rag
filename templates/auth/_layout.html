@@ -44,6 +44,12 @@ main.auth-main { max-width: 100% !important; padding: 0 !important; margin: 0 !i
     box-shadow: 0 8px 24px rgba(79,110,247,0.3);
 }
 .auth-logo img { width: 100%; height: 100%; object-fit: contain; }
+/* Словесный знак вместо картинки: тот же приём, что в шапке приложения */
+.auth-logo--word {
+    width: auto; height: auto; padding: 0; background: none; box-shadow: none;
+    font-family: 'PT Serif', Georgia, serif; font-weight: 700; font-size: 1.5rem;
+    letter-spacing: 0.14em; color: #fff; text-align: center;
+}
 .auth-title {
     text-align: center; color: #fff;
     font-size: 1.35rem; font-weight: 700;
@@ -121,7 +127,7 @@ main.auth-main { max-width: 100% !important; padding: 0 !important; margin: 0 !i
 <div class="auth-shell">
     <a href="/" class="auth-back"><i class="fas fa-arrow-left"></i> На главную</a>
     <div class="auth-card">
-        <div class="auth-logo"><img src="/static/logo.png" alt="LawVision"></div>
+        <div class="auth-logo auth-logo--word" aria-label="Dalel">DALEL</div>
         {% block auth_body %}{% endblock %}
     </div>
 </div>

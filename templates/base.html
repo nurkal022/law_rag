@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>{% block title %}LawVision — Юридическая платформа{% endblock %}</title>
+    <title>{% block title %}Dalel — Юридическая платформа{% endblock %}</title>
     <link rel="icon" type="image/png" href="/static/logo.png">
     <link rel="apple-touch-icon" href="/static/logo.png">
 
     {# ─── SEO ─── #}
-    <meta name="description" content="{% block meta_description %}{% if current_lang == 'kk' %}LawVision — Қазақстан Республикасының заңнамасымен жұмыс істеуге арналған ЖИ-платформа. Заң кеңесшісі, заң жобалары мен шарттарды құрастыру.{% elif current_lang == 'en' %}LawVision — AI platform for the legislation of the Republic of Kazakhstan. Legal consultant, draft law and contract generation.{% else %}LawVision — ИИ-платформа для работы с законодательством Казахстана. Юридический консультант, генерация законопроектов и договоров.{% endif %}{% endblock %}">
-    <meta name="keywords" content="{% block meta_keywords %}{% if current_lang == 'kk' %}LawVision, заңнама, Қазақстан, заң кеңесшісі, заң жобасы, шарт, ЖИ, жасанды интеллект, құқық{% elif current_lang == 'en' %}LawVision, Kazakhstan law, legal AI, draft law generator, contracts, legal analytics, online lawyer{% else %}LawVision, законодательство Казахстана, юридический ИИ, генератор законопроектов, договоры, правовая аналитика, юрист онлайн{% endif %}{% endblock %}">
+    <meta name="description" content="{% block meta_description %}{% if current_lang == 'kk' %}Dalel — Қазақстан Республикасының заңнамасымен жұмыс істеуге арналған ЖИ-платформа. Заң кеңесшісі, заң жобалары мен шарттарды құрастыру.{% elif current_lang == 'en' %}Dalel — AI platform for the legislation of the Republic of Kazakhstan. Legal consultant, draft law and contract generation.{% else %}Dalel — ИИ-платформа для работы с законодательством Казахстана. Юридический консультант, генерация законопроектов и договоров.{% endif %}{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}{% if current_lang == 'kk' %}Dalel, заңнама, Қазақстан, заң кеңесшісі, заң жобасы, шарт, ЖИ, жасанды интеллект, құқық{% elif current_lang == 'en' %}Dalel, Kazakhstan law, legal AI, draft law generator, contracts, legal analytics, online lawyer{% else %}Dalel, законодательство Казахстана, юридический ИИ, генератор законопроектов, договоры, правовая аналитика, юрист онлайн{% endif %}{% endblock %}">
     <meta name="robots" content="index, follow">
     <meta name="yandex-verification" content="{% block yandex_verification %}{% endblock %}">
     <meta name="google-site-verification" content="{% block google_verification %}{% endblock %}">
@@ -31,7 +31,7 @@
 
     {# ─── Open Graph (для красивых превью в соцсетях/мессенджерах) ─── #}
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="LawVision">
+    <meta property="og:site_name" content="Dalel">
     <meta property="og:locale" content="{{ og_locale|default('ru_RU') }}">
     <meta property="og:locale:alternate" content="{% if og_locale == 'kk_KZ' %}ru_RU{% else %}kk_KZ{% endif %}">
     <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
@@ -53,7 +53,7 @@
         {
           "@type": "Organization",
           "@id": "{{ request.scheme }}://{{ request.host }}/#organization",
-          "name": "LawVision",
+          "name": "Dalel",
           "url": "{{ request.scheme }}://{{ request.host }}/",
           "logo": "{{ request.scheme }}://{{ request.host }}/static/LogoLawVision.png",
           "areaServed": { "@type": "Country", "name": "Kazakhstan" },
@@ -62,7 +62,7 @@
         {
           "@type": "WebSite",
           "@id": "{{ request.scheme }}://{{ request.host }}/#website",
-          "name": "LawVision",
+          "name": "Dalel",
           "url": "{{ request.scheme }}://{{ request.host }}/",
           "inLanguage": "{{ html_lang|default('ru') }}",
           "publisher": { "@id": "{{ request.scheme }}://{{ request.host }}/#organization" },
@@ -587,8 +587,8 @@
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <img src="/static/logo-icon.png" alt="LV" class="brand-logo">
-                LawVision
+                <img src="/static/logo-icon.png" alt="Dalel" class="brand-logo">
+                Dalel
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -651,8 +651,8 @@
             <div class="footer-grid">
                 <div>
                     <div class="footer-brand">
-                        <img src="/static/logo-icon.png" alt="LV" style="width:32px;height:32px;object-fit:contain;">
-                        LawVision
+                        <img src="/static/logo-icon.png" alt="Dalel" style="width:32px;height:32px;object-fit:contain;">
+                        Dalel
                     </div>
                     <p class="footer-desc">{{ t('footer.description') }}</p>
                 </div>
@@ -682,7 +682,7 @@
                 </div>
             </div>
             <div class="footer-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span>&copy; 2024—2026 LawVision. {{ t('footer.rights') }}.</span>
+                <span>&copy; 2024—2026 Dalel. {{ t('footer.rights') }}.</span>
                 <span>Сделано в Казахстане</span>
             </div>
         </div>
