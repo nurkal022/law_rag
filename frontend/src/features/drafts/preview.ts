@@ -208,7 +208,7 @@ export function buildPreviewTree(
       kind,
       type_id: passport.id,
       lang,
-      title: passport.name,
+      title: previewTitle(passport, values, lang, kind),
       subtitle: passport.summary || null,
       form: passport.form || null,
       legal_basis: passport.legal_basis.map(parseRefLabel),
@@ -231,6 +231,26 @@ export function buildPreviewTree(
     annexes: [],
     issues: [],
   }
+}
+
+/**
+ * Название документа — таким, каким его соберёт сервер (docengine/skeleton.py).
+ *
+ * Своё название человек видит на листе, как только его набрал: для
+ * законопроекта в этом и смысл предпросмотра — «О цифровых платформах…»,
+ * а не безликое «Проект закона». Правило то же, что на сервере: заголовок,
+ * уже начинающийся с «О…» или «Проект…», второй раз не оборачивается.
+ */
+export function previewTitle(
+  passport: Passport,
+  values: Record<string, unknown>,
+  lang: DocLang,
+  kind: DocTree['meta']['kind'],
+): string {
+  const own = first(values, 'title', `title_${lang}`, 'title_ru', 'title_kz', 'name')
+  if (!own) return passport.name
+  if (kind === 'contract') return own
+  return /^(проект|о |об )/i.test(own) ? own : `${passport.name} «${own}»`
 }
 
 function today(): string {

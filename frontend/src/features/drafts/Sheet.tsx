@@ -181,7 +181,18 @@ function SectionBody({
         />
       ))}
       {section.pending || !section.clauses.length ? (
-        <p className="sheet__pending">{PENDING_WORD[lang]}</p>
+        <>
+          {/* Раздел, которого ещё нет, — призрачные строки набора, а не подпись
+              под каждым заголовком: одиннадцать одинаковых «раздел будет
+              составлен» читались как список ошибок. Слова остаются для
+              программ чтения с экрана. */}
+          <div className="sheet__ghost" aria-hidden="true">
+            <span className="sheet__ghost-line" style={{ width: '94%' }} />
+            <span className="sheet__ghost-line" style={{ width: '88%' }} />
+            <span className="sheet__ghost-line" style={{ width: '61%' }} />
+          </div>
+          <p className="sheet__pending visually-hidden">{PENDING_WORD[lang]}</p>
+        </>
       ) : null}
     </section>
   )

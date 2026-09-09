@@ -241,6 +241,9 @@
   font-size: var(--t-legal-size);
   line-height: var(--t-legal-lh);
   color: var(--ink);
+  /* Выключка по ширине без переносов оставляла «реки» пробелов в коротких
+     строках перед ссылкой; переносы идут по языку листа (атрибут lang). */
+  hyphens: auto;
 }
 
 .sheet__head { text-align: center; margin-bottom: var(--s-6); }
@@ -264,7 +267,10 @@
 .sheet__meta--one { justify-content: center; }
 
 .sheet__refs { display: inline-flex; flex-wrap: wrap; gap: var(--s-2); margin-left: var(--s-2); }
-.sheet__ref { white-space: normal; }
+/* Ссылка на норму не рвётся посреди «ст. 178, п. 1»: цельный чип переносится
+   на следующую строку весь, а не по слогам. На телефоне длинная ссылка
+   ширины строки не имеет права переполнять лист — там перенос разрешён. */
+.sheet__ref { white-space: nowrap; }
 /* Невыверенная ссылка не выдаётся за проверенную: слабее и с вопросом */
 .sheet__ref--weak {
   color: var(--mute);
@@ -313,6 +319,17 @@
   padding: var(--s-2) 0;
   border-top: 1px dashed var(--rule);
 }
+
+.sheet__ghost { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-1) 0 var(--s-2); }
+.sheet__ghost-line { display: block; height: var(--s-2); border-radius: var(--radius-pill); background: var(--rule-soft); }
+
+/* Подпись над листом в конструкторе: одна на весь лист вместо одиннадцати */
+.sheet__hint { display: block; text-align: center; margin-bottom: var(--s-5); }
+
+/* На узком экране лист уходит под форму; чтобы не листать одиннадцать пустых
+   разделов до кнопки «Далее», он свёрнут в строку и раскрывается по нажатию.
+   На широком экране кнопки нет — лист всегда рядом с формой. */
+.ct-split__fold { display: none; }
 
 .sheet__table-wrap { margin: var(--s-5) 0; }
 .sheet__table-title { font-weight: 700; margin-bottom: var(--s-2); }
@@ -571,4 +588,29 @@
   font-size: var(--t-caption-size);
   line-height: var(--t-caption-lh);
   color: var(--mute);
+}
+
+@media (max-width: 860px) {
+  .ct-split__fold {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--s-2) 0;
+    border: 0;
+    background: none;
+    font-family: var(--font-sans);
+    font-size: var(--t-ui-size);
+    color: var(--ink);
+    text-align: left;
+  }
+  .ct-split__fold::after { content: '+'; color: var(--mute); }
+  .ct-split__aside--open .ct-split__fold::after { content: '−'; }
+  .ct-split__aside:not(.ct-split__aside--open) .ct-split__body { display: none; }
+}
+
+@media (max-width: 620px) {
+  .sheet__ref { white-space: normal; }
 }

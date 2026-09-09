@@ -14,7 +14,7 @@ import {
 import { useLang, useT, withLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { api, errorMessage, sse } from '../../shared/api'
-import { Sheet } from '../drafts/Sheet'
+import { BuilderAside } from '../drafts/BuilderAside'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import { FieldControl, validateField } from '../drafts/FieldControl'
 import { buildPreviewTree, docLang, hasValue, termCovered } from '../drafts/preview'
@@ -83,6 +83,11 @@ const dict: Dict = {
   },
   optional: { ru: 'необязательный', kz: 'міндетті емес', en: 'optional' },
 
+  sheetHint: {
+    ru: 'Лист собирается по мере ввода: разделы напишет модель после шага 4',
+    kz: 'Парақ енгізу барысында жиналады: бөлімдерді модель 4-қадамнан кейін жазады',
+    en: 'The sheet fills in as you type; the model drafts the sections after step 4',
+  },
   essential: { ru: 'Обязательные сведения', kz: 'Міндетті мәліметтер', en: 'Required information' },
   essentialHint: {
     ru: 'Без этих сведений пакет не примут к рассмотрению: они прямо требуются от инициатора.',
@@ -519,10 +524,14 @@ export function WizardPage() {
           ) : null}
         </div>
 
-        <aside className="ct-split__aside">
-          <div className="ct-paper">
-            <Sheet tree={tree} />
-          </div>
+        <BuilderAside
+          tree={tree}
+          head={
+            <Caption tone="mute" className="sheet__hint">
+              {t('sheetHint')}
+            </Caption>
+          }
+        >
 
           <section className="ct-panel">
             <div className="ct-panel__head">
@@ -549,7 +558,7 @@ export function WizardPage() {
               })}
             </ul>
           </section>
-        </aside>
+        </BuilderAside>
       </div>
     </div>
   )

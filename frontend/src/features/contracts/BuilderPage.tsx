@@ -17,7 +17,7 @@ import {
 import { useLang, useT, withLang } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { api, errorMessage, sse } from '../../shared/api'
-import { Sheet } from '../drafts/Sheet'
+import { BuilderAside } from '../drafts/BuilderAside'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import { FieldControl, validateField } from '../drafts/FieldControl'
 import { ContractTabs } from './shared'
@@ -78,6 +78,11 @@ const dict: Dict = {
   gExtra: { ru: 'Дополнительно', kz: 'Қосымша', en: 'Additional' },
   gOther: { ru: 'Прочее', kz: 'Басқа', en: 'Other' },
 
+  sheetHint: {
+    ru: 'Лист собирается по мере ввода: текст разделов напишет модель',
+    kz: 'Парақ енгізу барысында жиналады: бөлімдердің мәтінін модель жазады',
+    en: 'The sheet fills in as you type; the model drafts the section text',
+  },
   essential: { ru: 'Существенные условия', kz: 'Елеулі талаптар', en: 'Essential terms' },
   essentialHint: {
     ru: 'По ст. 393 ГК РК договор без согласованного существенного условия считается незаключённым.',
@@ -514,10 +519,14 @@ export function BuilderPage() {
         </div>
 
         {/* ------------------------- лист и панели ------------------------- */}
-        <aside className="ct-split__aside">
-          <div className="ct-paper">
-            <Sheet tree={tree} />
-          </div>
+        <BuilderAside
+          tree={tree}
+          head={
+            <Caption tone="mute" className="sheet__hint">
+              {t('sheetHint')}
+            </Caption>
+          }
+        >
 
           <section className="ct-panel">
             <div className="ct-panel__head">
@@ -577,7 +586,7 @@ export function BuilderPage() {
               )}
             </ul>
           </section>
-        </aside>
+        </BuilderAside>
       </div>
     </div>
   )
