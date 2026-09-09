@@ -104,11 +104,14 @@
 - `Concept`: `title_ru, title_kz, summary, problem_description, goals: list[str],
   target_audience, current_legislation_gaps, constitutional_basis,
   key_provisions: list[str], refs: list[Ref]`. Метод `to_values(passport)` →
-  словарь полей паспорта (`goals` склеиваются по строкам, `key_provisions`
-  уходят в `transitional_provisions`? — нет: новеллы дописываются к
-  `problem_description` не должны; они идут отдельным полем формы **только
-  если** в паспорте оно есть; в `law_project` его нет — новеллы попадают в
-  `goals` как продолжение списка). Ссылки `verified=false`, как везде.
+  словарь полей паспорта: списки (`goals`, `key_provisions`) склеиваются по
+  строкам — паспорт так и просит («по одной цели в строке»). Ссылки
+  `verified=false`, как везде.
+- Паспорт `law_project` получает поле `key_provisions` («Ключевые положения»,
+  textarea, группа `subject`, необязательное) — генерация подписывает значения
+  подписями из паспорта, и ключевые новеллы концепта должны приходить в
+  разделы под своим именем, а не как сырой ключ. Поле получает и `example`
+  для кнопки примера.
 - `CLARIFICATIONS`: чипы уточнений (см. таблицу) с текстами на трёх языках;
   `budget_impact` чипы разворачиваются в абзацы здесь же.
 - `EXAMPLE_BRIEF`: текст и сфера для «Пример брифа».
