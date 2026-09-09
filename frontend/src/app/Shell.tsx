@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { NavLink, Link } from '../shared/nav'
 import { LANGS, useLang, useT } from '../i18n'
 import type { Dict } from '../i18n'
+import { useMe } from '../shared/me'
 import './shell.css'
 
 /**
@@ -20,6 +21,8 @@ const dict: Dict = {
   laws: { ru: 'Законопроекты', kz: 'Заң жобалары', en: 'Draft laws' },
   analytics: { ru: 'Аналитика', kz: 'Талдау', en: 'Analytics' },
   sections: { ru: 'Разделы', kz: 'Бөлімдер', en: 'Sections' },
+  login: { ru: 'Войти', kz: 'Кіру', en: 'Sign in' },
+  logout: { ru: 'Выйти', kz: 'Шығу', en: 'Sign out' },
 }
 
 const sections = [
@@ -51,6 +54,39 @@ function Langs() {
   )
 }
 
+/**
+ * Имя вошедшего или приглашение войти.
+ *
+ * Вход и выход — адреса сервера, а не маршруты приложения: форму входа отдаёт
+ * Flask, и переход туда должен быть обычным переходом, без языкового префикса.
+ * Пока ответ о пользователе не пришёл, место остаётся пустым: мигнувшее
+ * «Войти» у того, кто уже вошёл, хуже короткой паузы.
+ */
+function UserBadge() {
+  const t = useT(dict)
+  const me = useMe()
+
+  if (!me) return <span className="hdr__user" aria-hidden="true" />
+  if (!me.authenticated || !me.user) {
+    return (
+      <a href="/login" className="hdr__user hdr__user--link">
+        {t('login')}
+      </a>
+    )
+  }
+  const name = me.user.full_name?.trim() || me.user.email
+  return (
+    <span className="hdr__account">
+      <span className="hdr__user" title={me.user.email}>
+        {name}
+      </span>
+      <a href="/logout" className="hdr__out">
+        {t('logout')}
+      </a>
+    </span>
+  )
+}
+
 export function Shell() {
   const t = useT(dict)
   const location = useLocation()
@@ -78,7 +114,7 @@ export function Shell() {
 
         <div className="spacer" />
         <Langs />
-        <span className="hdr__user">н. курманов</span>
+        <UserBadge />
       </header>
 
       {/* key по пути: содержимое проявляется заново, шапка остаётся на месте */}

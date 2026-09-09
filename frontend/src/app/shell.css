@@ -49,6 +49,19 @@
   font-size: var(--t-caption-size);
   color: var(--mute);
 }
+.hdr__account { display: inline-flex; align-items: baseline; gap: var(--s-3); min-width: 0; }
+.hdr__user--link,
+.hdr__out {
+  font-family: var(--font-sans);
+  font-size: var(--t-caption-size);
+  color: var(--mute);
+  text-decoration: none;
+  border: 0;
+  white-space: nowrap;
+  transition: color var(--motion);
+}
+.hdr__user--link:hover,
+.hdr__out:hover { color: var(--ink); border: 0; }
 
 /* ---------- Навигация в шапке ---------- */
 
