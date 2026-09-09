@@ -57,11 +57,19 @@ fields:
       ru: >-
         Виды и объёмы работ, наименование и адрес объекта, ссылка на проектную документацию и техническое
         задание, которые являются приложениями к договору.
+    example:
+      ru: >-
+        Капитальный ремонт помещений 3 этажа административного здания: демонтаж перегородок, устройство новых перегородок из ГКЛ, замена инженерных сетей, отделочные работы, установка подвесных потолков и напольных покрытий.
+      kk: >-
+        Әкімшілік ғимараттың 3-қабатындағы үй-жайларды күрделі жөндеу: қалқаларды бөлшектеу, жаңа ГКЛ қалқаларын орнату, инженерлік желілерді ауыстыру, әрлеу жұмыстары.
   - name: object_address
     label: {ru: 'Объект и его адрес', kk: 'Объект және оның мекенжайы', en: 'Site and address'}
     type: text
     group: subject
     required: true
+    example:
+      ru: 'г. Алматы, ул. Тимирязева, 42, 3 этаж'
+      kk: 'Алматы қ., Тимирязев к-сі, 42, 3-қабат'
   - name: project_docs
     label: {ru: 'Проектно-сметная документация', kk: 'Жобалау-сметалық құжаттама', en: 'Design and cost documentation'}
     type: textarea
@@ -70,6 +78,11 @@ fields:
     hint:
       ru: >-
         Реквизиты проекта, заключения экспертизы, кто и в какой срок передаёт документацию подрядчику.
+    example:
+      ru: >-
+        Проектная документация шифр 42-АР-2026, разработана ТОО «Алматыпроект», прошла экспертизу, положительное заключение № 05-0412 от 12.08.2026.
+      kk: >-
+        42-АР-2026 шифрлы жобалық құжаттама, «Алматыпроект» ЖШС әзірлеген, сараптамадан өткен.
   - name: work_cost
     label: {ru: 'Стоимость работ', kk: 'Жұмыстардың құны', en: 'Contract price'}
     type: money
@@ -80,6 +93,8 @@ fields:
       ru: >-
         Твёрдая или приблизительная цена, включение НДС. Приблизительная цена требует согласования порядка её
         превышения.
+    example:
+      ru: '18 750 000'
   - name: price_type
     label: {ru: 'Вид цены', kk: 'Баға түрі', en: 'Type of price'}
     type: select
@@ -89,21 +104,32 @@ fields:
       - {value: fixed, label: {ru: Твёрдая цена (смета не пересматривается), kk: Тұрақты баға, en: Fixed price}}
       - {value: approximate, label: {ru: Приблизительная цена по смете, kk: Болжамды баға, en: Approximate price}}
       - {value: unit_rates, label: {ru: По единичным расценкам за фактические объёмы, kk: Бірлік бағалар бойынша, en: Unit rates}}
+    example:
+      ru: 'fixed'
   - name: start_date
     label: {ru: 'Срок начала работ', kk: 'Жұмыстардың басталу мерзімі', en: 'Commencement date'}
     type: date
     group: terms
     required: true
+    example:
+      ru: '2026-10-13'
   - name: end_date
     label: {ru: 'Срок окончания работ', kk: 'Жұмыстардың аяқталу мерзімі', en: 'Completion date'}
     type: date
     group: terms
     required: true
+    example:
+      ru: '2026-12-20'
   - name: milestones
     label: {ru: 'Промежуточные этапы и сроки', kk: 'Аралық кезеңдер мен мерзімдер', en: 'Milestones'}
     type: textarea
     group: terms
     required: false
+    example:
+      ru: >-
+        Этап 1 — демонтаж и инженерные сети, до 07.11.2026, 6 500 000 тенге. Этап 2 — перегородки и отделка, до 05.12.2026, 8 250 000 тенге. Этап 3 — потолки, полы и сдача, до 20.12.2026, 4 000 000 тенге.
+      kk: >-
+        1-кезең — бөлшектеу және инженерлік желілер, 07.11.2026 дейін. 2-кезең — қалқалар мен әрлеу, 05.12.2026 дейін. 3-кезең — тапсыру, 20.12.2026 дейін.
   - name: payment_order
     label: {ru: 'Порядок оплаты', kk: 'Төлем тәртібі', en: 'Payment procedure'}
     type: select
@@ -113,6 +139,8 @@ fields:
       - {value: advance, label: {ru: Аванс с окончательным расчётом после приёмки, kk: Аванс және түпкілікті есеп айырысу, en: Advance plus final payment}}
       - {value: stages, label: {ru: Поэтапно по актам выполненных работ, kk: Кезең-кезеңімен актілер бойынша, en: By stages against completion acts}}
       - {value: postpayment, label: {ru: Полная оплата после сдачи результата, kk: Нәтижені тапсырғаннан кейін толық төлем, en: Full payment after handover}}
+    example:
+      ru: 'stages'
   - name: retention
     label: {ru: 'Гарантийное удержание', kk: 'Кепілдік ұстап қалу', en: 'Retention'}
     type: number
@@ -123,6 +151,8 @@ fields:
       ru: >-
         Часть цены, удерживаемая до истечения гарантийного срока или устранения замечаний; укажите условия
         возврата.
+    example:
+      ru: '5'
   - name: materials_provider
     label: {ru: 'Кто предоставляет материалы', kk: 'Материалдарды кім береді', en: 'Who supplies materials'}
     type: select
@@ -132,11 +162,16 @@ fields:
       - {value: contractor, label: {ru: Подрядчик (иждивением подрядчика), kk: Мердігер, en: Contractor}}
       - {value: client, label: {ru: Заказчик (давальческие материалы), kk: Тапсырыс беруші, en: Client}}
       - {value: both, label: {ru: Совместно по перечню, kk: Бірлесіп, en: Both parties}}
+    example:
+      ru: 'contractor'
   - name: warranty_period
     label: {ru: 'Гарантийный срок на результат работ', kk: 'Жұмыс нәтижесіне кепілдік мерзімі', en: 'Warranty period'}
     type: text
     group: extra
     required: false
+    example:
+      ru: '24 месяца с даты подписания акта приёмки'
+      kk: 'Қабылдау актісіне қол қойылған күннен бастап 24 ай'
   - name: subcontractors
     label: {ru: 'Привлечение субподрядчиков', kk: 'Қосалқы мердігерлерді тарту', en: 'Subcontracting'}
     type: select
@@ -152,6 +187,8 @@ fields:
     group: extra
     required: false
     unit: '% в день'
+    example:
+      ru: '0.1'
 sections:
   - key: subject
     title: {ru: 'Предмет договора', kk: 'Шарттың мәні', en: 'Subject matter'}

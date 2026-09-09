@@ -52,6 +52,10 @@ class Field_(BaseModel):
     placeholder: Optional[str] = None
     # К какой стороне относится поле: 0 или 1. Пусто — общее поле договора.
     party: Optional[int] = None
+    # Правдоподобное значение для кнопки «Заполнить примером»: показать
+    # генерацию, не набирая форму руками. Живёт рядом с описанием поля,
+    # иначе разойдётся с ним при первом изменении состава полей.
+    example: Optional[Trans] = None
     unit: Optional[str] = Field(default=None, description='тенге, дней, %, м²')
 
 

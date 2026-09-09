@@ -22,7 +22,7 @@ from database.models import db, User
 from . import auth_bp
 
 
-GUEST_FREE_QUESTIONS = 2
+GUEST_FREE_QUESTIONS = 10
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 

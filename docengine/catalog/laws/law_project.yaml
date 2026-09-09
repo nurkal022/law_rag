@@ -46,13 +46,23 @@ fields:
     required: true
     hint:
       ru: Как в заголовке закона, без слова «проект»
+    example:
+      ru: >-
+        О внесении изменений и дополнений в некоторые законодательные акты Республики Казахстан по вопросам оказания юридической помощи в электронной форме
   - name: title_kz
     label: {ru: Название на казахском, kk: Қазақша атауы, en: Title in Kazakh}
     group: subject
+    example:
+      ru: >-
+        Қазақстан Республикасының кейбір заңнамалық актілеріне заң көмегін электрондық нысанда көрсету мәселелері бойынша өзгерістер мен толықтырулар енгізу туралы
   - name: initiator
     label: {ru: Инициатор, kk: Бастамашы, en: Initiator}
     group: subject
     required: true
+    example:
+      ru: 'Министерство юстиции Республики Казахстан'
+      kk: 'Қазақстан Республикасының Әділет министрлігі'
+      en: 'Ministry of Justice of the Republic of Kazakhstan'
   - name: initiator_type
     label: {ru: Тип инициатора, kk: Бастамашы түрі, en: Initiator type}
     type: select
@@ -62,6 +72,8 @@ fields:
       - {value: deputy, label: {ru: Депутат Парламента, kk: Парламент депутаты, en: Member of Parliament}}
       - {value: government, label: {ru: Правительство, kk: Үкімет, en: Government}}
       - {value: ministry, label: {ru: Министерство, kk: Министрлік, en: Ministry}}
+    example:
+      ru: 'ministry'
   - name: problem_description
     label:
       ru: Проблема, которую решает закон
@@ -72,6 +84,13 @@ fields:
     required: true
     hint:
       ru: Что именно не работает сейчас и к каким последствиям это ведёт
+    example:
+      ru: >-
+        Юридическая помощь всё чаще оказывается через онлайн-платформы, но их статус законом не определён: нет требований к квалификации консультанта, нет ответственности оператора платформы за качество совета и не установлены правила обработки персональных данных обратившихся. Гражданин не может отличить помощь адвоката от совета анонимного консультанта, а при причинении вреда — определить, с кого его взыскивать.
+      kk: >-
+        Заң көмегі көбіне онлайн-платформалар арқылы көрсетіледі, бірақ олардың мәртебесі заңмен айқындалмаған: кеңесшінің біліктілігіне талап жоқ, кеңес сапасы үшін платформа операторының жауапкершілігі белгіленбеген, өтініш білдірушілердің дербес деректерін өңдеу қағидалары жоқ. Азамат адвокаттың көмегін жасырын кеңесшінің кеңесінен ажырата алмайды, ал зиян келтірілген жағдайда оны кімнен өндіріп алатынын анықтай алмайды.
+      en: >-
+        Legal help is increasingly delivered through online platforms whose status is undefined in law: no qualification requirements for advisers, no liability of the platform operator for the quality of advice, and no rules on processing the personal data of those who seek help.
   - name: goals
     label: {ru: Цели законопроекта, kk: Заң жобасының мақсаттары, en: Goals}
     type: textarea
@@ -79,49 +98,143 @@ fields:
     required: true
     hint:
       ru: По одной цели в строке
+    example:
+      ru: >-
+        Закрепить правовой статус цифровых платформ оказания юридической помощи и требования к их операторам
+
+        Установить квалификационные требования к консультантам и их ответственность за качество помощи
+
+        Обеспечить защиту персональных данных лиц, обратившихся за помощью в электронной форме
+
+        Ввести реестр операторов платформ и порядок исключения из него
+      kk: >-
+        Заң көмегін көрсететін цифрлық платформалардың құқықтық мәртебесін және олардың операторларына қойылатын талаптарды бекіту
+
+        Кеңесшілерге біліктілік талаптарын және көмек сапасы үшін жауапкершілігін белгілеу
+
+        Электрондық нысанда көмекке жүгінген адамдардың дербес деректерін қорғауды қамтамасыз ету
+
+        Платформа операторларының тізілімін және одан шығару тәртібін енгізу
+      en: >-
+        Establish the legal status of digital legal-aid platforms; set qualification requirements and liability for advisers; protect the personal data of those seeking help; introduce a register of platform operators.
   - name: target_audience
     label: {ru: Кого затрагивает, kk: Кімге қатысты, en: Who is affected}
     group: subject
+    example:
+      ru: >-
+        Граждане, обращающиеся за юридической помощью онлайн; адвокаты и юридические консультанты; операторы цифровых платформ; Министерство юстиции как уполномоченный орган
+      kk: >-
+        Онлайн заң көмегіне жүгінетін азаматтар; адвокаттар мен заң консультанттары; цифрлық платформалардың операторлары; уәкілетті орган ретінде Әділет министрлігі
+      en: >-
+        Citizens seeking legal help online; advocates and legal consultants; platform operators; the Ministry of Justice as the authorised body
   - name: current_legislation_gaps
     label: {ru: Пробелы действующего законодательства, kk: Қолданыстағы заңнаманың олқылықтары, en: Gaps in current law}
     type: textarea
     group: terms
+    example:
+      ru: >-
+        Закон РК «Об адвокатской деятельности и юридической помощи» описывает очную помощь и не регулирует оказание помощи через информационные системы. Ответственность оператора платформы не установлена ни этим законом, ни Гражданским кодексом; правила обработки данных обратившихся не согласованы с Законом «О персональных данных и их защите».
+      kk: >-
+        «Адвокаттық қызмет және заң көмегі туралы» ҚР Заңы көзбе-көз көмекті сипаттайды және ақпараттық жүйелер арқылы көмек көрсетуді реттемейді. Платформа операторының жауапкершілігі бұл заңда да, Азаматтық кодексте де белгіленбеген.
+      en: >-
+        The Law on Advocacy and Legal Aid covers in-person help only and does not regulate assistance through information systems.
   - name: constitutional_basis
     label: {ru: Конституционная основа, kk: Конституциялық негіз, en: Constitutional basis}
     type: textarea
     group: terms
+    example:
+      ru: >-
+        Статья 13 Конституции Республики Казахстан — право каждого на получение квалифицированной юридической помощи. Статья 18 — право на неприкосновенность частной жизни и защиту персональных данных.
+      kk: >-
+        Қазақстан Республикасы Конституциясының 13-бабы — әркімнің білікті заң көмегін алу құқығы. 18-бап — жеке өмірге қол сұғылмаушылық және дербес деректерді қорғау құқығы.
+      en: >-
+        Article 13 of the Constitution — the right to qualified legal assistance; Article 18 — privacy and protection of personal data.
   - name: international_experience
     label: {ru: Международный опыт, kk: Халықаралық тәжірибе, en: International practice}
     type: textarea
     group: terms
+    example:
+      ru: >-
+        В Эстонии и Литве операторы цифровых юридических сервисов включены в государственный реестр и обязаны раскрывать квалификацию консультантов. В Великобритании деятельность подобных сервисов поднадзорна Legal Services Board, ведущему перечень регулируемых видов юридической деятельности.
+      kk: >-
+        Эстония мен Литвада цифрлық заң сервистерінің операторлары мемлекеттік тізілімге енгізілген және кеңесшілердің біліктілігін ашуға міндетті. Ұлыбританияда мұндай сервистер Legal Services Board қадағалауында.
+      en: >-
+        Estonia and Lithuania include operators of digital legal services in a state register; in the UK such services fall under the Legal Services Board.
   - name: budget_impact
     label: {ru: Влияние на бюджет, kk: Бюджетке әсері, en: Budget impact}
     type: textarea
     group: terms
     required: true
+    example:
+      ru: >-
+        Дополнительных расходов республиканского бюджета не требуется. Реестр операторов ведётся в действующей информационной системе Министерства юстиции, доработка выполняется в рамках утверждённого бюджета на сопровождение системы. Ожидается рост поступлений за счёт легализации рынка онлайн-консультаций.
+      kk: >-
+        Республикалық бюджеттен қосымша шығыс талап етілмейді. Операторлар тізілімі Әділет министрлігінің қолданыстағы ақпараттық жүйесінде жүргізіледі, пысықтау жүйені сүйемелдеудің бекітілген бюджеті шеңберінде орындалады.
+      en: >-
+        No additional budget expenditure is required: the register is maintained within the existing information system of the Ministry of Justice.
   - name: funding_sources
     label: {ru: Источники финансирования, kk: Қаржыландыру көздері, en: Funding sources}
     type: textarea
     group: terms
+    example:
+      ru: >-
+        Средства, предусмотренные на сопровождение информационных систем Министерства юстиции по бюджетной программе текущего года; привлечение дополнительных источников не планируется.
+      kk: >-
+        Ағымдағы жылғы бюджеттік бағдарлама бойынша Әділет министрлігінің ақпараттық жүйелерін сүйемелдеуге көзделген қаражат; қосымша көздер тартылмайды.
+      en: >-
+        Funds already allocated for maintaining the Ministry of Justice information systems under the current-year budget programme.
   - name: business_impact
     label: {ru: Влияние на бизнес, kk: Бизнеске әсері, en: Impact on business}
     type: textarea
     group: terms
+    example:
+      ru: >-
+        Для добросовестных операторов нагрузка не возрастает: включение в реестр носит уведомительный характер и не требует платы. Появляются понятные правила входа на рынок, что снижает риск произвольных претензий к платформам.
+      kk: >-
+        Адал операторлар үшін жүктеме артпайды: тізілімге енгізу хабарлама сипатында және ақы талап етпейді. Нарыққа кірудің түсінікті қағидалары пайда болады.
+      en: >-
+        No additional burden for bona fide operators: registration is by notification and free of charge.
   - name: citizen_impact
     label: {ru: Влияние на граждан, kk: Азаматтарға әсері, en: Impact on citizens}
     type: textarea
     group: terms
+    example:
+      ru: >-
+        Гражданин видит квалификацию консультанта до обращения, получает гарантию защиты переданных данных и понятный порядок возмещения вреда при некачественной помощи.
+      kk: >-
+        Азамат жүгінер алдында кеңесшінің біліктілігін көреді, берілген деректердің қорғалуына кепілдік және сапасыз көмек кезінде зиянды өтеу тәртібін алады.
+      en: >-
+        Citizens see the adviser’s qualification before applying and gain a clear remedy for poor-quality assistance.
   - name: corruption_risks
     label: {ru: Коррупционные риски, kk: Сыбайлас жемқорлық тәуекелдері, en: Corruption risks}
     type: textarea
     group: extra
+    example:
+      ru: >-
+        Основной риск — широта дискреционных полномочий уполномоченного органа при исключении оператора из реестра. Устраняется закрытым перечнем оснований исключения, обязательным предварительным уведомлением оператора и судебным порядком обжалования.
+      kk: >-
+        Негізгі тәуекел — операторды тізілімнен шығару кезіндегі уәкілетті органның дискрециялық өкілеттіктерінің кеңдігі. Шығару негіздерінің тұйық тізбесімен және сот тәртібімен шағымданумен жойылады.
+      en: >-
+        The main risk is the breadth of discretion when removing an operator from the register; mitigated by an exhaustive list of grounds and judicial appeal.
   - name: implementation_timeline
     label: {ru: Сроки введения в действие, kk: Қолданысқа енгізу мерзімдері, en: Implementation timeline}
     group: extra
+    example:
+      ru: >-
+        По истечении шести месяцев после дня первого официального опубликования
+      kk: 'Алғашқы ресми жарияланған күнінен кейін алты ай өткен соң'
+      en: 'Six months after the date of first official publication'
   - name: transitional_provisions
     label: {ru: Переходные положения, kk: Өтпелі ережелер, en: Transitional provisions}
     type: textarea
     group: extra
+    example:
+      ru: >-
+        Операторы, работающие на день введения закона в действие, обязаны подать уведомление о включении в реестр в течение трёх месяцев. До истечения этого срока их деятельность признаётся правомерной.
+      kk: >-
+        Заң қолданысқа енгізілген күні жұмыс істеп тұрған операторлар үш ай ішінде тізілімге енгізу туралы хабарлама беруге міндетті. Осы мерзім өткенге дейін олардың қызметі құқыққа сай деп танылады.
+      en: >-
+        Operators active on the entry-into-force date must file a registration notice within three months.
 
 sections:
   - key: annotation

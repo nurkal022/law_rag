@@ -36,8 +36,10 @@ def catalog(tmp_path, monkeypatch):
         'legal_basis': [{'act': 'ГК РК', 'article': '683'}],
         'parties': [{'role': {'ru': 'Заказчик'}}, {'role': {'ru': 'Исполнитель'}}],
         'fields': [
-            {'name': 'subject', 'label': {'ru': 'Предмет'}, 'group': 'subject', 'required': True},
-            {'name': 'price', 'label': {'ru': 'Цена'}, 'type': 'money', 'group': 'terms'},
+            {'name': 'subject', 'label': {'ru': 'Предмет'}, 'group': 'subject', 'required': True,
+             'example': {'ru': 'Разработка корпоративного сайта'}},
+            {'name': 'price', 'label': {'ru': 'Цена'}, 'type': 'money', 'group': 'terms',
+             'example': {'ru': '3 400 000'}},
         ],
         'sections': [
             {'key': 'subject', 'title': {'ru': 'Предмет договора'},
@@ -99,6 +101,22 @@ def client(app):
     with c.session_transaction() as s:
         s['user_id'] = app.config['TEST_USER_ID']
     return c
+
+
+def test_demo_endpoint_returns_values_for_the_whole_form(guest):
+    """Кнопка «Заполнить примером» получает готовые значения формы одним запросом."""
+    r = guest.get('/api/drafts/passport/demo/demo?lang=ru')
+
+    assert r.status_code == 200
+    values = r.get_json()['values']
+    assert values['subject'] == 'Разработка корпоративного сайта'
+    # Реквизиты сторон приходят вместе с полями: без них договор не составится.
+    assert values['party0_name'] and values['party1_name']
+    assert values['party0_kind'] in {'legal', 'individual', 'ip'}
+
+
+def test_demo_endpoint_reports_an_unknown_type(guest):
+    assert guest.get('/api/drafts/passport/nope/demo').status_code == 404
 
 
 def _create(client, values=None):

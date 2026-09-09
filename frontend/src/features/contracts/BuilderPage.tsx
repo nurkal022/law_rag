@@ -20,6 +20,7 @@ import { api, errorMessage, sse } from '../../shared/api'
 import { BuilderAside } from '../drafts/BuilderAside'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import { FieldControl, validateField } from '../drafts/FieldControl'
+import { useDemoFill } from '../drafts/useDemoFill'
 import { ContractTabs } from './shared'
 import {
   PARTY_ATTRS,
@@ -178,6 +179,8 @@ export function BuilderPage() {
   const [riskParty, setRiskParty] = useState(0)
   const [job, setJob] = useState<Job | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const demo = useDemoFill(type, dl, (filled) => setValues((prev) => ({ ...prev, ...filled })))
 
   const set = useCallback((name: string, v: string) => {
     setValues((prev) => ({ ...prev, [name]: v }))
@@ -339,6 +342,9 @@ export function BuilderPage() {
           <Display>{passport.name}</Display>
           <Body tone="mute">{passport.summary}</Body>
         </div>
+        <Button variant="secondary" onClick={demo.fill} disabled={demo.busy}>
+          {demo.label}
+        </Button>
       </div>
 
       <ContractTabs />

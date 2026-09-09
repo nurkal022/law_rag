@@ -46,6 +46,11 @@ fields:
     hint:
       ru: >-
         Конкретный перечень действий: что именно делает исполнитель, с какой периодичностью и в каком объёме.
+    example:
+      ru: >-
+        Разработка и внедрение корпоративного сайта заказчика: проектирование структуры, дизайн, вёрстка, программирование, наполнение и запуск на хостинге заказчика.
+      kk: >-
+        Тапсырыс берушінің корпоративтік сайтын әзірлеу және енгізу: құрылымын жобалау, дизайн, беттеу, бағдарламалау, толтыру және іске қосу.
   - name: service_scope
     label: {ru: 'Объём услуг', kk: 'Қызметтер көлемі', en: 'Scope of services'}
     type: textarea
@@ -54,6 +59,11 @@ fields:
     hint:
       ru: >-
         Количественные показатели: часы, обращения, публикации, точки обслуживания. Что не входит в услуги — указать отдельно.
+    example:
+      ru: >-
+        До 25 страниц, адаптивная вёрстка, интеграция с системой заявок, три языка интерфейса, обучение двух сотрудников заказчика.
+      kk: >-
+        25 бетке дейін, бейімделгіш беттеу, өтінімдер жүйесімен интеграция, интерфейстің үш тілі.
   - name: service_result
     label: {ru: 'Требования к результату', kk: 'Нәтижеге қойылатын талаптар', en: 'Result requirements'}
     type: textarea
@@ -62,6 +72,11 @@ fields:
     hint:
       ru: >-
         Критерии, по которым услуга считается оказанной надлежаще, целевые показатели, форма отчёта.
+    example:
+      ru: >-
+        Работающий сайт на домене заказчика, исходный код в репозитории заказчика, руководство администратора.
+      kk: >-
+        Тапсырыс берушінің доменіндегі жұмыс істейтін сайт, репозиторийдегі бастапқы код, әкімші нұсқаулығы.
   - name: service_cost
     label: {ru: 'Стоимость услуг', kk: 'Қызметтердің құны', en: 'Fee'}
     type: money
@@ -71,6 +86,8 @@ fields:
     hint:
       ru: >-
         Общая цена или ставка за единицу (час, месяц, обращение). Указать, включён ли НДС.
+    example:
+      ru: '3 400 000'
   - name: payment_order
     label: {ru: 'Порядок оплаты', kk: 'Төлем тәртібі', en: 'Payment procedure'}
     type: select
@@ -81,11 +98,15 @@ fields:
       - {value: postpayment, label: {ru: Оплата по факту после подписания акта, kk: Акт бойынша төлем, en: Payment after acceptance act}}
       - {value: partial_prepayment, label: {ru: Аванс с окончательным расчётом, kk: Аванс және түпкілікті есеп айырысу, en: Advance plus final settlement}}
       - {value: monthly, label: {ru: Ежемесячно за отчётный период, kk: Ай сайын, en: Monthly}}
+    example:
+      ru: 'partial_prepayment'
   - name: start_date
     label: {ru: 'Дата начала оказания услуг', kk: 'Қызмет көрсетудің басталу күні', en: 'Start date'}
     type: date
     group: terms
     required: true
+    example:
+      ru: '2026-10-06'
   - name: service_term
     label: {ru: 'Срок оказания услуг', kk: 'Қызмет көрсету мерзімі', en: 'Service period'}
     type: text
@@ -94,6 +115,9 @@ fields:
     hint:
       ru: >-
         Конечная дата или период. Для абонентских услуг — срок действия договора и порядок продления.
+    example:
+      ru: '12 недель с даты начала оказания услуг'
+      kk: 'Қызмет көрсету басталған күннен бастап 12 апта'
   - name: acceptance_procedure
     label: {ru: 'Порядок приёмки', kk: 'Қабылдау тәртібі', en: 'Acceptance procedure'}
     type: select
@@ -103,12 +127,16 @@ fields:
       - {value: act, label: {ru: Акт оказанных услуг, kk: Көрсетілген қызметтер актісі, en: Act of services rendered}}
       - {value: report, label: {ru: Отчёт исполнителя с актом, kk: Орындаушының есебі және акт, en: Provider's report with act}}
       - {value: auto, label: {ru: Автоматическая приёмка при отсутствии возражений, kk: Қарсылық болмаған кезде автоматты қабылдау, en: Deemed acceptance absent objections}}
+    example:
+      ru: 'act'
   - name: acceptance_days
     label: {ru: 'Срок рассмотрения акта заказчиком', kk: 'Актіні қарау мерзімі', en: 'Days to review the act'}
     type: number
     group: terms
     required: false
     unit: рабочих дней
+    example:
+      ru: '5'
   - name: personal_performance
     label: {ru: 'Личное исполнение и соисполнители', kk: 'Жеке орындау және қосалқы орындаушылар', en: 'Personal performance and subcontractors'}
     type: select
@@ -137,6 +165,8 @@ fields:
     group: extra
     required: false
     unit: '% в день'
+    example:
+      ru: '0.1'
 sections:
   - key: subject
     title: {ru: 'Предмет договора', kk: 'Шарттың мәні', en: 'Subject matter'}

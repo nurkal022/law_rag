@@ -28,6 +28,7 @@ from blueprints.auth.routes import current_user, log_usage, login_required
 from database.models import Draft, DraftTurn, DraftVersion, Job, db
 from docengine import jobs
 from docengine.check import check
+from docengine.demo import demo_values
 from docengine.ops import Op, apply_ops, diff
 from docengine.passport import CatalogError, get_passport, list_passports, load_catalog
 from docengine.schema import DocTree
@@ -161,6 +162,22 @@ def passport(type_id: str):
                          'default': a.default} for a in p.annexes],
         },
     })
+
+
+@drafts_bp.route('/passport/<type_id>/demo')
+def passport_demo(type_id: str):
+    """Значения формы для показа: примеры полей и реквизиты сторон.
+
+    Отдельной ручкой, а не полем в паспорте: собирать значения из примеров и
+    правил именования реквизитов сторон должен один код, иначе фронтенд
+    повторит серверную логику и однажды разойдётся с ней.
+    """
+    try:
+        p = get_passport(type_id)
+    except KeyError:
+        return _err(f'Неизвестный тип документа: {type_id}', 404, 'not_found')
+
+    return jsonify({'success': True, 'values': demo_values(p, _lang())})
 
 
 # ───────────────────────────── черновики ──────────────────────────────

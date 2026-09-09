@@ -17,6 +17,7 @@ import { api, errorMessage, sse } from '../../shared/api'
 import { BuilderAside } from '../drafts/BuilderAside'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import { FieldControl, validateField } from '../drafts/FieldControl'
+import { useDemoFill } from '../drafts/useDemoFill'
 import { buildPreviewTree, docLang, hasValue, termCovered } from '../drafts/preview'
 import type { DraftResponse, Job, JobResponse, Passport, PassportField, PassportResponse } from '../drafts/types'
 import { LawTabs } from './shared'
@@ -221,6 +222,8 @@ export function WizardPage() {
   const [job, setJob] = useState<Job | null>(null)
   const [busy, setBusy] = useState(false)
 
+  const demo = useDemoFill('law_project', dl, (filled) => setValues((prev) => ({ ...prev, ...filled })))
+
   const set = useCallback((name: string, v: string) => {
     setValues((prev) => ({ ...prev, [name]: v }))
   }, [])
@@ -412,6 +415,9 @@ export function WizardPage() {
           <Display>{t('title')}</Display>
           <Body tone="mute">{passport.summary}</Body>
         </div>
+        <Button variant="secondary" onClick={demo.fill} disabled={demo.busy}>
+          {demo.label}
+        </Button>
       </div>
 
       <LawTabs />

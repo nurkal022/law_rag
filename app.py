@@ -603,7 +603,7 @@ def chat():
         session_id = session.get('session_id', str(uuid.uuid4()))
         session['session_id'] = session_id
 
-        # Проверяем гостевой лимит (5 бесплатных вопросов).
+        # Проверяем гостевой лимит: число задаёт GUEST_FREE_QUESTIONS.
         # Авторизованным пользователям лимита нет.
         from database.models import ChatHistory
         user = current_user()

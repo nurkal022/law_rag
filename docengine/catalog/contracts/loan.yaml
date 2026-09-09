@@ -59,6 +59,8 @@ fields:
       ru: >-
         Сумма цифрами и прописью. Для займа вещами вместо суммы указывается наименование, количество и качество
         вещей, определённых родовыми признаками.
+    example:
+      ru: '8 000 000'
   - name: loan_purpose
     label: {ru: 'Целевое назначение займа', kk: 'Қарыздың мақсаты', en: 'Purpose of the loan'}
     type: text
@@ -68,6 +70,9 @@ fields:
       ru: >-
         Если заём целевой, займодатель вправе контролировать использование средств и требовать досрочного
         возврата при нецелевом использовании.
+    example:
+      ru: 'Пополнение оборотных средств заёмщика'
+      kk: 'Қарыз алушының айналым қаражатын толықтыру'
   - name: interest_rate
     label: {ru: 'Ставка вознаграждения', kk: 'Сыйақы мөлшерлемесі', en: 'Interest rate'}
     type: number
@@ -78,6 +83,8 @@ fields:
       ru: >-
         Укажите 0 для беспроцентного займа и отдельно оговорите беспроцентность в тексте, иначе применяются
         правила ст. 718 ГК РК.
+    example:
+      ru: '18'
   - name: interest_calculation
     label: {ru: 'Порядок начисления вознаграждения', kk: 'Сыйақыны есептеу тәртібі', en: 'Interest calculation'}
     type: textarea
@@ -87,11 +94,18 @@ fields:
       ru: >-
         База начисления (365 или 360 дней), на остаток основного долга или на первоначальную сумму, срок уплаты
         вознаграждения.
+    example:
+      ru: >-
+        Проценты начисляются на фактический остаток задолженности за каждый календарный день пользования займом; год принимается равным 360 дням.
+      kk: >-
+        Пайыздар қарызды пайдаланудың әрбір күнтізбелік күні үшін нақты берешек қалдығына есептеледі; жыл 360 күнге тең деп қабылданады.
   - name: transfer_date
     label: {ru: 'Дата предоставления займа', kk: 'Қарызды беру күні', en: 'Disbursement date'}
     type: date
     group: terms
     required: true
+    example:
+      ru: '2026-10-05'
   - name: transfer_method
     label: {ru: 'Способ предоставления займа', kk: 'Қарызды беру тәсілі', en: 'Method of disbursement'}
     type: select
@@ -106,6 +120,8 @@ fields:
     type: date
     group: terms
     required: true
+    example:
+      ru: '2027-10-05'
   - name: repayment_schedule
     label: {ru: 'Порядок погашения', kk: 'Өтеу тәртібі', en: 'Repayment schedule'}
     type: select
@@ -116,6 +132,8 @@ fields:
       - {value: monthly, label: {ru: Ежемесячно равными долями, kk: Ай сайын тең үлестермен, en: Monthly equal instalments}}
       - {value: annuity, label: {ru: Аннуитетными платежами, kk: Аннуитеттік төлемдермен, en: Annuity payments}}
       - {value: quarterly, label: {ru: Ежеквартально, kk: Тоқсан сайын, en: Quarterly}}
+    example:
+      ru: 'monthly'
   - name: early_repayment
     label: {ru: 'Досрочное погашение', kk: 'Мерзімінен бұрын өтеу', en: 'Early repayment'}
     type: select
@@ -125,6 +143,8 @@ fields:
       - {value: free, label: {ru: Допускается без ограничений, kk: Шектеусіз рұқсат етіледі, en: Allowed without restriction}}
       - {value: notice, label: {ru: С предварительным уведомлением, kk: Алдын ала хабарлаумен, en: With prior notice}}
       - {value: consent, label: {ru: С согласия займодателя, kk: Қарыз берушінің келісімімен, en: With lender's consent}}
+    example:
+      ru: 'allowed_no_fee'
   - name: collateral
     label: {ru: 'Обеспечение исполнения обязательства', kk: 'Міндеттеменің орындалуын қамтамасыз ету', en: 'Security'}
     type: textarea
@@ -134,12 +154,17 @@ fields:
       ru: >-
         Залог с описанием предмета и оценкой, поручительство, гарантия, неустойка. Залог недвижимости
         оформляется отдельным договором и регистрируется.
+    example:
+      ru: 'Заём предоставляется без обеспечения.'
+      kk: 'Қарыз қамтамасыз етусіз беріледі.'
   - name: penalty_rate
     label: {ru: 'Неустойка за просрочку возврата', kk: 'Қайтаруды кешіктіргені үшін тұрақсыздық айыбы', en: 'Penalty for late repayment'}
     type: number
     group: extra
     required: false
     unit: '% в день'
+    example:
+      ru: '0.1'
 sections:
   - key: subject
     title: {ru: 'Предмет договора', kk: 'Шарттың мәні', en: 'Subject matter'}
