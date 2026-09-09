@@ -111,6 +111,15 @@ def _language_reminder_for(query: str) -> str:
     )
 
 
+_ARTICLE_RE = re.compile(r'Статья\s+(\d+(?:-\d+)*)')
+
+
+def source_article(content: str) -> str:
+    """Номер статьи из текста фрагмента: «Статья 43-1. …» → «43-1»; нет — пустая строка."""
+    m = _ARTICLE_RE.search(content or '')
+    return m.group(1) if m else ''
+
+
 def _identity_answer(query: str) -> str | None:
     """Возвращает фиксированный ответ для identity-вопросов или None."""
     if not _IDENTITY_RE.search(query):
@@ -172,6 +181,9 @@ class ResponseGenerator:
         for i, result in enumerate(search_results, 1):
             sources.append({
                 'id': i,
+                # Номер статьи — отдельным полем: интерфейс собирает из него
+                # чип «ГК РК 178», а в 200 символах предпросмотра его может не быть.
+                'article': source_article(result.get('full_content') or result.get('content') or ''),
                 'title': result['title'],
                 'filename': result['filename'],
                 'position': f"{result['start_position']}-{result['end_position']}",

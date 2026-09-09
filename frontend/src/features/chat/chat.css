@@ -50,6 +50,12 @@
   white-space: pre-wrap;
 }
 
+/* Ответа не будет: текст ошибки — и, если дело в гостевом лимите, два пути
+   дальше. Без кнопок человек читал бы «зарегистрируйтесь» и искал, где. */
+.chat__answer--err { display: flex; flex-direction: column; gap: var(--s-4); }
+.chat__cta { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.chat__cta .btn { text-decoration: none; }
+
 .chat__stamp {
   display: block;
   margin-bottom: var(--s-2);

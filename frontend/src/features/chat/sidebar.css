@@ -88,6 +88,7 @@
 .cs__sec:hover { color: var(--ink); border: 0; }
 
 .cs__user {
+  display: block;
   padding: var(--s-3) var(--s-2) var(--s-1);
   font-family: var(--font-sans);
   font-size: var(--t-caption-size);
@@ -155,3 +156,7 @@
   .cs__toggle { grid-column: 1 / -1; justify-content: flex-start; }
   .cs__list { grid-column: 1 / -1; margin: 0; padding: 0; }
 }
+
+/* Гостю на месте имени — приглашение войти, тем же кеглем и цветом */
+.cs__user--link { text-decoration: none; border: 0; transition: color var(--motion); }
+.cs__user--link:hover { color: var(--ink); border: 0; }

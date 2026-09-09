@@ -12,11 +12,14 @@ import {
   useToast,
 } from '../../shared/ui'
 import { useLang, useT } from '../../i18n'
-import type { Dict, Lang } from '../../i18n'
+import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { useVoiceInput } from './useVoiceInput'
-import { ANSWERS, EXAMPLES, pickAnswer } from './mock'
-import type { MockAnswer, Seg } from './mock'
+import { EXAMPLES } from './examples'
+import { dateGroup, parseAnswer } from './answer'
+import type { Answer, ChatReply, DateGroup, HistoryItem, Seg } from './answer'
+import { ApiError, api } from '../../shared/api'
+import { useMe } from '../../shared/me'
 import './chat.css'
 import './sidebar.css'
 import './bubbles.css'
@@ -47,18 +50,6 @@ const dict: Dict = {
     ru: 'Не удалось скопировать',
     kz: 'Көшіру мүмкін болмады',
     en: 'Could not copy',
-  },
-  exportAct: { ru: 'Экспорт', kz: 'Экспорт', en: 'Export' },
-  exportDone: {
-    ru: 'Экспорт в DOCX будет готов после подключения сервера',
-    kz: 'DOCX экспорты сервер қосылғаннан кейін дайын болады',
-    en: 'DOCX export will be available once the server is connected',
-  },
-  saveAct: { ru: 'Сохранить в дело', kz: 'Іске сақтау', en: 'Save to matter' },
-  saveDone: {
-    ru: 'Ответ добавлен в дело',
-    kz: 'Жауап іске қосылды',
-    en: 'Answer added to the matter',
   },
   voice: { ru: 'Голосовой ввод', kz: 'Дауыспен енгізу', en: 'Voice input' },
   voiceStop: { ru: 'Остановить запись', kz: 'Жазуды тоқтату', en: 'Stop recording' },
@@ -113,6 +104,18 @@ const dict: Dict = {
   ariaInput: { ru: 'Текст вопроса', kz: 'Сұрақ мәтіні', en: 'Question text' },
   ariaFeed: { ru: 'Лента диалога', kz: 'Диалог таспасы', en: 'Conversation' },
   writing: { ru: 'Ответ печатается', kz: 'Жауап теріліп жатыр', en: 'Answering' },
+  thinking: {
+    ru: 'Ищу нормы и составляю ответ…',
+    kz: 'Нормаларды іздеп, жауап құрастырып жатырмын…',
+    en: 'Looking up the norms and composing the answer…',
+  },
+  errAsk: {
+    ru: 'Не удалось получить ответ — попробуйте ещё раз',
+    kz: 'Жауап алу мүмкін болмады — қайта көріңіз',
+    en: 'Could not get an answer — please try again',
+  },
+  registerCta: { ru: 'Зарегистрироваться', kz: 'Тіркелу', en: 'Create an account' },
+  loginCta: { ru: 'Войти', kz: 'Кіру', en: 'Sign in' },
   disclaimer: {
     ru: 'Ответ носит справочный характер и не заменяет консультацию юриста.',
     kz: 'Жауап анықтамалық сипатта, заңгер кеңесін алмастырмайды.',
@@ -140,95 +143,40 @@ const dict: Dict = {
 
 /* ---------- Данные диалогов ---------- */
 
-/** Строка на трёх языках. */
-type L10n = Record<Lang, string>
-
 interface TurnData {
   id: number
-  /** Вопрос: у прошлых диалогов заготовлен на трёх языках, у новых — как набран. */
-  question: string | L10n
-  answerId: string
+  question: string
+  /** Ответ сервера; пока его нет — вопрос в работе. */
+  answer?: Answer
+  /** Вместо ответа: код и текст ошибки. guest_limit — предложение войти. */
+  error?: { code: string; message: string }
   attachment?: string
 }
 
 interface Conv {
   id: string
-  title: string | L10n
-  date: L10n
-  /** Группа в боковой колонке. У замоканных данных проставлена вручную. */
-  group: 'today' | 'week' | 'earlier'
+  title: string
+  group: DateGroup
   turns: TurnData[]
 }
 
-function text(v: string | L10n, lang: Lang): string {
-  return typeof v === 'string' ? v : v[lang]
-}
-
-/** Замоканная история — до подключения /api/chat/history. */
-const PAST: Conv[] = [
-  {
-    id: 'c-penalty',
-    title: {
-      ru: 'Неустойка за просрочку оплаты без ставки в договоре',
-      kz: 'Шартта мөлшерлемесіз төлемді кешіктіргені үшін тұрақсыздық айыбы',
-      en: 'Penalty for late payment with no rate in the contract',
-    },
-    date: { ru: '4 сентября', kz: '4 қыркүйек', en: '4 September' },
-    group: 'week',
-    turns: [
-      {
-        id: 1,
-        question: EXAMPLES[1].text,
-        answerId: 'penalty',
-      },
-    ],
-  },
-  {
-    id: 'c-limitation',
-    title: {
-      ru: 'Срок исковой давности по договору поставки',
-      kz: 'Жеткізу шарты бойынша талап қою мерзімі',
-      en: 'Limitation period for a supply contract',
-    },
-    date: { ru: '2 сентября', kz: '2 қыркүйек', en: '2 September' },
-    group: 'week',
-    turns: [
-      { id: 1, question: EXAMPLES[0].text, answerId: 'limitation' },
-      {
-        id: 2,
-        question: {
-          ru: 'А если стороны подписали акт сверки — срок начинается заново?',
-          kz: 'Ал тараптар салыстыру актісіне қол қойса — мерзім қайтадан басталады ма?',
-          en: 'And if the parties signed a reconciliation act — does the period start afresh?',
-        },
-        answerId: 'limitation',
-      },
-    ],
-  },
-  {
-    id: 'c-termination',
-    title: {
-      ru: 'Односторонний отказ от договора аренды',
-      kz: 'Жалдау шартынан біржақты бас тарту',
-      en: 'Unilateral withdrawal from a lease',
-    },
-    date: { ru: '28 августа', kz: '28 тамыз', en: '28 August' },
-    group: 'earlier',
-    turns: [{ id: 1, question: EXAMPLES[2].text, answerId: 'termination' }],
-  },
-]
-
 const DRAFT_ID = 'draft'
 
-/** Дата создания диалога — сразу на трёх языках, чтобы список не зависел от языка. */
-function todayLabel(): L10n {
-  const d = new Date()
-  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' }
-  return {
-    ru: d.toLocaleDateString('ru-RU', opts),
-    kz: d.toLocaleDateString('kk-KZ', opts),
-    en: d.toLocaleDateString('en-GB', opts),
-  }
+/**
+ * История сессии с сервера — по записи на вопрос, свежие сверху. Сервер держит
+ * одну ленту на сессию, поэтому «диалог» в колонке — это один вопрос с ответом;
+ * новые вопросы в открытом диалоге дописываются к нему на экране.
+ */
+function fromHistory(items: HistoryItem[]): Conv[] {
+  return items
+    .slice()
+    .reverse()
+    .map((h) => ({
+      id: `h${h.id}`,
+      title: h.user_query,
+      group: dateGroup(h.created_at),
+      turns: [{ id: h.id, question: h.user_query, answer: parseAnswer(h.ai_response, h.sources ?? []) }],
+    }))
 }
 
 /* ---------- Стриминг: разбор ответа на единицы вывода ---------- */
@@ -310,11 +258,8 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
   const [open, setOpen] = useState(false)
   const sourcesId = useId()
 
-  const answer = useMemo<MockAnswer>(
-    () => ANSWERS.find((a) => a.id === turn.answerId) ?? ANSWERS[0],
-    [turn.answerId],
-  )
-  const segs = answer.body[lang]
+  const answer = turn.answer
+  const segs = useMemo<Seg[]>(() => answer?.segs ?? [], [answer])
   const units = useMemo(() => toUnits(segs), [segs])
 
   const [shown, setShown] = useState(() => (streaming ? 0 : units.length))
@@ -322,6 +267,8 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
 
   useEffect(() => {
     if (phase !== 'typing') return
+    // Ответа ещё нет — набирать нечего; эффект перезапустится, когда он придёт.
+    if (!answer) return
     // Уважение к «меньше движения»: ответ выводится целиком, без набора
     if (reduced) {
       setShown(units.length)
@@ -340,7 +287,7 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
       }
     }, STEP_MS)
     return () => window.clearInterval(timer)
-  }, [phase, reduced, units, turn.id, onDone])
+  }, [phase, reduced, units, turn.id, onDone, answer])
 
   /* Кнопка «Остановить» снимает признак стриминга у родителя: набор
      прекращается, а напечатанное остаётся на экране. */
@@ -362,7 +309,7 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
     }
   }
 
-  const qText = text(turn.question, lang)
+  const qText = turn.question
 
   return (
     <article className="chat__turn enter">
@@ -379,16 +326,39 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
         </div>
       </div>
 
-      <div
-        className="chat__answer t-legal"
-        aria-busy={busy || undefined}
-        aria-live={busy ? 'polite' : undefined}
-      >
-        {renderUnits(visible, openCite)}
-        {busy ? <Caret /> : null}
-      </div>
+      {turn.error ? (
+        <div className="chat__answer chat__answer--err t-legal" role="alert">
+          <span className="tone-err">{turn.error.message}</span>
+          {turn.error.code === 'guest_limit' ? (
+            <span className="chat__cta">
+              <Link to="/register" className="btn btn--primary">
+                {t('registerCta')}
+              </Link>
+              <a href="/login?next=/chat" className="btn btn--ghost">
+                {t('loginCta')}
+              </a>
+            </span>
+          ) : null}
+        </div>
+      ) : !answer ? (
+        <div className="chat__answer t-legal" aria-busy="true" aria-live="polite">
+          <Caption tone="mute" as="p" role="status">
+            {phase === 'cut' ? t('stopped') : t('thinking')}
+          </Caption>
+          {phase === 'cut' ? null : <Caret />}
+        </div>
+      ) : (
+        <div
+          className="chat__answer t-legal"
+          aria-busy={busy || undefined}
+          aria-live={busy ? 'polite' : undefined}
+        >
+          {renderUnits(visible, openCite)}
+          {busy ? <Caret /> : null}
+        </div>
+      )}
 
-      {!busy ? (
+      {answer && !busy ? (
         <>
           {phase === 'cut' ? (
             <Caption tone="mute" className="chat-stopped" role="status">
@@ -414,10 +384,10 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
                 {answer.sources.map((s) => (
                   <div className="chat__source" key={s.code}>
                     <div className="chat__source-head">
-                      <span className="chat__source-doc">{s.doc[lang]}</span>
+                      <span className="chat__source-doc">{s.doc}</span>
                       <Cite code={citeCode(s.code, lang)} onClick={() => openCite(citeCode(s.code, lang))} />
                     </div>
-                    <div className="chat__source-text t-legal">{s.excerpt[lang]}</div>
+                    <div className="chat__source-text t-legal">{s.excerpt}</div>
                   </div>
                 ))}
               </div>
@@ -428,19 +398,13 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
             <Button variant="ghost" onClick={copy}>
               {t('copy')}
             </Button>
-            <Button variant="ghost" onClick={() => toast(t('exportDone'))}>
-              {t('exportAct')}
-            </Button>
-            <Button variant="ghost" onClick={() => toast(t('saveDone'), 'ok')}>
-              {t('saveAct')}
-            </Button>
           </div>
         </>
-      ) : (
+      ) : answer && busy ? (
         <Caption tone="mute" as="p" style={{ marginTop: 'var(--s-3)' }} role="status">
           {t('writing')}
         </Caption>
-      )}
+      ) : null}
     </article>
   )
 }
@@ -452,7 +416,28 @@ export function ChatPage() {
   const t = useT(dict)
   const { lang } = useLang()
 
-  const [convs, setConvs] = useState<Conv[]>(PAST)
+  const [convs, setConvs] = useState<Conv[]>([])
+  const me = useMe()
+  // Вопросы, прерванные кнопкой «Остановить» до ответа: пришедший позже ответ
+  // не должен внезапно допечататься поверх «прервано».
+  const cancelled = useRef<Set<number>>(new Set())
+
+  useEffect(() => {
+    let alive = true
+    api
+      .get<{ history: HistoryItem[] }>('/api/history')
+      .then((r) => {
+        if (!alive) return
+        // История подкладывается под то, что уже спросили на этом экране
+        setConvs((prev) => [...prev, ...fromHistory(r.history ?? [])])
+      })
+      .catch(() => {
+        /* без истории лента всё равно работает */
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
   const { id: routeId } = useParams()
   const navigate = useNavigate()
   const activeId = routeId ?? DRAFT_ID
@@ -499,29 +484,32 @@ export function ChatPage() {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight })
   }, [turns.length, activeId])
 
+  /** Точечная правка одной реплики в любом диалоге. */
+  const patchTurn = useCallback((id: number, patch: Partial<TurnData>) => {
+    setConvs((prev) =>
+      prev.map((c) =>
+        c.turns.some((tn) => tn.id === id)
+          ? { ...c, turns: c.turns.map((tn) => (tn.id === id ? { ...tn, ...patch } : tn)) }
+          : c,
+      ),
+    )
+  }, [])
+
   const send = useCallback(
     (value: string) => {
       const q = value.trim()
       if (!q || streamingId !== null) return
       const id = Date.now()
       const file = attachment ?? undefined
+      const turn: TurnData = { id, question: q, attachment: file }
 
       const cur = convs.find((c) => c.id === activeId)
-
       if (!cur) {
         // Черновик становится настоящим диалогом: заголовок — сам вопрос
-        const conv: Conv = {
-          id: `c${id}`,
-          title: q,
-          date: todayLabel(),
-          group: 'today',
-          turns: [{ id, question: q, answerId: pickAnswer(q, 0).id, attachment: file }],
-        }
+        const conv: Conv = { id: `c${id}`, title: q, group: 'today', turns: [turn] }
         setConvs((prev) => [conv, ...prev])
         navigate(withLang(`/chat/${conv.id}`, lang), { replace: true })
       } else {
-        const answer = pickAnswer(q, cur.turns.length)
-        const turn: TurnData = { id, question: q, answerId: answer.id, attachment: file }
         setConvs((prev) =>
           prev.map((c) => (c.id === cur.id ? { ...c, turns: [...c.turns, turn] } : c)),
         )
@@ -530,16 +518,39 @@ export function ChatPage() {
       setStreamingId(id)
       setDraft('')
       setAttachment(null)
+
+      api
+        .post<ChatReply>('/api/chat', { query: q, use_rag: true })
+        .then((r) => {
+          if (cancelled.current.has(id)) return
+          patchTurn(id, { answer: parseAnswer(r.answer, r.sources ?? []) })
+        })
+        .catch((e: unknown) => {
+          if (cancelled.current.has(id)) return
+          const err = e instanceof ApiError ? e : null
+          patchTurn(id, {
+            error: {
+              code: err?.code ?? 'failed',
+              message: err && err.status !== 0 ? err.message : t('errAsk'),
+            },
+          })
+          setStreamingId((curId) => (curId === id ? null : curId))
+        })
     },
-    [streamingId, attachment, activeId, convs],
+    [streamingId, attachment, activeId, convs, navigate, lang, patchTurn, t],
   )
 
   const finish = useCallback((id: number) => {
     setStreamingId((cur) => (cur === id ? null : cur))
   }, [])
 
-  /** Прерывание набора: Turn оставляет напечатанное и переходит в «прервано». */
-  const stop = useCallback(() => setStreamingId(null), [])
+  /** Прерывание: набор останавливается, ещё не пришедший ответ — отбрасывается. */
+  const stop = useCallback(() => {
+    setStreamingId((cur) => {
+      if (cur !== null) cancelled.current.add(cur)
+      return null
+    })
+  }, [])
 
   const openConv = useCallback(
     (id: string) => {
@@ -571,14 +582,14 @@ export function ChatPage() {
   /** Диалоги, отобранные поиском и разложенные по группам. */
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const hit = (c: Conv) => !q || text(c.title, lang).toLowerCase().includes(q)
+    const hit = (c: Conv) => !q || c.title.toLowerCase().includes(q)
     const pick = (g: Conv['group']) => convs.filter((c) => c.group === g && hit(c))
     return [
       { id: 'today', label: t('gToday'), items: pick('today') },
       { id: 'week', label: t('gWeek'), items: pick('week') },
       { id: 'earlier', label: t('gEarlier'), items: pick('earlier') },
     ].filter((g) => g.items.length > 0)
-  }, [convs, query, lang, t])
+  }, [convs, query, t])
 
   return (
     <div className="chat-shell">
@@ -629,7 +640,7 @@ export function ChatPage() {
                     aria-current={c.id === activeId ? 'true' : undefined}
                     onClick={() => openConv(c.id)}
                   >
-                    <span className="cs__conv-title">{text(c.title, lang)}</span>
+                    <span className="cs__conv-title">{c.title}</span>
                   </button>
                 ))}
               </div>
@@ -651,7 +662,15 @@ export function ChatPage() {
           <Link to="/analytics" className="cs__sec">
             {t('secAnalytics')}
           </Link>
-          <div className="cs__user">н. курманов</div>
+          {me?.user ? (
+            <div className="cs__user" title={me.user.email}>
+              {me.user.full_name?.trim() || me.user.email}
+            </div>
+          ) : me && !me.authenticated ? (
+            <a href="/login?next=/chat" className="cs__user cs__user--link">
+              {t('loginCta')}
+            </a>
+          ) : null}
         </div>
       </aside>
 
@@ -660,7 +679,7 @@ export function ChatPage() {
             когда список слева свёрнут. */}
         <div className="chat__top">
           <h1 className="chat__title t-h3">
-            {active ? text(active.title, lang) : t('newTitle')}
+            {active ? active.title : t('newTitle')}
           </h1>
         </div>
 

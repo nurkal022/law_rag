@@ -610,16 +610,18 @@ def chat():
         if user is None:
             used = ChatHistory.query.filter_by(session_id=session_id).count()
             if used >= GUEST_FREE_QUESTIONS:
+                limit_message = (
+                    f'Вы использовали все {GUEST_FREE_QUESTIONS} бесплатных вопросов. '
+                    'Чтобы продолжить, зарегистрируйтесь — это бесплатно и займёт меньше минуты.'
+                )
                 return jsonify({
+                    'success': False,
                     'error': 'guest_limit',
                     'error_type': 'guest_limit',
+                    'message': limit_message,
                     'guest_used': used,
                     'guest_limit': GUEST_FREE_QUESTIONS,
-                    'answer': (
-                        f'Вы использовали все {GUEST_FREE_QUESTIONS} бесплатных вопросов. '
-                        'Чтобы продолжить пользоваться LawVision, пожалуйста, '
-                        'зарегистрируйтесь — это бесплатно и займёт меньше минуты.'
-                    ),
+                    'answer': limit_message,
                 }), 403
 
         # Если режим поиска по документам включен, проверяем инициализацию
