@@ -163,6 +163,63 @@ for (const file of walk(SRC)) {
   }
 }
 
+/**
+ * Витрина не вправе объявлять классы приложения как свои.
+ *
+ * home.css попадает в общий бандл вместе с оболочкой, и его правила
+ * действуют на каждом экране. Один раз иллюстрация «страница кодекса»
+ * завела класс .page — тот же, что у контейнера всех разделов, — и весь
+ * продукт сжался до 47 % ширины с тенью и скруглением. Заметили не по коду,
+ * а глазами на стенде.
+ *
+ * Переопределять чужой класс внутри своей области витрине можно:
+ * «.pub--home .pub-hdr» действует только на главной. Опасен селектор,
+ * в котором есть класс приложения и нет ни одного класса витрины —
+ * такой срабатывает везде.
+ */
+function classesIn(text) {
+  const names = new Set()
+  for (const m of text.matchAll(/\.([a-z][\w-]*)/g)) names.add(m[1])
+  return names
+}
+
+function selectorLists(css) {
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const out = []
+  for (const m of code.matchAll(/([^{}]+)\{/g)) {
+    const sel = m[1].trim()
+    if (!sel || sel.startsWith('@')) continue
+    out.push(sel)
+  }
+  return out
+}
+
+{
+  const files = walk(SRC).filter((f) => f.endsWith('.css'))
+  const isShowcase = (f) => SHOWCASE.has(relative(ROOT, f))
+  const appClasses = new Map()
+  for (const f of files.filter((x) => !isShowcase(x))) {
+    for (const c of classesIn(readFileSync(f, 'utf8'))) {
+      if (!appClasses.has(c)) appClasses.set(c, relative(ROOT, f))
+    }
+  }
+  for (const f of files.filter(isShowcase)) {
+    const rel = relative(ROOT, f)
+    const text = readFileSync(f, 'utf8')
+    const own = new Set([...classesIn(text)].filter((c) => !appClasses.has(c)))
+    for (const list of selectorLists(text)) {
+      for (const sel of list.split(',')) {
+        const classes = [...classesIn(sel)]
+        const foreign = classes.filter((c) => appClasses.has(c))
+        if (!foreign.length || classes.some((c) => own.has(c))) continue
+        console.error(`${rel}  [class-collision]  ${sel.trim()}\n    ` +
+          `.${foreign[0]} объявлен в ${appClasses.get(foreign[0])}; без класса витрины в селекторе правило сработает на всех экранах — дай своё имя или ограничь областью .pub--home`)
+        failures++
+      }
+    }
+  }
+}
+
 if (failures > 0) {
   console.error(`\nДизайн-система нарушена в ${failures} мест${failures === 1 ? 'е' : 'ах'}.`)
   process.exit(1)

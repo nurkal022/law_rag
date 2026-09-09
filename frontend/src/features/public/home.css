@@ -239,10 +239,10 @@
 
 /* ---------- Сцена: страницы кодекса веером, поверх — ответ ---------- */
 .art { aspect-ratio: 10 / 9; }
-.art:hover .page--1 { transform: rotate(-9deg) translate(calc(var(--s-2) * -1), calc(var(--s-1) * -1)); }
-.art:hover .page--2 { transform: rotate(7deg) translate(var(--s-2), calc(var(--s-1) * -1)); }
+.art:hover .art-page--1 { transform: rotate(-9deg) translate(calc(var(--s-2) * -1), calc(var(--s-1) * -1)); }
+.art:hover .art-page--2 { transform: rotate(7deg) translate(var(--s-2), calc(var(--s-1) * -1)); }
 
-.page {
+.art-page {
   position: absolute;
   z-index: 1;
   width: 47%;
@@ -253,9 +253,9 @@
   box-shadow: var(--h-shadow);
   transition: transform var(--motion-enter);
 }
-.page--1 { left: 2%; top: 5%; transform: rotate(-6deg); transform-origin: bottom right; }
-.page--2 { right: 2%; top: 0; transform: rotate(5deg); transform-origin: bottom left; }
-.page__code {
+.art-page--1 { left: 2%; top: 5%; transform: rotate(-6deg); transform-origin: bottom right; }
+.art-page--2 { right: 2%; top: 0; transform: rotate(5deg); transform-origin: bottom left; }
+.art-page__code {
   display: block;
   font-family: var(--font-sans);
   font-size: var(--t-label-size);
@@ -264,7 +264,7 @@
   text-transform: uppercase;
   color: var(--h-mute);
 }
-.page__art {
+.art-page__art {
   display: block;
   margin: var(--s-1) 0 var(--s-3);
   font-family: var(--font-serif);
@@ -272,14 +272,14 @@
   font-weight: var(--t-h2-weight);
   color: var(--h-ink);
 }
-.page__line {
+.art-page__line {
   display: block;
   height: var(--s-1);
   margin-bottom: var(--s-2);
   border-radius: var(--h-radius-pill);
   background: var(--h-bg-2);
 }
-.page__hi {
+.art-page__hi {
   position: relative;
   margin: var(--s-1) 0 var(--s-3);
   padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3);
@@ -290,7 +290,7 @@
   line-height: 1.45;
   color: var(--h-ink);
 }
-.page__hi-num { margin-right: var(--s-1); color: var(--h-accent); font-weight: 700; }
+.art-page__hi-num { margin-right: var(--s-1); color: var(--h-accent); font-weight: 700; }
 
 .ans {
   position: absolute;
@@ -1054,7 +1054,7 @@
 @media (max-width: 620px) {
   .art { margin-inline: 0; }
   .art { aspect-ratio: 10 / 11; }
-  .page { width: 52%; }
+  .art-page { width: 52%; }
   .ans { left: 0; right: 0; top: 30%; padding: var(--s-4); }
   .stamp { right: -3%; bottom: -5%; width: calc(var(--s-16) * 1.5); height: calc(var(--s-16) * 1.5); }
   .stamp__mark { width: var(--s-8); height: var(--s-8); }

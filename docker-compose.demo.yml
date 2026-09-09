@@ -64,6 +64,10 @@ services:
     volumes:
       - ./docs:/app/docs
       - ./exports:/app/exports
+      # Сборка фронтенда монтируется, а не вшивается в образ: иначе каждая
+      # правка интерфейса требует пересобрать 3,6 ГБ Python-зависимостей.
+      # Обновление фронта — rsync static/app и перезапуск контейнера.
+      - ./static/app:/app/static/app:ro
       - hf_cache:/app/.cache
     networks:
       - dalel

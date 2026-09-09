@@ -471,30 +471,30 @@ function HeroArt() {
       <span className="art__grid" />
 
       {/* Страницы кодекса веером за ответом: из них он и собран */}
-      <div className="page page--1 enter" style={step(3)}>
-        <span className="page__code">{t('pageCode')}</span>
-        <span className="page__art">{t('pageArt1')}</span>
-        <span className="page__line" style={{ width: '84%' }} />
-        <span className="page__line" style={{ width: '62%' }} />
-        <p className="page__hi">
-          <span className="page__hi-num">1.</span>
+      <div className="art-page art-page--1 enter" style={step(3)}>
+        <span className="art-page__code">{t('pageCode')}</span>
+        <span className="art-page__art">{t('pageArt1')}</span>
+        <span className="art-page__line" style={{ width: '84%' }} />
+        <span className="art-page__line" style={{ width: '62%' }} />
+        <p className="art-page__hi">
+          <span className="art-page__hi-num">1.</span>
           {t('n178')}
         </p>
-        <span className="page__line" style={{ width: '90%' }} />
-        <span className="page__line" style={{ width: '74%' }} />
-        <span className="page__line" style={{ width: '56%' }} />
+        <span className="art-page__line" style={{ width: '90%' }} />
+        <span className="art-page__line" style={{ width: '74%' }} />
+        <span className="art-page__line" style={{ width: '56%' }} />
       </div>
-      <div className="page page--2 enter" style={step(5)}>
-        <span className="page__code">{t('pageCode')}</span>
-        <span className="page__art">{t('pageArt2')}</span>
-        <span className="page__line" style={{ width: '70%' }} />
-        <p className="page__hi">
-          <span className="page__hi-num">1.</span>
+      <div className="art-page art-page--2 enter" style={step(5)}>
+        <span className="art-page__code">{t('pageCode')}</span>
+        <span className="art-page__art">{t('pageArt2')}</span>
+        <span className="art-page__line" style={{ width: '70%' }} />
+        <p className="art-page__hi">
+          <span className="art-page__hi-num">1.</span>
           {t('n180')}
         </p>
-        <span className="page__line" style={{ width: '88%' }} />
-        <span className="page__line" style={{ width: '66%' }} />
-        <span className="page__line" style={{ width: '48%' }} />
+        <span className="art-page__line" style={{ width: '88%' }} />
+        <span className="art-page__line" style={{ width: '66%' }} />
+        <span className="art-page__line" style={{ width: '48%' }} />
       </div>
 
       {/* Ответ: карточка без окна и без боковой панели */}
