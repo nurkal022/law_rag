@@ -366,6 +366,7 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
             </Caption>
           ) : null}
 
+          {answer.sources.length ? (
           <section className="chat__sources">
             <button
               type="button"
@@ -393,6 +394,7 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
               </div>
             ) : null}
           </section>
+          ) : null}
 
           <div className="chat__acts">
             <Button variant="ghost" onClick={copy}>

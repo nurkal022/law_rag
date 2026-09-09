@@ -76,6 +76,12 @@ export function parseAnswer(text: string, sources: ApiSource[]): Answer {
   const tail = clean.slice(last)
   if (tail) segs.push(tail)
 
+  // Ответ без единой ссылки — это отказ («вопрос не о праве») или общий текст:
+  // модель найденным не воспользовалась, и пять фрагментов под ним только
+  // создают видимость обоснования.
+  const cited = segs.some((seg) => typeof seg !== 'string')
+  if (!cited) return { segs, sources: [] }
+
   // В списке источников каждый документ+статья — один раз
   const out: Source[] = []
   const codes = new Set<string>()
