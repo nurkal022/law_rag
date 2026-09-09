@@ -64,6 +64,7 @@ const dict: Dict = {
   noDiff: { ru: 'Отличий по пунктам нет.', kz: 'Тармақтар бойынша айырмашылық жоқ.', en: 'No clause-level differences.' },
 
   failEdit: { ru: 'Правка не применилась', kz: 'Түзету қолданылмады', en: 'The edit was not applied' },
+  built: { ru: 'Разделы составлены', kz: 'Бөлімдер жасалды', en: 'Sections drafted' },
   errBuild: {
     ru: 'Не удалось запустить составление',
     kz: 'Жазуды бастау мүмкін болмады',
@@ -172,6 +173,9 @@ export function useSectionBuild(draftId: string, onDone: () => void) {
           setBuilding({ done: j.progress.done, total: j.progress.total, label: j.progress.label, keys })
           if (j.status === 'done' || j.status === 'failed' || j.status === 'cancelled') {
             if (j.status === 'failed' && j.error) toast(j.error, 'err')
+            // Тишина после сборки читалась как «ничего не произошло»: полоса
+            // хода исчезала, а лист под ней просто становился длиннее.
+            if (j.status === 'done') toast(`${t('built')}: ${keys.length}`, 'ok')
             finish()
           }
         },

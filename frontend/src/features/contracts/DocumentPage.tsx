@@ -198,7 +198,12 @@ export function DocumentPage() {
 
   const hasTables = tree.tables.length > 0 || tree.annexes.some((a) => a.table)
   const pending = tree.sections.filter((s) => s.pending)
-  const shownIssues = tree.issues.filter((i) => i.code !== 'section_pending')
+  // Пока разделы пересобираются, старые «не удалось составить» не показываем:
+  // рядом с полосой хода они читаются как «всё ещё сломано», хотя относятся
+  // к прошлой попытке и после сборки исчезнут вместе с новой версией.
+  const shownIssues = tree.issues.filter(
+    (i) => i.code !== 'section_pending' && !(building && i.code === 'section_failed'),
+  )
 
   const quick: QuickAsk[] = [
     { label: t('quickHarder'), text: t('quickHarderText') },
