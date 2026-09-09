@@ -469,3 +469,15 @@ def test_warnings_agree_in_gender():
     assert 'не заполнен ИИН/БИН' in messages
     assert 'не заполнено наименование' in messages
     assert 'не заполнено адрес' not in messages
+
+
+def test_generate_section_passes_the_lawyer_hint_to_the_model():
+    """Указание юриста при перегенерации — часть задания, а не пожелание."""
+    p = passport()
+    tree = build_skeleton(p, values(), 'ru')
+    provider = FakeProvider(CLAUSES_JSON)
+
+    generate_section(provider, p, p.sections[0], tree, values(), 'ru', hint='разложи оплату по этапам')
+
+    prompt = ' '.join(m['content'] for m in provider.calls[0])
+    assert 'разложи оплату по этапам' in prompt

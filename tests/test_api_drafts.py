@@ -621,3 +621,87 @@ def test_revert_restores_the_previous_wording(app, client, drafted):
     assert price['clauses'][0]['text'] == 'Стоимость услуг составляет 500 000 тенге.'
     # Откат дописывает историю, а не стирает её.
     assert r.get_json()['draft']['version'] == 3
+
+
+# ------------------------------------------------------ фоновое составление
+#
+# Интерфейс не зовёт generate_document: он ставит задачу в очередь, и разделы
+# пишет обработчик draft.generate. Это единственный путь в продакшене, и
+# проверять его надо через саму очередь, а не вызовом функций движка напрямую —
+# иначе тесты зелёные, а составление на стенде падает на каждом разделе.
+
+
+class FakeRetriever:
+    """Корпус из одной нормы: достаточно, чтобы увидеть её в промпте."""
+
+    def __init__(self):
+        self.queries = []
+
+    def hybrid_search(self, query, top_k=4):
+        self.queries.append(query)
+        return [{'title': 'ГК РК', 'content': 'Статья 406. Продавец обязуется передать товар в собственность покупателю.'}]
+
+
+SECTION_PAYLOAD = {
+    'clauses': [{'text': 'Исполнитель обязуется оказать услуги в согласованном объёме.', 'refs': []}],
+    'notes': '',
+}
+
+
+def _generate_in_background(app, client, draft_id, body=None):
+    """Ставит задачу через API и выполняет её обработчиком очереди.
+
+    Захват задачи (FOR UPDATE SKIP LOCKED) есть только у Postgres, и на SQLite
+    воркер запустить нельзя; здесь важен не захват, а сам обработчик — ему
+    и отдаём ровно тот payload, что положил в очередь маршрут.
+    """
+    from database.models import Job, db
+    from docengine.tasks import generate_draft
+
+    r = client.post(f'/api/drafts/{draft_id}/generate', json=body or {})
+    assert r.status_code == 202, r.get_json()
+    with app.app_context():
+        job = db.session.query(Job).filter_by(public_id=r.get_json()['job']['id']).one()
+        payload = dict(job.payload_json or {})
+    generate_draft(app, payload, lambda *a: None)
+    return client.get(f'/api/drafts/{draft_id}').get_json()['draft']
+
+
+def test_background_generation_fills_every_section(app, client):
+    app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
+    public_id = _create(client).get_json()['draft']['id']
+
+    tree = _generate_in_background(app, client, public_id)['tree']
+
+    failed = [i['message'] for i in tree['issues'] if i['code'] == 'section_failed']
+    assert failed == [], failed
+    assert all(s['clauses'] and not s['pending'] for s in tree['sections'])
+
+
+def test_background_generation_feeds_corpus_norms_into_the_prompt(app, client):
+    """Обработчик обязан ходить в корпус так же, как синхронный путь: без норм
+    модель пишет договор по памяти, и ссылки в нём выдуманы."""
+    provider = ScriptedProvider(SECTION_PAYLOAD)
+    app.config['LLM_PROVIDER'] = provider
+    app.config['RAG_RETRIEVER'] = FakeRetriever()
+    public_id = _create(client).get_json()['draft']['id']
+
+    _generate_in_background(app, client, public_id)
+
+    prompt = ' '.join(m['content'] for m in provider.calls[0])
+    assert 'Статья 406' in prompt
+    assert app.config['RAG_RETRIEVER'].queries, 'корпус ни разу не спросили'
+
+
+def test_regeneration_hint_reaches_the_model(app, client, drafted):
+    """Кнопки «Разложить расходы по годам» и поле указания шлют hint;
+    потерять его по дороге — значит молча проигнорировать просьбу юриста."""
+    provider = ScriptedProvider(SECTION_PAYLOAD)
+    app.config['LLM_PROVIDER'] = provider
+
+    _generate_in_background(app, client, drafted,
+                            {'sections': ['price'], 'hint': 'разложи расходы по годам'})
+
+    assert len(provider.calls) == 1
+    prompt = ' '.join(m['content'] for m in provider.calls[0])
+    assert 'разложи расходы по годам' in prompt

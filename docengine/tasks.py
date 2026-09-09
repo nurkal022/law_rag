@@ -32,7 +32,7 @@ def generate_draft(app, payload: dict, progress) -> dict:
     исход, чем отдать документ с одной дырой, про которую честно сказано.
     """
     from database.models import Draft, DraftVersion, db
-    from .generate import GenerationError, generate_section
+    from .generate import GenerationError, _retrieve, _section_query, generate_section
 
     with app.app_context():
         draft = db.session.get(Draft, payload['draft_id'])
@@ -60,9 +60,12 @@ def generate_draft(app, payload: dict, progress) -> dict:
             if section is None:
                 continue
             try:
+                # Нормы под раздел достаём здесь, как и generate_document:
+                # сама generate_section корпуса не знает и получает уже текст.
+                legal_context = _retrieve(retriever, _section_query(passport, spec, draft.lang))
                 clauses = generate_section(
                     provider, passport, spec, tree, values, draft.lang,
-                    retriever=retriever, hint=payload.get('hint') or '',
+                    legal_context=legal_context, hint=payload.get('hint') or '',
                 )
                 # Пункты, правленные человеком, переживают перегенерацию.
                 kept = [c for c in section.clauses if c.locked]

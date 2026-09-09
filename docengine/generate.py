@@ -311,8 +311,14 @@ def generate_section(
     values: dict,
     lang: str = 'ru',
     legal_context: str = '',
+    hint: str = '',
 ) -> list[Clause]:
-    """Пункты одного раздела. Один вызов модели, строгий JSON на выходе."""
+    """Пункты одного раздела. Один вызов модели, строгий JSON на выходе.
+
+    hint — указание юриста при перегенерации («разложи расходы по годам»).
+    Это часть задания, а не пожелание: без него кнопки правки в интерфейсе
+    ничего не меняют, и человек решает, что модель его не слышит.
+    """
     lang = lang if lang in LANG_NAME else 'ru'
     spec_refs = section_spec.refs or passport.legal_basis
     refs_text = ', '.join(r.label() for r in spec_refs) or 'Гражданский кодекс РК'
@@ -348,6 +354,8 @@ def generate_section(
             '\nНОРМЫ ЗАКОНОДАТЕЛЬСТВА РК ИЗ КОРПУСА '
             '(опирайся на них, но не цитируй целиком):\n' + legal_context + '\n'
         )
+    if hint.strip():
+        user += f'\nУКАЗАНИЕ ЮРИСТА К ЭТОМУ РАЗДЕЛУ (обязательно к исполнению): {hint.strip()}\n'
     user += '\nВерни только JSON по схеме.'
 
     result, _raw = _ask_json(
