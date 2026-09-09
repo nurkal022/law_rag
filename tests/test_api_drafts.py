@@ -731,8 +731,14 @@ def test_generation_reports_stages_found_norms_and_a_growing_tree(app, client):
     partials = [m['partial'] for m in metas if m.get('partial')]
     filled = [sum(1 for s in p['sections'] if not s['pending']) for p in partials]
     total = len(partials[-1]['sections'])
-    assert filled == list(range(1, total + 1)), 'после каждого раздела дерево растёт на один раздел'
+    assert filled == sorted(filled) and set(filled) == set(range(1, total + 1)), \
+        'дерево растёт на раздел за разделом и не откатывается'
     assert partials[0]['sections'][0]['clauses'][0]['no'] == '1.1', 'частичное дерево уже пронумеровано'
+    # Поток читает задачу раз в секунду и событие с готовым разделом чаще всего
+    # пропускает: следующее («ищу нормы» для нового раздела) его затирает.
+    # Поэтому после первого готового раздела свежий лист едет с каждым событием.
+    first = next(i for i, m in enumerate(metas) if m.get('partial'))
+    assert all(m.get('partial') for m in metas[first:-1]), 'после первого готового раздела лист есть в каждом событии'
     assert metas[-1] == {'stage': 'checking'}
 
 

@@ -64,18 +64,32 @@ def generate_draft(app, payload: dict, progress) -> dict:
             if not (i.code == 'section_failed' and i.section_key in attempted)
         ]
 
+        built = False
+
+        def meta(stage: str, key: str, found: list | None = None) -> dict:
+            m: dict = {'stage': stage, 'section': key}
+            if found is not None:
+                m['found'] = found
+            # Свежий лист едет с каждым событием, как только готов первый
+            # раздел. Событие живёт до следующего progress(), а поток читает
+            # задачу раз в секунду — одиночное событие «раздел готов» он
+            # почти всегда пропускал, и лист наполнялся разом в конце.
+            if built:
+                m['partial'] = tree.model_dump(mode='json')
+            return m
+
         for i, spec in enumerate(specs):
             title = spec.title.get(draft.lang)
             section = tree.section_by_key(spec.key)
             if section is None:
                 continue
-            progress(i, total, title, {'stage': 'retrieving', 'section': spec.key})
+            progress(i, total, title, meta('retrieving', spec.key))
             try:
                 # Нормы под раздел достаём здесь, как и generate_document:
                 # сама generate_section корпуса не знает и получает уже текст.
                 chunks = _retrieve_chunks(retriever, _section_query(passport, spec, draft.lang))
                 found = found_norms(chunks)
-                progress(i, total, title, {'stage': 'drafting', 'section': spec.key, 'found': found})
+                progress(i, total, title, meta('drafting', spec.key, found))
                 clauses = generate_section(
                     provider, passport, spec, tree, values, draft.lang,
                     legal_context=_context_text(chunks), hint=payload.get('hint') or '',
@@ -84,13 +98,11 @@ def generate_draft(app, payload: dict, progress) -> dict:
                 kept = [c for c in section.clauses if c.locked]
                 section.clauses = clauses + kept
                 section.pending = False
+                built = True
                 # Готовый раздел уходит на экран сразу, пронумерованным: лист
                 # наполняется по мере работы, а не после всех разделов.
                 renumber(tree)
-                progress(i + 1, total, title, {
-                    'stage': 'drafting', 'section': spec.key, 'found': found,
-                    'partial': tree.model_dump(mode='json'),
-                })
+                progress(i + 1, total, title, meta('drafting', spec.key, found))
             except Exception as e:
                 log.error('раздел «%s» документа %s не сгенерирован: %s',
                           spec.key, draft.public_id, e)
