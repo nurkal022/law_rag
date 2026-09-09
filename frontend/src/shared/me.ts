@@ -18,6 +18,8 @@ export interface MeUser {
 export interface Me {
   authenticated: boolean
   user: MeUser | null
+  /** Сколько вопросов гостю можно задать без входа — правило сервера, не текста. */
+  guest_limit?: number
 }
 
 const GUEST: Me = { authenticated: false, user: null }

@@ -65,9 +65,9 @@ const dict: Dict = {
     en: 'Continue with Google',
   },
   guest: {
-    ru: 'Без регистрации доступно пять бесплатных вопросов — попробуйте прежде, чем заводить учётную запись.',
-    kz: 'Тіркелмей-ақ бес тегін сұрақ қоюға болады — тіркелгі жасамас бұрын байқап көріңіз.',
-    en: 'Five free questions are available without an account — try it before signing up.',
+    ru: 'Без регистрации доступно {n} — попробуйте прежде, чем заводить учётную запись.',
+    kz: 'Тіркелмей-ақ {n} қоюға болады — тіркелгі жасамас бұрын байқап көріңіз.',
+    en: 'Without an account you can ask {n} — try it before you sign up.',
   },
   guestLink: { ru: 'Задать вопрос без входа', kz: 'Кірмей сұрақ қою', en: 'Ask without signing in' },
   altQuestion: { ru: 'Уже есть учётная запись?', kz: 'Тіркелгіңіз бар ма?', en: 'Already have an account?' },
@@ -105,6 +105,26 @@ const dict: Dict = {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+/**
+ * «2 бесплатных вопроса», «5 бесплатных вопросов»: число приходит с сервера,
+ * и обещать в тексте больше, чем он даст, нельзя — человек проверит на втором
+ * вопросе. Пока ответ не пришёл, показывается нейтральная форма без числа.
+ */
+function freeQuestions(n: number | undefined, lang: string): string {
+  if (n === undefined) {
+    return lang === 'kz' ? 'бірнеше тегін сұрақ' : lang === 'en' ? 'a few free questions' : 'несколько бесплатных вопросов'
+  }
+  if (lang === 'kz') return `${n} тегін сұрақ`
+  if (lang === 'en') return n === 1 ? '1 free question' : `${n} free questions`
+  const mod10 = n % 10
+  const mod100 = n % 100
+  const word =
+    mod10 === 1 && mod100 !== 11 ? 'бесплатный вопрос'
+    : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20) ? 'бесплатных вопроса'
+    : 'бесплатных вопросов'
+  return `${n} ${word}`
+}
 
 export function RegisterPage() {
   const { lang } = useLang()
@@ -279,7 +299,7 @@ export function RegisterPage() {
 
 
           <Body className="auth__note">
-            <UIText tone="mute">{t('guest')} </UIText>
+            <UIText tone="mute">{t('guest').replace('{n}', freeQuestions(me?.guest_limit, lang))} </UIText>
             <Link to="/chat" className="auth__link t-ui">
               {t('guestLink')}
             </Link>
