@@ -35,6 +35,9 @@ venv/bin/pip install -r requirements.txt
 ```bash
 # в том же PostgreSQL, что и у старой версии
 psql -U postgres -c "CREATE DATABASE dalel OWNER lawai;"
+# расширение pgvector ставится в каждую базу отдельно — без него приложение
+# падает на старте с «type "vector" does not exist»
+psql -U postgres -d dalel -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 ## 4. Файл `.env`
@@ -52,20 +55,54 @@ APP_PORT=5004
 DATABASE_URL=postgresql://lawai:<пароль>@localhost:5433/dalel
 DEBUG=False
 SECRET_KEY=<новый случайный ключ>
+
+# Модель и эмбеддинги. Старый инстанс живёт на ollama; новая версия ходит в
+# OpenAI-совместимый API. Рабочий вариант со стенда — OpenAI:
+LLM_PROVIDER_TYPE=openai
+LLM_MODEL=gpt-4o-mini
+OPENAI_API_KEY=<ключ>
+EMBEDDING_BASE_URL=https://api.openai.com/v1
+EMBEDDING_API_KEY=<тот же ключ>
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_SEND_DIMENSIONS=true   # схема БД — vector(1024), OpenAI усекает вектор
+USE_RERANK=false                 # у OpenAI нет /v1/rerank
+TRANSCRIPTION_MODEL=gpt-4o-transcribe
 ```
+
+Если на сервере есть vLLM с bge-m3 — вместо блока OpenAI укажите его
+`EMBEDDING_BASE_URL`/`LOCAL_LLM_BASE_URL`, оставьте `EMBEDDING_SEND_DIMENSIONS`
+выключенным и `USE_RERANK=true`.
 
 `SECRET_KEY` обязательно свой — иначе сессии двух инстансов будут
 взаимозаменяемы.
 
 ## 5. Собрать фронтенд
 
-`static/app/` не хранится в git, собирается на месте:
+`static/app/` не хранится в git. Сборке нужен Node 20+ (Vite 8); если на сервере
+он старше — собирайте на своей машине и заливайте результат:
 
 ```bash
-cd frontend
-npm ci
-npm run build      # результат кладётся в ../static/app
-cd ..
+# на сервере, если Node ≥ 20
+cd frontend && npm ci && npm run build && cd ..   # результат — в ../static/app
+
+# иначе — локально
+cd frontend && npm run build && cd ..
+rsync -az --delete --exclude '__devlogin.html' static/app/ \
+      kaznu2025@<сервер>:~/PycharmProjects/llm-law/dalel/static/app/
+```
+
+`__devlogin.html` — помощник разработчика с паролем в разметке; на сервер
+он попадать не должен.
+
+## 5а. Загрузить корпус
+
+Новая база пуста. Кодексы лежат в `docs/`, индексация — двумя скриптами
+(эмбеддинги считаются через выбранного провайдера; на 6 тыс. чанков через
+OpenAI уходит около трёх минут):
+
+```bash
+venv/bin/python scripts/load_legal_docs.py
+venv/bin/python scripts/reindex_embeddings.py
 ```
 
 ## 6. systemd-юнит
