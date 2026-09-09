@@ -54,6 +54,16 @@ def generate_draft(app, payload: dict, progress) -> dict:
         total = len(specs)
         failed: list[str] = []
 
+        # Замечание «раздел не удалось составить» относится к попытке, а не к
+        # разделу: для всего, что пересобирается сейчас, старые замечания
+        # снимаются, и остаются только те, что поставит эта попытка. Разделы,
+        # которых пересборка не касается, свои замечания сохраняют.
+        attempted = {s.key for s in specs}
+        tree.issues = [
+            i for i in tree.issues
+            if not (i.code == 'section_failed' and i.section_key in attempted)
+        ]
+
         for i, spec in enumerate(specs):
             progress(i, total, spec.title.get(draft.lang))
             section = tree.section_by_key(spec.key)

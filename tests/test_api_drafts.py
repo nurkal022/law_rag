@@ -660,10 +660,17 @@ def _generate_in_background(app, client, draft_id, body=None):
 
     r = client.post(f'/api/drafts/{draft_id}/generate', json=body or {})
     assert r.status_code == 202, r.get_json()
+    job_id = r.get_json()['job']['id']
     with app.app_context():
-        job = db.session.query(Job).filter_by(public_id=r.get_json()['job']['id']).one()
+        job = db.session.query(Job).filter_by(public_id=job_id).one()
         payload = dict(job.payload_json or {})
     generate_draft(app, payload, lambda *a: None)
+    # Воркер после обработки закрывает задачу; иначе маршрут сочтёт её
+    # незавершённой и следующую генерацию не поставит (already: true).
+    with app.app_context():
+        job = db.session.query(Job).filter_by(public_id=job_id).one()
+        job.status = 'done'
+        db.session.commit()
     return client.get(f'/api/drafts/{draft_id}').get_json()['draft']
 
 
@@ -705,3 +712,43 @@ def test_regeneration_hint_reaches_the_model(app, client, drafted):
     assert len(provider.calls) == 1
     prompt = ' '.join(m['content'] for m in provider.calls[0])
     assert 'разложи расходы по годам' in prompt
+
+
+def test_regenerated_section_clears_its_old_failure_note(app, client):
+    """Замечание «раздел не удалось составить» относится к попытке, а не к разделу.
+
+    Если пересборка удалась, старое замечание обязано исчезнуть — иначе юрист
+    видит одиннадцать красных строк над одиннадцатью готовыми разделами и
+    решает, что документ всё ещё сломан.
+    """
+    # Первая попытка: модель отвечает мимо схемы — все разделы падают.
+    app.config['LLM_PROVIDER'] = ScriptedProvider({'sections': []})
+    public_id = _create(client).get_json()['draft']['id']
+    tree = _generate_in_background(app, client, public_id)['tree']
+    attempted = [s['key'] for s in tree['sections']]
+    failed = sorted(i['section_key'] for i in tree['issues'] if i['code'] == 'section_failed')
+    assert failed == sorted(attempted), 'первая попытка должна была уронить каждый раздел'
+
+    # Вторая попытка удаётся.
+    app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
+    tree = _generate_in_background(app, client, public_id)['tree']
+
+    assert all(s['clauses'] and not s['pending'] for s in tree['sections'])
+    stale = [i['message'] for i in tree['issues'] if i['code'] == 'section_failed']
+    assert stale == [], stale
+
+
+def test_failure_note_survives_when_only_other_sections_are_rebuilt(app, client):
+    """Пересборка одного раздела не должна стирать честное замечание о другом."""
+    app.config['LLM_PROVIDER'] = ScriptedProvider({'sections': []})
+    public_id = _create(client).get_json()['draft']['id']
+    _generate_in_background(app, client, public_id)
+
+    app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
+    tree = _generate_in_background(app, client, public_id, {'sections': ['price']})['tree']
+
+    others = sorted(s['key'] for s in tree['sections'] if s['key'] != 'price')
+    failed_keys = sorted(i['section_key'] for i in tree['issues'] if i['code'] == 'section_failed')
+    assert failed_keys == others
+    price = next(s for s in tree['sections'] if s['key'] == 'price')
+    assert price['clauses'] and not price['pending']
