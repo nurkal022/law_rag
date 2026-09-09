@@ -1,4 +1,5 @@
 import type { Passport } from '../drafts/types'
+import { normCode } from '../legal/cite'
 
 /**
  * Ответ ручки брифа и его сборка в значения формы.
@@ -74,9 +75,13 @@ export function conceptValues(concept: Concept, edits: Record<string, string>): 
   return Object.fromEntries(Object.entries(merged).filter(([, v]) => v && v.trim()))
 }
 
-/** «Конституция РК 13» — код нормы концепта для чипа. */
+/**
+ * «Конституция РК 13» — код нормы концепта для чипа. Сервер отдаёт акт либо
+ * сокращением от модели, либо полным названием документа корпуса — второе
+ * сжимается до того же сокращения, что и в чате.
+ */
 export function refCode(ref: ConceptRef): string {
-  return ref.article ? `${ref.act} ${ref.article}` : ref.act
+  return normCode(ref.act, ref.article || null)
 }
 
 /** Обязательные поля паспорта, которых в значениях ещё нет — подписями. */

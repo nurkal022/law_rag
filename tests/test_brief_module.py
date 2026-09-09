@@ -271,3 +271,51 @@ def test_retrieve_text_contract_is_unchanged():
     text = _retrieve(FakeRetriever(), 'что угодно', top_k=2)
     assert text.startswith('[Конституция Республики Казахстан]\nСтатья 13.')
     assert _retrieve(None, 'что угодно') == ''
+
+
+def test_concept_without_refs_borrows_norms_it_names_from_the_context(catalog):
+    """Модель пишет «Статья 13 Конституции» в основании, а refs оставляет пустым.
+
+    Норма, которую концепт называет сам и которая есть среди найденных, — его
+    ссылка: карточка без единого чипа выглядит голословной, хотя норма у неё есть.
+    """
+    bare = _two_concepts_json(refs=[], constitutional_basis='Статья 13 Конституции РК — право на юридическую помощь.')
+    result = brief.propose_concepts(
+        FakeProvider(bare), FakeRetriever(), get_passport('law_project'),
+        text='платформы', domain_key='civil', attachments=[], lang='ru',
+    )
+    refs = result.concepts[0].refs
+    assert [(r.act, r.article) for r in refs] == [('Конституция Республики Казахстан', '13')]
+
+
+def test_named_article_absent_from_the_context_gives_no_ref(catalog):
+    bare = _two_concepts_json(refs=[], constitutional_basis='Статья 999 ГК РК.')
+    result = brief.propose_concepts(
+        FakeProvider(bare), FakeRetriever(), get_passport('law_project'),
+        text='платформы', domain_key='civil', attachments=[], lang='ru',
+    )
+    assert result.concepts[0].refs == []
+
+
+def test_norms_from_the_domain_corpus_come_first(catalog):
+    """Поиск по всему корпусу тянет УПК в гражданский бриф; акты сферы — вперёд."""
+
+    class MixedRetriever(FakeRetriever):
+        def hybrid_search(self, query, top_k=4):
+            self.queries.append(query)
+            return [
+                {'title': 'Уголовно-процессуальный кодекс РК', 'content': 'Статья 576. Правовая помощь.'},
+                {'title': 'Гражданский кодекс РК (Общая часть)', 'content': 'Статья 178. Срок исковой давности.'},
+                {'title': 'Конституция Республики Казахстан', 'content': 'Статья 13. Право на юридическую помощь.'},
+            ]
+
+    provider = FakeProvider(_two_concepts_json())
+    brief.propose_concepts(
+        provider, MixedRetriever(), get_passport('law_project'),
+        text='платформы', domain_key='civil', attachments=[], lang='ru',
+    )
+    prompt = provider.calls[0][1]['content']
+    block = prompt[prompt.index('НОРМЫ ИЗ КОРПУСА'):]
+    gk, upk, const = block.index('Гражданский кодекс'), block.index('Уголовно-процессуальный'), block.index('Конституция')
+    assert gk < upk and gk < const, 'акт сферы должен идти первым'
+    assert upk < const, 'остальные — в порядке поиска'

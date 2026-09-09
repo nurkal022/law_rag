@@ -17,7 +17,7 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 
-from .generate import _ask_json, _context_text, _retrieve_chunks
+from .generate import _ARTICLE_RE, _ask_json, _context_text, _retrieve_chunks
 from .passport import Passport
 from .schema import Ref
 
@@ -351,14 +351,59 @@ def brief_query(text: str, domain_key: str, attachments: list[dict]) -> str:
     return ' '.join(p for p in parts if p).strip()
 
 
-def _keep_only_context_refs(concepts: list[Concept], context: str) -> None:
-    """Ссылка остаётся, если её статья есть среди найденных фрагментов.
+_MENTION_RE = re.compile(r'(?:Статья|статья|ст\.)\s*(\d+(?:-\d+)*)')
+
+
+def _prefer_domain(chunks: list[dict], d: dict | None) -> list[dict]:
+    """Акты выбранной сферы — вперёд.
+
+    Поиск идёт по всему корпусу, и в гражданский бриф охотно приходит УПК с
+    «правовой помощью»: слова те же, право другое. Порядок внутри групп —
+    как выдал поиск.
+    """
+    if not d:
+        return chunks
+    own = [c for c in chunks if c['title'] in d['corpus']]
+    rest = [c for c in chunks if c['title'] not in d['corpus']]
+    return own + rest
+
+
+def _titles_by_article(chunks: list[dict]) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for c in chunks:
+        for n in _ARTICLE_RE.findall(c['content']):
+            titles = out.setdefault(n, [])
+            if c['title'] not in titles:
+                titles.append(c['title'])
+    return out
+
+
+def _ground_refs(concepts: list[Concept], chunks: list[dict]) -> None:
+    """Ссылки концепта — только на найденные нормы.
 
     Модель охотно дописывает правдоподобные номера статей; выдуманная ссылка
-    в карточке хуже отсутствующей — её примут за проверенную.
+    в карточке хуже отсутствующей — её примут за проверенную. Но и обратное
+    бывает чаще: ссылок модель не даёт вовсе, а статью называет в основании
+    или пробелах словами. Если названная статья среди найденных — она и есть
+    ссылка концепта; карточка без единой нормы выглядит голословной зря.
     """
+    by_article = _titles_by_article(chunks)
     for c in concepts:
-        c.refs = [r for r in c.refs if re.search(rf'Статья\s+{re.escape(r.article)}\b', context)]
+        c.refs = [r for r in c.refs if r.article in by_article]
+        if c.refs:
+            continue
+        named = ' '.join([c.constitutional_basis, c.current_legislation_gaps, c.problem_description, *c.key_provisions])
+        seen: set[str] = set()
+        for m in _MENTION_RE.finditer(named):
+            n = m.group(1)
+            titles = by_article.get(n) or []
+            # Один номер в двух актах — не угадываем, какой имелся в виду
+            if n in seen or len(titles) != 1:
+                continue
+            seen.add(n)
+            c.refs.append(Ref(act=titles[0], article=n))
+            if len(c.refs) == 3:
+                break
 
 
 def propose_concepts(
@@ -378,7 +423,7 @@ def propose_concepts(
     files = _clip_attachments(attachments)
     d = domain(domain_key)
 
-    chunks = _retrieve_chunks(retriever, brief_query(text, domain_key, files), top_k=12)
+    chunks = _prefer_domain(_retrieve_chunks(retriever, brief_query(text, domain_key, files), top_k=24), d)[:12]
     context = _context_text(chunks)
 
     system = (
@@ -391,7 +436,9 @@ def propose_concepts(
         '- title_ru — как заголовок закона, начинается с «О …» или «Об …», без слова «проект».\n'
         '- Каждая концепция опирается на бриф и материалы; не выдумывай фактов, которых там нет.\n'
         '- goals — 2–4 цели, key_provisions — 3–5 новелл, каждая одним предложением.\n'
-        '- refs — только нормы из блока НОРМЫ ИЗ КОРПУСА; нет подходящей — пустой список.\n'
+        '- refs — 1–3 нормы из блока НОРМЫ ИЗ КОРПУСА, на которые концепция опирается: act — акт как в '
+        'квадратных скобках или его сокращение, article — номер статьи. Пустой список — только если ни одна '
+        'найденная норма к делу не относится.\n'
         '- summary — одна фраза, по которой варианты различают с первого взгляда.'
     )
     user_parts = [
@@ -413,5 +460,5 @@ def propose_concepts(
         max_tokens=4000,
         what='концепты законопроекта',
     )
-    _keep_only_context_refs(result.concepts, context)
+    _ground_refs(result.concepts, chunks)
     return result
