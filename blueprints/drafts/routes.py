@@ -25,10 +25,12 @@ from datetime import datetime, timedelta
 from flask import Response, current_app, jsonify, request, send_file
 
 from blueprints.auth.routes import current_user, log_usage, login_required
-from database.models import Draft, DraftTurn, DraftVersion, Job, db
+from database.models import Draft, DraftTurn, DraftVersion, Job, UsageEvent, db
 from docengine import jobs
+from docengine.brief import clarifications_payload, domain, domains_payload, example_brief, propose_concepts
 from docengine.check import check
 from docengine.demo import demo_values
+from docengine.generate import GenerationError
 from docengine.ops import Op, apply_ops, diff
 from docengine.passport import CatalogError, get_passport, list_passports, load_catalog
 from docengine.schema import DocTree
@@ -68,6 +70,23 @@ def _rate_limited(kind: str, limit: int) -> tuple[bool, int]:
     since = datetime.utcnow() - timedelta(hours=1)
     used = db.session.query(Job).filter(
         Job.owner_id == user.id, Job.kind == kind, Job.created_at >= since
+    ).count()
+    return used >= limit, max(0, limit - used)
+
+
+def _usage_limited(action: str, limit: int) -> tuple[bool, int]:
+    """Почасовой лимит по журналу использования — для действий без задачи.
+
+    Бриф — синхронный вызов модели, строки в очереди задач у него нет, а
+    считать его всё равно надо: три концепта стоят как половина документа.
+    """
+    user = current_user()
+    if not user:
+        return True, 0
+    since = datetime.utcnow() - timedelta(hours=1)
+    used = db.session.query(UsageEvent).filter(
+        UsageEvent.user_id == user.id, UsageEvent.module == 'drafts',
+        UsageEvent.action == action, UsageEvent.created_at >= since,
     ).count()
     return used >= limit, max(0, limit - used)
 
@@ -180,6 +199,71 @@ def passport_demo(type_id: str):
     return jsonify({'success': True, 'values': demo_values(p, _lang())})
 
 
+@drafts_bp.route('/brief/domains')
+def brief_domains():
+    """Сферы для брифа и пример — публично: их видит и гость на экране."""
+    lang = _lang()
+    return jsonify({'success': True, 'domains': domains_payload(lang), 'example': example_brief(lang)})
+
+
+@drafts_bp.route('/brief', methods=['POST'])
+@login_required
+def brief():
+    """Три концепта законопроекта по брифу.
+
+    Ответ — сразу значениями формы паспорта: интерфейс не должен знать,
+    как поля концепта раскладываются по паспорту, иначе это знание разойдётся
+    с сервером при первом изменении.
+    """
+    data = request.get_json(silent=True) or {}
+    type_id = data.get('type_id') or 'law_project'
+    try:
+        p = get_passport(type_id)
+    except KeyError:
+        return _err(f'Неизвестный тип документа: {type_id}', 404, 'not_found')
+
+    lang = _lang()
+    domain_key = str(data.get('domain') or '')
+    if domain_key and domain(domain_key) is None:
+        return _err('Неизвестная сфера', 400, 'unknown_domain')
+
+    text = str(data.get('text') or '')
+    attachments = [
+        {'filename': str(a.get('filename') or 'файл'), 'text': str(a.get('text') or '')}
+        for a in (data.get('attachments') or []) if isinstance(a, dict)
+    ]
+    if not text.strip() and not domain_key and not any(a['text'].strip() for a in attachments):
+        return _err('Опишите закон или выберите сферу', 400, 'empty_brief')
+
+    limit = current_app.config.get('DRAFT_BRIEFS_PER_HOUR', 30)
+    over, left = _usage_limited('brief', limit)
+    if over:
+        return _err(f'Достигнут предел в {limit} запросов концептов в час. Попробуйте позже.',
+                    429, 'rate_limited')
+
+    provider = current_app.config.get('LLM_PROVIDER')
+    if provider is None:
+        return _err('LLM-провайдер не настроен', 503, 'not_configured')
+    retriever = current_app.config.get('RAG_RETRIEVER')
+
+    avoid = [str(t) for t in (data.get('avoid') or []) if str(t).strip()][:9]
+    try:
+        result = propose_concepts(
+            provider, retriever, p,
+            text=text, domain_key=domain_key, attachments=attachments, lang=lang, avoid=avoid,
+        )
+    except GenerationError as e:
+        log.error('бриф %s: %s', type_id, e)
+        return _err('Модель не смогла предложить варианты — попробуйте ещё раз', 502, 'brief_failed')
+
+    log_usage('drafts', 'brief', details={'type': type_id, 'domain': domain_key, 'files': len(attachments)})
+    return jsonify({
+        'success': True,
+        'concepts': [{**c.model_dump(mode='json'), 'values': c.to_values(p)} for c in result.concepts],
+        'clarifications': clarifications_payload(p, lang, domain_key),
+    })
+
+
 # ───────────────────────────── черновики ──────────────────────────────
 
 
@@ -273,7 +357,14 @@ def get_draft(public_id: str):
     draft = _own_draft(public_id)
     if not draft:
         return _err('Документ не найден', 404, 'not_found')
-    return jsonify({'success': True, 'draft': draft.to_dict(with_tree=True)})
+    payload = draft.to_dict(with_tree=True)
+    # Незавершённая задача — страница документа подхватывает её сразу после
+    # открытия, иначе генерация идёт, а экран об этом не знает.
+    running = db.session.query(Job).filter(
+        Job.draft_id == draft.id, Job.status.in_(('queued', 'running')),
+    ).order_by(Job.created_at.desc()).first()
+    payload['job'] = running.to_dict() if running else None
+    return jsonify({'success': True, 'draft': payload})
 
 
 @drafts_bp.route('/<public_id>', methods=['PATCH'])

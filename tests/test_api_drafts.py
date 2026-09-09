@@ -692,6 +692,21 @@ def _generate_in_background(app, client, draft_id, body=None):
     return client.get(f'/api/drafts/{draft_id}').get_json()['draft']
 
 
+def test_document_response_carries_the_running_job(app, client):
+    """Страница документа открывается сразу после запуска генерации и должна
+    подхватить идущую задачу, а не ждать, пока человек нажмёт что-то ещё."""
+    app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
+    public_id = _create(client).get_json()['draft']['id']
+
+    assert client.get(f'/api/drafts/{public_id}').get_json()['draft']['job'] is None
+
+    started = client.post(f'/api/drafts/{public_id}/generate', json={})
+    assert started.status_code == 202
+    job = client.get(f'/api/drafts/{public_id}').get_json()['draft']['job']
+    assert job and job['id'] == started.get_json()['job']['id']
+    assert job['status'] == 'queued'
+
+
 def test_background_generation_fills_every_section(app, client):
     app.config['LLM_PROVIDER'] = ScriptedProvider(SECTION_PAYLOAD)
     public_id = _create(client).get_json()['draft']['id']
