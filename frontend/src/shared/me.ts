@@ -42,6 +42,11 @@ function load(): Promise<Me> {
   return inflight
 }
 
+/** Забыть, кто вошёл: после входа, регистрации и выхода шапка спрашивает заново. */
+export function resetMe(): void {
+  cache = null
+}
+
 /** null — ответ ещё не пришёл; шапка в этот момент ничего не обещает. */
 export function useMe(): Me | null {
   const [me, setMe] = useState<Me | null>(cache)

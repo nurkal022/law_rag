@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Link } from '../../shared/nav'
 import {
   Body,
@@ -14,9 +14,12 @@ import {
   Loading,
   UIText,
 } from '../../shared/ui'
-import { useLang, useT, withLang } from '../../i18n'
+import { useLang, useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { citeCode } from '../legal/cite'
+import { ApiError, api } from '../../shared/api'
+import { resetMe, useMe } from '../../shared/me'
+import { afterLogin } from './next'
 import './auth.css'
 import './auth.motion.css'
 
@@ -88,6 +91,11 @@ const dict: Dict = {
     en: 'Repeat the password',
   },
   errConfirmDiff: { ru: 'Пароли не совпадают', kz: 'Құпиясөздер сәйкес келмейді', en: 'The passwords do not match' },
+  errServer: {
+    ru: 'Сервер недоступен — попробуйте ещё раз',
+    kz: 'Сервер қолжетімсіз — қайта көріңіз',
+    en: 'The server is unavailable — please try again',
+  },
   checking: { ru: 'Проверяем…', kz: 'Тексерудеміз…', en: 'Checking…' },
   waitNote: {
     ru: 'Создаём учётную запись и открываем консультанта',
@@ -97,9 +105,6 @@ const dict: Dict = {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-
-/** Ожидание перед переходом: столько система тратит на проверку данных. */
-const SUBMIT_MS = 900
 
 export function RegisterPage() {
   const { lang } = useLang()
@@ -116,9 +121,13 @@ export function RegisterPage() {
   /** Номер попытки: по нему ошибка перерисовывается и раскрытие играет заново. */
   const [attempt, setAttempt] = useState(0)
   const navigate = useNavigate()
-  const timer = useRef<number | null>(null)
+  const location = useLocation()
+  const me = useMe()
 
-  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
+  // Уже вошедшему форма не нужна — сразу туда, куда он шёл.
+  useEffect(() => {
+    if (me?.authenticated) navigate(afterLogin(location.search, lang), { replace: true })
+  }, [me, navigate, location.search, lang])
 
   function unfold(text: string | null): ReactNode {
     if (!text) return undefined
@@ -149,9 +158,21 @@ export function RegisterPage() {
     if (eName || eMail || ePass || eConf) return
 
     setPending(true)
-    timer.current = window.setTimeout(() => {
-      navigate(withLang('/chat', lang))
-    }, SUBMIT_MS)
+    void api
+      .post('/api/auth/register', { email: mail, password, full_name: name.trim() })
+      .then(() => {
+        resetMe()
+        navigate(afterLogin(location.search, lang))
+      })
+      .catch((err: unknown) => {
+        // Код ошибки указывает на поле: занятая почта — под почтой, слабый
+        // пароль — под паролем; всё остальное — сбой сервера под паролем.
+        const e = err instanceof ApiError ? err : null
+        if (e && (e.code === 'email_taken' || e.code === 'invalid_email')) setErrEmail(e.message)
+        else setErrPassword(e && e.status < 500 ? e.message : t('errServer'))
+        setAttempt((n) => n + 1)
+        setPending(false)
+      })
   }
 
   return (
@@ -256,13 +277,6 @@ export function RegisterPage() {
             ) : null}
           </div>
 
-          <div className="auth__or">
-            <Caption tone="mute">{t('or')}</Caption>
-          </div>
-
-          <Button type="button" variant="secondary" size="lg" className="auth__wide" disabled={pending}>
-            {t('google')}
-          </Button>
 
           <Body className="auth__note">
             <UIText tone="mute">{t('guest')} </UIText>
