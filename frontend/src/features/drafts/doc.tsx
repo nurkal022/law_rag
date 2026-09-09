@@ -6,9 +6,12 @@ import type { Dict } from '../../i18n'
 import { api, download, errorMessage, sse } from '../../shared/api'
 import { LoadFailure, ListSkeleton, useLoader } from './shared'
 import type {
+  BuildMeta,
   Change,
+  DocTree,
   Draft,
   DraftStatus,
+  FoundNorm,
   Issue,
   Job,
   JobResponse,
@@ -119,6 +122,11 @@ export interface Building {
   label: string
   /** Разделы, которые сейчас пишутся: оглавление помечает их отдельно. */
   keys: string[]
+  stage?: BuildMeta['stage']
+  /** Раздел, над которым идёт работа сейчас. */
+  sectionKey?: string
+  /** Нормы, найденные под этот раздел. */
+  found?: FoundNorm[]
 }
 
 /**
@@ -128,33 +136,31 @@ export interface Building {
  * трёх документ уже сохранён на сервере, поэтому экран просто перечитывает
  * его: держать человека в бесконечном ожидании хуже, чем показать частично
  * составленный пакет.
+ *
+ * Задача может быть запущена другим экраном (мастером брифа): `attach`
+ * подхватывает её по объекту из ответа документа.
  */
-export function useSectionBuild(draftId: string, onDone: () => void) {
+export function useSectionBuild(
+  draftId: string,
+  onDone: () => void,
+  onPartial?: (tree: DocTree) => void,
+) {
   const t = useT(dict)
   const toast = useToast()
   const [building, setBuilding] = useState<Building | null>(null)
   const stopRef = useRef<(() => void) | null>(null)
+  // Колбэки — в ref: они меняются на каждой перерисовке экрана, а подписка
+  // на поток открывается один раз и должна звать свежие.
+  const onPartialRef = useRef(onPartial)
+  onPartialRef.current = onPartial
+  const onDoneRef = useRef(onDone)
+  onDoneRef.current = onDone
 
   useEffect(() => () => stopRef.current?.(), [])
 
-  const run = useCallback(
-    async (keys: string[], hint?: string) => {
-      if (!keys.length || stopRef.current) return
-      setBuilding({ done: 0, total: keys.length, label: '', keys })
-
-      let jobId = ''
-      try {
-        const started = await api.post<JobResponse>(`/drafts/${draftId}/generate`, {
-          sections: keys,
-          ...(hint ? { hint } : {}),
-        })
-        jobId = started.job.id
-      } catch (e) {
-        setBuilding(null)
-        toast(errorMessage(e, t('errBuild')), 'err')
-        return
-      }
-
+  /** Слежение за задачей — и за только что запущенной, и за подхваченной. */
+  const follow = useCallback(
+    (jobId: string, keys: string[]) => {
       // Закрывалка держится в локальной переменной, а не только в ref:
       // необорванный EventSource продолжает переподключаться и держит на
       // сервере поток, который никто не читает.
@@ -164,13 +170,22 @@ export function useSectionBuild(draftId: string, onDone: () => void) {
         stop = null
         stopRef.current = null
         setBuilding(null)
-        onDone()
+        onDoneRef.current()
       }
-
       stop = sse<Job>(
         `/drafts/jobs/${jobId}/events`,
         (j) => {
-          setBuilding({ done: j.progress.done, total: j.progress.total, label: j.progress.label, keys })
+          const meta = (j.result ?? null) as BuildMeta | null
+          setBuilding({
+            done: j.progress.done,
+            total: j.progress.total,
+            label: j.progress.label,
+            keys,
+            stage: meta?.stage,
+            sectionKey: meta?.section,
+            found: meta?.found,
+          })
+          if (meta?.partial) onPartialRef.current?.(meta.partial)
           if (j.status === 'done' || j.status === 'failed' || j.status === 'cancelled') {
             if (j.status === 'failed' && j.error) toast(j.error, 'err')
             // Тишина после сборки читалась как «ничего не произошло»: полоса
@@ -183,10 +198,38 @@ export function useSectionBuild(draftId: string, onDone: () => void) {
       )
       stopRef.current = () => stop?.()
     },
-    [draftId, onDone, t, toast],
+    [t, toast],
   )
 
-  return { building, run }
+  const run = useCallback(
+    async (keys: string[], hint?: string) => {
+      if (!keys.length || stopRef.current) return
+      setBuilding({ done: 0, total: keys.length, label: '', keys })
+      try {
+        const started = await api.post<JobResponse>(`/drafts/${draftId}/generate`, {
+          sections: keys,
+          ...(hint ? { hint } : {}),
+        })
+        follow(started.job.id, keys)
+      } catch (e) {
+        setBuilding(null)
+        toast(errorMessage(e, t('errBuild')), 'err')
+      }
+    },
+    [draftId, follow, t, toast],
+  )
+
+  /** Подхватить задачу, запущенную другим экраном. */
+  const attach = useCallback(
+    (job: Job, keys: string[]) => {
+      if (stopRef.current) return
+      setBuilding({ done: job.progress.done, total: job.progress.total, label: job.progress.label, keys })
+      follow(job.id, keys)
+    },
+    [follow],
+  )
+
+  return { building, run, attach }
 }
 
 /* -------------------------------- изменения -------------------------------- */
@@ -550,7 +593,15 @@ export function useDraftDoc(id: string) {
     [draft, setDraft, t, toast],
   )
 
-  return { draft, error, loading, reload, setDraft, rename, setStatus, saveClause }
+  /** Подменить дерево на экране, не трогая сервер: частичный результат генерации. */
+  const setTree = useCallback(
+    (tree: DocTree) => {
+      if (draft) setData({ draft: { ...draft, tree } })
+    },
+    [draft, setData],
+  )
+
+  return { draft, error, loading, reload, setDraft, setTree, rename, setStatus, saveClause }
 }
 
 /** Выгрузка документа. Ошибку показывает сама: молчащая кнопка — худший исход. */

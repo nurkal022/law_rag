@@ -520,6 +520,24 @@
 .ct-registry__link { border-bottom: 0; color: inherit; }
 .ct-registry__link:hover .table__title { color: var(--seal); }
 
+/* ---------- Ход генерации ----------
+   Строка стадии с найденными нормами; свежий раздел выезжает каскадом, пункт
+   за пунктом; идущий раздел в оглавлении пульсирует. Всё гасится при
+   «меньше движения». */
+.ct-building__line { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2) var(--s-3); }
+.ct-building__found { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2); }
+
+.sheet__section--fresh .sheet__clause {
+  animation: tura-unfold var(--motion-enter) both;
+  animation-delay: calc(var(--i, 0) * var(--dur-1));
+}
+.ct-toc__link--busy .ct-toc__no { color: var(--seal); animation: tura-fade 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet__section--fresh .sheet__clause,
+  .ct-toc__link--busy .ct-toc__no { animation: none; }
+}
+
 /* ---------- Узкие экраны ---------- */
 
 @media (max-width: 1100px) {

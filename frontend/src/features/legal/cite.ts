@@ -67,6 +67,12 @@ export function actCode(title: string): string {
   return title
 }
 
+/** «ГК РК 178» из названия документа корпуса и номера статьи; без статьи — только акт. */
+export function normCode(title: string, article?: string | null): string {
+  const act = actCode(title)
+  return article ? `${act} ${article}` : act
+}
+
 /**
  * «ГК РК 297» + kz → «ҚР АК 297». Номер статьи не трогаем: он одинаков
  * во всех редакциях. Незнакомый акт возвращается как есть.

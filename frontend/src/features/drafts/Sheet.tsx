@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { Clause, DocTable, DocTree, Party, Ref, Section } from './types'
 import { refLabel } from './preview'
 import type { DocLang } from './preview'
@@ -92,6 +92,7 @@ function ClauseBody({
   onClauseClick,
   clauseSlot,
   level,
+  order,
 }: {
   clause: Clause
   lang: DocLang
@@ -99,6 +100,8 @@ function ClauseBody({
   onClauseClick?: (clause: Clause) => void
   clauseSlot?: (clause: Clause) => ReactNode
   level: number
+  /** Порядок в свежем разделе — задержка каскада; без него анимации нет. */
+  order?: number
 }) {
   const interactive = Boolean(onClauseClick)
   const cls = [
@@ -111,8 +114,10 @@ function ClauseBody({
     .filter(Boolean)
     .join(' ')
 
+  const style = order === undefined ? undefined : ({ '--i': order } as CSSProperties)
+
   return (
-    <div className={cls} id={`clause-${clause.no}`}>
+    <div className={cls} id={`clause-${clause.no}`} style={style}>
       <div
         className="sheet__clause-body"
         role={interactive ? 'button' : undefined}
@@ -157,19 +162,25 @@ function SectionBody({
   activeNo,
   onClauseClick,
   clauseSlot,
+  fresh,
 }: {
   section: Section
   lang: DocLang
   activeNo?: string | null
   onClauseClick?: (clause: Clause) => void
   clauseSlot?: (clause: Clause) => ReactNode
+  /** Раздел только что пришёл готовым: пункты выезжают каскадом. */
+  fresh?: boolean
 }) {
   return (
-    <section className="sheet__section" id={`section-${section.no}`}>
+    <section
+      className={['sheet__section', fresh ? 'sheet__section--fresh' : ''].filter(Boolean).join(' ')}
+      id={`section-${section.no}`}
+    >
       <h3 className="sheet__section-title">
         <span className="sheet__no">{section.no}.</span> {section.title}
       </h3>
-      {section.clauses.map((c) => (
+      {section.clauses.map((c, idx) => (
         <ClauseBody
           key={c.no || c.text.slice(0, 24)}
           clause={c}
@@ -178,6 +189,7 @@ function SectionBody({
           onClauseClick={onClauseClick}
           clauseSlot={clauseSlot}
           level={0}
+          order={fresh ? idx : undefined}
         />
       ))}
       {section.pending || !section.clauses.length ? (
@@ -264,6 +276,7 @@ export function Sheet({
   onClauseClick,
   clauseSlot,
   head,
+  freshKeys,
 }: {
   tree: DocTree
   /** Пункт, на котором сейчас открыто меню или правка. */
@@ -273,6 +286,8 @@ export function Sheet({
   clauseSlot?: (clause: Clause) => ReactNode
   /** Плашка над листом: замечания, ход генерации. */
   head?: ReactNode
+  /** Разделы, только что ставшие готовыми: их пункты выезжают каскадом. */
+  freshKeys?: ReadonlySet<string>
 }) {
   const lang: DocLang =
     tree.meta.lang === 'kk' || tree.meta.lang === 'en' ? tree.meta.lang : 'ru'
@@ -331,6 +346,7 @@ export function Sheet({
           activeNo={activeNo}
           onClauseClick={onClauseClick}
           clauseSlot={clauseSlot}
+          fresh={Boolean(s.key && freshKeys?.has(s.key))}
         />
       ))}
 

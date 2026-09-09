@@ -115,6 +115,20 @@ export interface DocTree {
   issues: Issue[]
 }
 
+/** Норма, найденная под раздел: для строки хода генерации. */
+export interface FoundNorm {
+  title: string
+  article: string
+}
+
+/** Содержание хода генерации в `Job.result`: стадия, раздел, нормы, частичное дерево. */
+export interface BuildMeta {
+  stage?: 'retrieving' | 'drafting' | 'checking'
+  section?: string
+  found?: FoundNorm[]
+  partial?: DocTree
+}
+
 /* --------------------------------- каталог --------------------------------- */
 
 /** Семейства из паспортов; неизвестное семейство экран не роняет. */
@@ -258,6 +272,8 @@ export interface Draft {
   /** Приходят только при with_tree: одиночный документ, но не список. */
   values?: Record<string, unknown>
   tree?: DocTree | null
+  /** Незавершённая генерация по документу — страница подхватывает её при открытии. */
+  job?: Job | null
 }
 
 export interface Job {

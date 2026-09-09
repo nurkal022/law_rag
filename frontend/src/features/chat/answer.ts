@@ -1,4 +1,4 @@
-import { actCode } from '../legal/cite'
+import { normCode } from '../legal/cite'
 
 /**
  * Ответ консультанта, каким его отдаёт /api/chat, и его разбор для ленты.
@@ -46,8 +46,7 @@ export interface Answer {
 
 /** «ГК РК 178» — код акта и номер статьи, если сервер его нашёл. */
 export function sourceCode(s: ApiSource): string {
-  const act = actCode(s.title)
-  return s.article ? `${act} ${s.article}` : act
+  return normCode(s.title, s.article)
 }
 
 const MARK = /\[\s*Источник[иа]?\s*([\d\s,и]+?)\s*(?:[:;,][^\]]*)?\]/gi

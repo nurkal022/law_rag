@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Button,
   Caption,
   Empty,
   Label,
-  Loading,
   Select,
   Tabs,
   Textarea,
@@ -16,6 +15,7 @@ import type { TabItem } from '../../shared/ui'
 import { useT } from '../../i18n'
 import type { Dict } from '../../i18n'
 import { api } from '../../shared/api'
+import { BuildStage } from '../drafts/BuildStage'
 import { Sheet } from '../drafts/Sheet'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import {
@@ -29,7 +29,7 @@ import {
   useSectionBuild,
 } from '../drafts/doc'
 import type { QuickAsk } from '../drafts/doc'
-import type { Clause, DraftStatus, PassportResponse, Section } from '../drafts/types'
+import type { Clause, DocTree, DraftStatus, PassportResponse, Section } from '../drafts/types'
 import '../drafts/drafts.css'
 import '../drafts/drafts.motion.css'
 import './laws.css'
@@ -139,10 +139,42 @@ export function DocumentPage() {
   const ts = useT(statusDict)
   const toast = useToast()
 
-  const { draft, error, loading, reload, setDraft, rename, setStatus, saveClause } = useDraftDoc(id)
+  const { draft, error, loading, reload, setDraft, setTree, rename, setStatus, saveClause } = useDraftDoc(id)
   const tree = draft?.tree ?? null
   const grab = useExport(draft?.id)
-  const { building, run } = useSectionBuild(draft?.id ?? '', reload)
+
+  // Дерево на момент прихода частичного результата — чтобы понять, какие
+  // разделы только что стали готовыми и должны выехать каскадом.
+  const treeRef = useRef<DocTree | null>(null)
+  treeRef.current = tree
+  const [fresh, setFresh] = useState<Set<string>>(() => new Set())
+
+  const { building, run, attach } = useSectionBuild(
+    draft?.id ?? '',
+    () => {
+      reload()
+      // Метки свежести снимаются после того, как последний каскад доиграл
+      window.setTimeout(() => setFresh(new Set()), 1500)
+    },
+    (partial) => {
+      const before = new Map((treeRef.current?.sections ?? []).map((s) => [s.key, s.pending]))
+      setFresh((prev) => {
+        const next = new Set(prev)
+        for (const s of partial.sections) if (s.key && !s.pending && before.get(s.key)) next.add(s.key)
+        return next
+      })
+      setTree(partial)
+    },
+  )
+
+  // Генерацию мог запустить мастер брифа: страница открывается уже в ходе
+  // работы и обязана её подхватить, а не ждать нажатия.
+  useEffect(() => {
+    if (!draft?.job || building) return
+    const pending = (draft.tree?.sections ?? []).filter((s) => s.pending && s.key).map((s) => s.key as string)
+    attach(draft.job, pending)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft?.job?.id])
 
   /* Оговорка живёт в паспорте типа, а не в документе. Загрузка отдельная и
      необязательная: пакет читается и без неё, поэтому ошибку здесь показывать
@@ -307,7 +339,10 @@ export function DocumentPage() {
           <ol className="ct-toc__list">
             {tree.sections.map((s) => (
               <li key={s.key ?? s.no} className="lw-toc__item">
-                <a href={`#section-${s.no}`} className="ct-toc__link">
+                <a
+                  href={`#section-${s.no}`}
+                  className={['ct-toc__link', building?.sectionKey === s.key ? 'ct-toc__link--busy' : ''].filter(Boolean).join(' ')}
+                >
                   <span className="ct-toc__no tabular">{s.no}</span>
                   <span>{s.title}</span>
                   {s.pending ? <span className="ct-toc__pending" aria-hidden="true">·</span> : null}
@@ -331,17 +366,16 @@ export function DocumentPage() {
         <div className="ct-paper ct-paper--wide">
           <Sheet
             tree={tree}
+            freshKeys={fresh}
             activeNo={activeNo}
             onClauseClick={openClause}
             head={
               <>
                 {building ? (
-                  <div className="ct-building">
-                    <Loading />
-                    <Caption tone="mute">
-                      {t('building')}: {building.done}/{building.total} {building.label}
-                    </Caption>
-                  </div>
+                  <BuildStage
+                    building={building}
+                    sectionTitle={tree.sections.find((s) => s.key === building.sectionKey)?.title}
+                  />
                 ) : null}
 
                 {pending.length ? (
