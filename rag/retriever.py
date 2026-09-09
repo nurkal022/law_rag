@@ -7,7 +7,6 @@ from embeddings.client import EmbeddingClient
 class DocumentRetriever:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self._chunks_cache = None
 
         # Эмбеддинги и rerank — на централизованном сервисе (BGE-M3)
         self.embedding_model = EmbeddingClient()
@@ -15,34 +14,6 @@ class DocumentRetriever:
             print(f"✅ Retriever: сервис эмбеддингов доступен {Config.EMBEDDING_MODEL} @ {Config.EMBEDDING_BASE_URL}")
         else:
             print(f"⚠️  Retriever: сервис эмбеддингов недоступен {Config.EMBEDDING_BASE_URL}")
-
-    def _load_chunks_for_keyword_search(self):
-        """Загрузка чанков для поиска по ключевым словам (без embeddings)"""
-        try:
-            chunks = self.db_manager.get_all_chunks()
-
-            if not chunks:
-                print("Нет чанков в базе данных")
-                self._chunks_cache = []
-                return
-
-            self._chunks_cache = []
-            for chunk in chunks:
-                self._chunks_cache.append({
-                    'id': chunk['id'],
-                    'content': chunk['content'],
-                    'filename': chunk.get('document_filename') or chunk.get('filename', 'unknown.txt'),
-                    'title': chunk.get('document_title') or chunk.get('title', 'Неизвестный документ'),
-                    'chunk_index': chunk['chunk_index'],
-                    'start_position': chunk['start_position'],
-                    'end_position': chunk['end_position']
-                })
-
-            print(f"Загружено {len(self._chunks_cache)} чанков для поиска по ключевым словам")
-
-        except Exception as e:
-            print(f"Ошибка при загрузке чанков: {e}")
-            self._chunks_cache = []
 
     def search_similar_chunks(self, query: str, top_k: int = 5) -> List[Dict]:
         """Семантический поиск с использованием pgvector"""
@@ -91,32 +62,76 @@ class DocumentRetriever:
             return []
 
     def search_by_keywords(self, query: str, top_k: int = None) -> List[Dict]:
-        """Дополнительный поиск по ключевым словам (для улучшения точности)"""
+        """Поиск по словам запроса — полнотекстовый, с русской морфологией.
+
+        Всю нормализацию делает словарь PostgreSQL: приводит словоформы к
+        основе («беременную» и «беременными» → «беремен»), отбрасывает знаки
+        препинания и служебные слова («ли», «с», «можно»).
+
+        Раньше здесь сравнивались строки: запрос делился по пробелам и слова
+        искались как есть. На вопросе «Можно ли уволить беременную женщину?»
+        это давало статьи Земельного кодекса по слову «можно», а нужную норму
+        Трудового кодекса не находило вовсе — и мусор вытеснял из контекста
+        настоящие статьи. Семантический поиск такие вопросы тоже не спасал:
+        нужная статья не попадала даже в первую полусотню, потому что весь
+        её текст сводится к одному вектору, и одна норма в длинной статье в
+        нём растворяется. Поиск по словам берёт ровно этот случай на себя.
+        """
         top_k = top_k or Config.TOP_K_RESULTS
 
-        # Для поиска по ключевым словам нам нужны только чанки, не embeddings
-        if self._chunks_cache is None:
-            self._load_chunks_for_keyword_search()
+        try:
+            from database.models import db
 
-        query_words = set(query.lower().split())
+            # Термы запроса объединяются через OR: требовать все слова сразу
+            # бессмысленно — формулировка вопроса почти никогда не совпадает
+            # с формулировкой нормы. Ранг тем выше, чем больше слов совпало.
+            sql = db.text("""
+                WITH q AS (
+                    SELECT array_to_string(
+                        tsvector_to_array(to_tsvector('russian', :query)), ' | '
+                    )::tsquery AS tq
+                )
+                SELECT c.id, c.document_id, c.chunk_index, c.content,
+                       c.start_position, c.end_position,
+                       d.filename, d.title,
+                       ts_rank(to_tsvector('russian', c.content), q.tq) AS rank
+                FROM document_chunks c
+                JOIN documents d ON d.id = c.document_id, q
+                WHERE to_tsvector('russian', c.content) @@ q.tq
+                ORDER BY rank DESC
+                LIMIT :limit
+            """)
+            rows = db.session.execute(sql, {'query': query, 'limit': top_k}).mappings().all()
+        except Exception as e:
+            # Поиск по словам дополняет семантический, а не заменяет его:
+            # его отказ не должен ронять ответ целиком.
+            print(f"Ошибка полнотекстового поиска: {e}")
+            return []
+
+        # ts_rank живёт в своём масштабе (сотые доли), а косинусная близость —
+        # в своём (десятые). Смешивать их напрямую нельзя: найденное только по
+        # словам осело бы в самом низу общего списка и до ответа не дошло.
+        # Приводим к долям от лучшего совпадения — тогда обе оценки сравнимы.
+        best = max((float(r['rank']) for r in rows), default=0.0)
 
         results = []
-        for chunk in self._chunks_cache:
-            content_words = set(chunk['content'].lower().split())
+        for row in rows:
+            content = row['content']
+            results.append({
+                'id': row['id'],
+                'document_id': row['document_id'],
+                'chunk_index': row['chunk_index'],
+                'content': content,
+                'full_content': content,
+                'preview': content[:200] + '...' if len(content) > 200 else content,
+                'start_position': row['start_position'],
+                'end_position': row['end_position'],
+                'filename': row['filename'],
+                'title': row['title'],
+                'keyword_score': float(row['rank']) / best if best else 0.0,
+            })
 
-            # Подсчитываем пересечение слов
-            intersection = query_words.intersection(content_words)
-            if intersection:
-                score = len(intersection) / len(query_words)
-                chunk_copy = chunk.copy()
-                chunk_copy['keyword_score'] = score
-                chunk_copy['matched_words'] = list(intersection)
-                results.append(chunk_copy)
-
-        # Сортируем по количеству совпадений
-        results = sorted(results, key=lambda x: x['keyword_score'], reverse=True)
-
-        return results[:top_k]
+        return results
 
     def hybrid_search(self, query: str, top_k: int = None) -> List[Dict]:
         """Гибридный поиск: комбинация семантического поиска и поиска по ключевым словам"""
