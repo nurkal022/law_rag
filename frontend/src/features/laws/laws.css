@@ -1,99 +1,9 @@
 /* ============================================================
    TURA — законопроекты.
    Общая часть (лист, конструктор, реестр) живёт в features/drafts;
-   здесь только то, чего у договоров нет: шаги мастера, сводка пакета
+   здесь только то, чего у договоров нет: бриф с концептами
    и оглавление с действием у каждого раздела.
    ============================================================ */
-
-/* ---------- Шаги мастера ---------- */
-
-.lw-steps {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s-4);
-  flex-wrap: wrap;
-  padding-bottom: var(--s-3);
-  border-bottom: var(--border);
-}
-
-.lw-steps__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-4);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.lw-steps__count { flex: none; }
-
-.lw-step {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-2);
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  padding: 0 0 var(--s-1);
-  font-family: var(--font-sans);
-  font-size: var(--t-ui-size);
-  color: var(--mute);
-  cursor: pointer;
-  transition: color var(--motion), border-color var(--motion);
-}
-.lw-step:hover { color: var(--ink); }
-.lw-step--done { color: var(--ink-2); }
-.lw-step--on { color: var(--ink); border-bottom-color: var(--seal); }
-
-.lw-step__no { color: var(--mute); }
-.lw-step--on .lw-step__no { color: var(--seal); }
-
-/* Шаг занимает всю высоту секции, чтобы кнопки «назад» и «далее» не прыгали
-   между шагами с разным числом полей. */
-/* Небольшой резерв высоты, чтобы кнопки шага не прыгали между соседними
-   экранами. Прежние 26rem равнялись самому длинному шагу — и на коротком
-   первом под формой зияла пустота высотой в четверть экрана. */
-.lw-stage { min-height: 15rem; }
-
-.lw-block { margin-top: var(--s-5); }
-.lw-block__head { padding-bottom: var(--s-2); border-bottom: 1px solid var(--rule-soft); margin-bottom: var(--s-3); }
-
-.lw-actions { display: flex; gap: var(--s-3); align-items: center; }
-
-/* ---------- Сводка перед составлением ---------- */
-
-.lw-review { display: flex; flex-direction: column; gap: var(--s-6); margin-top: var(--s-5); }
-.lw-review__block { display: flex; flex-direction: column; gap: var(--s-2); }
-
-.lw-package { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
-.lw-package__item {
-  display: flex;
-  gap: var(--s-3);
-  align-items: baseline;
-  padding: var(--s-2) 0;
-  border-bottom: 1px solid var(--rule-soft);
-}
-.lw-package__no { color: var(--mute); flex: none; min-width: var(--s-5); }
-.lw-package__body { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2); }
-.lw-package__opt { margin-left: var(--s-2); }
-
-/* Доля заполненного полосой: число заставляет считать, полоса читается сразу */
-.lw-gauge {
-  display: block;
-  height: var(--s-1);
-  background: var(--rule-soft);
-  margin: var(--s-2) 0;
-}
-.lw-gauge__fill {
-  display: block;
-  height: 100%;
-  background: var(--seal);
-  transition: width var(--motion-state) var(--ease);
-}
-
-.lw-missing { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
-.lw-missing li { padding: var(--s-1) 0; display: flex; gap: var(--s-2); align-items: baseline; }
 
 /* ---------- Оглавление пакета ---------- */
 
@@ -122,12 +32,11 @@
 .lw-toc__redo:disabled { cursor: not-allowed; opacity: 0.4; }
 
 @media (max-width: 860px) {
-  .lw-stage { min-height: 0; }
   .lw-toc__redo { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lw-gauge__fill { transition: none; }
+  .lb-card, .lb-think__stage { transition: none; }
 }
 
 /* ---------- Бриф → концепты ----------
