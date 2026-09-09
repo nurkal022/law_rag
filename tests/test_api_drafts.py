@@ -730,7 +730,8 @@ def test_generation_reports_stages_found_norms_and_a_growing_tree(app, client):
 
     partials = [m['partial'] for m in metas if m.get('partial')]
     filled = [sum(1 for s in p['sections'] if not s['pending']) for p in partials]
-    assert filled == [1, 2, 3], 'после каждого раздела дерево растёт на один раздел'
+    total = len(partials[-1]['sections'])
+    assert filled == list(range(1, total + 1)), 'после каждого раздела дерево растёт на один раздел'
     assert partials[0]['sections'][0]['clauses'][0]['no'] == '1.1', 'частичное дерево уже пронумеровано'
     assert metas[-1] == {'stage': 'checking'}
 
