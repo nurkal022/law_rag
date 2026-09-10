@@ -705,6 +705,13 @@
 .mbc__bar--3 { background: var(--h-err); }
 .mbc__legend { display: flex; align-items: center; gap: var(--s-2); font-size: var(--t-caption-size); color: var(--h-mute); }
 .mbc__dot { width: var(--s-2); height: var(--s-2); display: inline-block; }
+.mbc__acts { list-style: none; margin: var(--s-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.mbc__act { display: grid; grid-template-columns: minmax(120px, 200px) 1fr 6ch; align-items: center; gap: var(--s-3); opacity: 0; transition: opacity var(--h-enter) var(--ease-out); transition-delay: calc(var(--i, 0) * 120ms + 500ms); }
+.mini--on .mbc__act { opacity: 1; }
+.mbc__code { font-family: var(--font-mono); font-size: var(--t-mono-size); color: var(--h-accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mbc__track { height: var(--s-1); background: var(--h-line); }
+.mbc__fill { display: block; height: 100%; background: var(--h-warn); }
+.mbc__n { font-size: var(--t-caption-size); color: var(--h-mute); text-align: right; font-variant-numeric: tabular-nums; }
 .modc__name {
   margin: 0;
   font-family: var(--font-serif);

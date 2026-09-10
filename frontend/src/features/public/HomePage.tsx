@@ -868,8 +868,15 @@ function MiniAnalytics({ shown }: { shown: boolean }) {
 
 /** Миниатюра раздела «Конституция»: штрих-код статей акта, три штриха с замечаниями. */
 const MINI_BARS = [0, 0, 0, 3, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 3, 0]
+/** Три акта из обхода: код, доля норм с замечаниями. Цифры — с прогона 10.09.2026. */
+const MINI_ACTS = [
+  { code: 'КЗРК О судебной системе', norms: 78, flagged: 22 },
+  { code: 'КЗРК О КС', norms: 67, flagged: 16 },
+  { code: 'ЗРК О ПА', norms: 82, flagged: 7 },
+]
 function MiniConstitution({ shown }: { shown: boolean }) {
   const t = useT(dict)
+  const { lang } = useLang()
   return (
     <div className={['mini', 'mini--const', shown ? 'mini--on' : ''].filter(Boolean).join(' ')} aria-hidden="true">
       <div className="mbc">
@@ -881,6 +888,15 @@ function MiniConstitution({ shown }: { shown: boolean }) {
         <span className="mbc__dot mbc__bar--3" /> <span>{t('mod5High')}</span>
         <span className="mbc__dot mbc__bar--2" /> <span>{t('mod5Possible')}</span>
       </div>
+      <ol className="mbc__acts">
+        {MINI_ACTS.map((a, i) => (
+          <li key={a.code} className="mbc__act" style={idx(i)}>
+            <span className="mbc__code">{citeCode(a.code, lang)}</span>
+            <span className="mbc__track"><span className="mbc__fill" style={{ width: `${Math.round((100 * a.flagged) / a.norms)}%` }} /></span>
+            <span className="mbc__n">{a.flagged}/{a.norms}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }
