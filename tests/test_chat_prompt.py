@@ -54,6 +54,14 @@ def test_prompt_allows_own_knowledge_but_forbids_invented_article_numbers():
     assert 'не указывайте номер статьи, которого нет в контексте' in prompt
 
 
+def test_knowledge_mark_follows_the_answer_language():
+    kk = build_system_prompt('Талап қою мерзімі қандай?', context='x')
+    en = build_system_prompt('What is the limitation period in Kazakhstan?', context='x')
+    assert 'ҚР заңнамасы туралы жалпы мәліметтер бойынша:' in kk
+    assert 'Based on general knowledge of Kazakhstan law:' in en
+    assert 'По общим сведениям о законодательстве РК' not in kk
+
+
 def test_prompt_without_context_still_asks_for_a_full_answer():
     prompt = build_system_prompt('казахстанское право относится ли к континентальному праву', context=None)
     assert 'Подходящих фрагментов не найдено' in prompt
