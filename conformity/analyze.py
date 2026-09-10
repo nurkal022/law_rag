@@ -80,7 +80,10 @@ VERIFY_SYSTEM = (
     'Если вывод не подтверждается — keep: false и level: 0; keep: false с уровнем выше нуля означает «расхождение '
     'есть, но слабее, чем заявлено». Изменения Конституции из реестра — факты: если норма воспроизводит то, что '
     'реестр называет исключённым или устроенным иначе, это расхождение подтверждается.\n'
-    'ОТВЕТ — только JSON: {"keep": true|false, "level": 0-3, "reason": "одно предложение"}'
+    'conflict_quote — дословный фрагмент статьи Конституции 2026, с которым норма расходится (из приведённых '
+    'текстов), или пустая строка, если такого фрагмента нет. Без него расхождение считается предположением.\n'
+    'ОТВЕТ — только JSON: {"keep": true|false, "level": 0-3, "reason": "одно предложение", '
+    '"conflict_quote": "…"}'
 )
 
 
@@ -235,6 +238,16 @@ def _verify(f: Finding, norm: Norm, index: ConstitutionIndex, cs: ChangeSet, pro
     reason = str(data.get('reason') or '').strip()
     if reason:
         f.explanation = (f.explanation + '\n\nПроверка: ' + reason).strip()
+    # Уровень 2 и выше без опоры на реестр изменений — только с дословной опорой в тексте
+    # Конституции: иначе «полномочия могут быть перераспределены» — предположение, а по ТЗ
+    # это «норма требует экспертной проверки», не «возможное противоречие».
+    if f.level >= 2 and not f.change_ids:
+        anchor = _norm_ws(str(data.get('conflict_quote') or ''))[:60]
+        body = _norm_ws(' '.join(index.texts.get(n, '') for n in f.constitution_articles))
+        if not anchor or anchor not in body:
+            f.level = 1
+            f.explanation = (f.explanation + ' (Уровень ограничен системой: проверяющий проход не привёл '
+                             'дословного фрагмента Конституции, с которым расходится норма.)').strip()
     if f.level == 0:
         f.category = 'none'
     return f

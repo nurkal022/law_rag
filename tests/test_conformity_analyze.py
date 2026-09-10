@@ -51,6 +51,7 @@ def test_supported_finding_is_verified_and_kept():
         {'keep': True, 'level': 3, 'reason': 'подтверждено'},
     )
     f = analyze_norm(norm(TREATY), INDEX, CS, p, CFG)
+    # опора на реестр изменений (treaties_priority) — дословная цитата Конституции не требуется
     assert f.level == 3 and f.method == 'model+verified' and f.constitution_articles == [5]
     assert [c['model'] for c in p.calls] == ['triage-x', 'verify-x']
     # первому проходу подали и статьи, и изменение о договорах, и справку об институтах
@@ -143,3 +144,18 @@ def test_unknown_articles_and_categories_are_dropped():
 def test_facts_name_present_and_absent_institutions():
     text = facts(CS)
     assert 'Высший Судебный Совет' in text and 'Мажилис' in text and 'ст. 96' in text
+
+
+def test_model_only_level_two_needs_a_quote_from_the_constitution():
+    triage = {'level': 2, 'category': 'competence', 'constitution_articles': [80], 'change_ids': [],
+              'quote_norm': 'имеют приоритет перед ее законами', 'explanation': 'Полномочия могут быть иными.',
+              'recommendation': 'x'}
+    p = FakeProvider(dict(triage), {'keep': True, 'level': 2, 'reason': 'ok', 'conflict_quote': ''})
+    f = analyze_norm(norm(TREATY), INDEX, CS, p, CFG)
+    assert f.level == 1 and 'ограничен системой' in f.explanation
+    p2 = FakeProvider(dict(triage), {'keep': True, 'level': 2, 'reason': 'ok',
+                                     'conflict_quote': 'без согласия Курултая'})
+    assert analyze_norm(norm(TREATY), INDEX, CS, p2, CFG).level == 2
+    p3 = FakeProvider(dict(triage), {'keep': True, 'level': 2, 'reason': 'ok',
+                                     'conflict_quote': 'этих слов в статье 80 нет'})
+    assert analyze_norm(norm(TREATY), INDEX, CS, p3, CFG).level == 1
