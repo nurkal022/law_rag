@@ -253,7 +253,29 @@ def _verify(f: Finding, norm: Norm, index: ConstitutionIndex, cs: ChangeSet, pro
     return f
 
 
+_REPEALED = re.compile(r'Сноска\.\s*Статья\s+([\d\-]+)\s+(исключена|утратила силу)', re.IGNORECASE)
+
+
+def is_repealed(norm_text: str, article_no: str = '') -> bool:
+    """Статья исключена из акта: в корпусе от неё осталась одна сноска.
+
+    Единственная находка высокого риска первого прогона — ст. 47 УК «Смертная
+    казнь», исключённая в 2021 году: модель разобрала заголовок как действующую
+    норму. Проверять здесь нечего, и модель не зовём.
+    """
+    m = _REPEALED.search(norm_text)
+    if not m or (article_no and m.group(1) != article_no):
+        return False
+    rest = strip_footnotes(norm_text)
+    rest = re.sub(r'^(Раздел|Глава|Параграф)[^\n]*$', '', rest, flags=re.M)
+    rest = re.sub(r'^Статья\s+[\d\-]+\.?\s*[^\n]{0,80}$', '', rest, flags=re.M)   # короткий заголовок
+    return len(rest.strip()) < 40
+
+
 def analyze_norm(norm: Norm, index: ConstitutionIndex, cs: ChangeSet, provider, cfg: AnalyzeConfig) -> Finding:
+    if is_repealed(norm.text, norm.article_no):
+        return Finding(level=0, category='none', method='dictionary',
+                       explanation='Статья исключена из акта: действующей нормы нет, сверять с Конституцией нечего.')
     mech = mechanical_findings(norm.text, cs)
     changes = list(cs.hinted(norm.text))
     for f in mech:

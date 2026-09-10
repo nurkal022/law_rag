@@ -159,3 +159,22 @@ def test_model_only_level_two_needs_a_quote_from_the_constitution():
     p3 = FakeProvider(dict(triage), {'keep': True, 'level': 2, 'reason': 'ok',
                                      'conflict_quote': 'этих слов в статье 80 нет'})
     assert analyze_norm(norm(TREATY), INDEX, CS, p3, CFG).level == 1
+
+
+def test_repealed_article_is_level_zero_without_a_model_call():
+    from conformity.analyze import is_repealed
+    stub = ('Глава 1. Наказание\nСтатья 47. Смертная казнь\n'
+            'Сноска. Статья 47 исключена Законом РК от 29.12.2021 № 89-VII (вводится в действие по истечении '
+            'десяти календарных дней после дня его первого официального опубликования).')
+    assert is_repealed(stub, '47')
+    live = ('Глава 7. ВРЕМЯ ОТДЫХА\nСтатья 88. Продолжительность отпуска Основной оплачиваемый ежегодный трудовой '
+            'отпуск работникам предоставляется продолжительностью двадцать четыре календарных дня.\n'
+            'Сноска. Статья 88 с изменениями, внесенными Законом РК от 07.07.2020.')
+    assert not is_repealed(live, '88')
+    amended = 'Статья 5. Текст.\n1. Норма действует.\nСноска. Статья 4 исключена Законом РК.'
+    assert not is_repealed(amended, '5')
+    p = FakeProvider()
+    n = Norm(chunk_id=1, document_id=1, act_title='УК РК', article_no='47', article_title='Статья 47. Смертная казнь',
+             text=stub, vector=None)
+    f = analyze_norm(n, INDEX, CS, p, CFG)
+    assert f.level == 0 and 'исключена' in f.explanation and p.calls == []
