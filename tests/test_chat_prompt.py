@@ -120,6 +120,16 @@ def test_nonexistent_cites_vanish_with_their_commas():
     assert repair_cites('гарантированы [Источник 16], [Источник 99] .', SOURCES) == 'гарантированы.'
 
 
+def test_cite_with_a_trailing_remark_is_still_recognised():
+    from rag.generator import repair_cites
+    # «36» — номер статьи из источника 4; текст после номера — просто хвост
+    assert repair_cites('порядок [Источник 18 из контекста отсутствует].',
+                        SOURCES) == 'порядок [Источник 4].'
+    assert repair_cites('срок [Источник 1 ст. 178].', SOURCES) == 'срок [Источник 1].'
+    assert repair_cites('оба [Источники 1, 2].', SOURCES) == 'оба [Источники 1, 2].'
+    assert repair_cites('оба [Источник 1 и 2].', SOURCES) == 'оба [Источники 1, 2].'
+
+
 def test_group_of_cites_collapses_into_one_mark():
     from rag.generator import repair_cites
     out = repair_cites('права [Источник 1], [Источник 18] и [Источник 1].', SOURCES)
