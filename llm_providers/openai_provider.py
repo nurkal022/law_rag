@@ -1,6 +1,32 @@
 import openai
 from typing import List, Dict, Optional
+from config import Config
 from .base import LLMProvider
+
+# Рассуждающие модели OpenAI (gpt-5*, o-серия) принимают другой набор параметров:
+# лимит длины — только max_completion_tokens (в него входят и токены раздумий),
+# а temperature, top_p и штрафы отвергают с 400 Unsupported parameter. Старые
+# модели, наоборот, не знают reasoning_effort. Вызывающий код одинаков для всех
+# моделей, поэтому подбор параметров — здесь.
+_REASONING_PREFIXES = ('gpt-5', 'o1', 'o3', 'o4')
+_SAMPLING_PARAMS = ('temperature', 'top_p', 'frequency_penalty', 'presence_penalty')
+
+
+def is_reasoning_model(model: Optional[str]) -> bool:
+    return (model or '').lower().startswith(_REASONING_PREFIXES)
+
+
+def completion_kwargs(model: Optional[str], temperature: float, max_tokens: int,
+                      reasoning_effort: Optional[str] = None, **kwargs) -> Dict:
+    """Параметры chat.completions.create под семейство модели."""
+    if not is_reasoning_model(model):
+        return {'temperature': temperature, 'max_tokens': max_tokens, **kwargs}
+    params = {'max_completion_tokens': max_tokens}
+    params.update((k, v) for k, v in kwargs.items() if k not in _SAMPLING_PARAMS)
+    if reasoning_effort:
+        params['reasoning_effort'] = reasoning_effort
+    return params
+
 
 class OpenAIProvider(LLMProvider):
     """Провайдер для OpenAI API и OpenAI-совместимых серверов (vLLM и др.)"""
@@ -34,14 +60,14 @@ class OpenAIProvider(LLMProvider):
                       **kwargs) -> Dict:
         """Выполняет запрос к OpenAI API"""
         model = model or self.default_model
-        
+        effort = kwargs.pop('reasoning_effort', None) or Config.LLM_REASONING_EFFORT
+        params = completion_kwargs(model, temperature, max_tokens, reasoning_effort=effort, **kwargs)
+
         try:
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
+                **params
             )
             
             return {

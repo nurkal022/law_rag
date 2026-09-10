@@ -59,7 +59,9 @@ SECRET_KEY=<новый случайный ключ>
 # Модель и эмбеддинги. Старый инстанс живёт на ollama; новая версия ходит в
 # OpenAI-совместимый API. Рабочий вариант со стенда — OpenAI:
 LLM_PROVIDER_TYPE=openai
-LLM_MODEL=gpt-4o-mini
+LLM_MODEL=gpt-4o-mini            # генерация документов и договоров
+CHAT_LLM_MODEL=gpt-5-mini        # консультант: рассуждающая модель, иначе отказывает на «права человека»
+LLM_REASONING_EFFORT=low         # для gpt-5*: minimal быстрее, low точнее
 OPENAI_API_KEY=<ключ>
 EMBEDDING_BASE_URL=https://api.openai.com/v1
 EMBEDDING_API_KEY=<тот же ключ>

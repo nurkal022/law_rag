@@ -12,6 +12,15 @@ class Config:
     # 'openai' — облачный OpenAI; 'ollama' — устаревший локальный Ollama
     LLM_PROVIDER_TYPE = os.getenv('LLM_PROVIDER_TYPE', 'local')
     LLM_MODEL = os.getenv('LLM_MODEL', 'gemma4')
+    # Консультант и генерация документов — разные модели. Консультанту нужна
+    # модель, которая держит нюансы инструкции: gpt-4o-mini на строгом промпте
+    # отказывалась отвечать на «права человека». Генерация — десяток запросов
+    # на документ, ей важнее цена и проверенный формат JSON.
+    CHAT_LLM_MODEL = os.getenv('CHAT_LLM_MODEL') or LLM_MODEL
+    # Рассуждающие модели (gpt-5*, o-серия): сколько думать перед ответом.
+    # minimal — быстро и плоско, low — секунды раздумий и заметно точнее с
+    # длинным контекстом; выше для чата не нужно — человек ждёт ответа.
+    LLM_REASONING_EFFORT = os.getenv('LLM_REASONING_EFFORT', 'low')
 
     # OpenAI настройки
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
@@ -65,6 +74,8 @@ class Config:
         config_map = {
             'LLM_PROVIDER_TYPE': 'LLM_PROVIDER_TYPE',
             'LLM_MODEL': 'LLM_MODEL',
+            'CHAT_LLM_MODEL': 'CHAT_LLM_MODEL',
+            'LLM_REASONING_EFFORT': 'LLM_REASONING_EFFORT',
             'OPENAI_API_KEY': 'OPENAI_API_KEY',
             'LOCAL_LLM_BASE_URL': 'LOCAL_LLM_BASE_URL',
             'LOCAL_LLM_API_KEY': 'LOCAL_LLM_API_KEY',

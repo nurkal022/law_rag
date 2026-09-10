@@ -732,7 +732,9 @@ def chat():
             'answer': response_data['answer'],
             'sources': response_data['sources'],
             'confidence': response_data['confidence'],
-            'query_validation': generator.validate_legal_query(user_query) if generator else None,
+            # Проверка «юридический ли вопрос» убрана: это был второй вызов модели
+            # на каждый ответ, а интерфейс поле не читает.
+            'query_validation': None,
             'search_results_count': len(formatted_results),
             'session_id': session_id,
             'chat_history_id': chat_history_id,

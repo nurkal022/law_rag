@@ -41,6 +41,11 @@ services:
       # для живого показа слишком медленная.
       LLM_PROVIDER_TYPE: openai
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      # Консультант — на рассуждающей модели: gpt-4o-mini на строгом промпте
+      # отвечал «вопрос не связан с правом» на «права человека». Генерация
+      # документов остаётся на LLM_MODEL, пока не проверена на думающей модели.
+      CHAT_LLM_MODEL: ${CHAT_LLM_MODEL:-gpt-5-mini}
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-low}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
       EMBEDDING_BASE_URL: https://api.openai.com/v1
@@ -59,7 +64,9 @@ services:
       DOCUMENTS_DIR: docs
       MAX_TOKENS: 4000
       TEMPERATURE: 0.1
-      TOP_K_RESULTS: 5
+      # 12, не 5: при разборе неверных ответов нужные статьи стояли 8-й и 17-й
+      # в выдаче и до модели не доходили. Второго прохода (rerank) у OpenAI нет.
+      TOP_K_RESULTS: ${TOP_K_RESULTS:-12}
       NLTK_NO_DOWNLOAD: "1"
     volumes:
       - ./docs:/app/docs
