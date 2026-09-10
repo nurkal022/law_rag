@@ -21,6 +21,12 @@ class Config:
     # minimal — быстро и плоско, low — секунды раздумий и заметно точнее с
     # длинным контекстом; выше для чата не нужно — человек ждёт ответа.
     LLM_REASONING_EFFORT = os.getenv('LLM_REASONING_EFFORT', 'low')
+    # Блок «Конституция»: первый проход по каждой норме — дешёвая модель, второй
+    # проверочный проход для найденного — рассуждающая. Число ближайших статей
+    # Конституции в контексте нормы.
+    CONFORMITY_TRIAGE_MODEL = os.getenv('CONFORMITY_TRIAGE_MODEL') or LLM_MODEL
+    CONFORMITY_VERIFY_MODEL = os.getenv('CONFORMITY_VERIFY_MODEL') or CHAT_LLM_MODEL
+    CONFORMITY_TOP_ARTICLES = int(os.getenv('CONFORMITY_TOP_ARTICLES', '4'))
 
     # OpenAI настройки
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')

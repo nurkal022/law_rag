@@ -48,6 +48,10 @@ services:
       # minimal: на развёрнутом ответе в 5000 знаков раздумья дают +3–5 с при
       # той же структуре и ссылках, а человек и так ждёт 10–15 с.
       LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-minimal}
+      # Блок «Конституция»: 7 тыс. норм — первый проход на дешёвой модели,
+      # проверка найденного — на рассуждающей.
+      CONFORMITY_TRIAGE_MODEL: ${CONFORMITY_TRIAGE_MODEL:-gpt-4o-mini}
+      CONFORMITY_VERIFY_MODEL: ${CONFORMITY_VERIFY_MODEL:-gpt-5-mini}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
       EMBEDDING_BASE_URL: https://api.openai.com/v1

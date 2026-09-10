@@ -695,6 +695,117 @@ class ApiKey(db.Model):
         }
 
 
+class ConformityRun(db.Model):
+    """Один обход корпуса на соответствие Конституции.
+
+    Хранится историей: перезагрузили корпус — сравнили прогоны. Статус running
+    означает и «идёт», и «оборван» — различает их скрипт по времени.
+    """
+    __tablename__ = 'conformity_runs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    status = db.Column(db.String(16), default='running', nullable=False, index=True)  # running | done | failed
+    constitution_document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=False)
+    triage_model = db.Column(db.String(64), default='')
+    verify_model = db.Column(db.String(64), default='')
+    changes_version = db.Column(db.String(64), default='')
+    norms_total = db.Column(db.Integer, default=0, nullable=False)
+    norms_done = db.Column(db.Integer, default=0, nullable=False)
+    counts_json = db.Column(db.JSON)
+    tokens_used = db.Column(db.BigInteger, default=0, nullable=False)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    finished_at = db.Column(db.DateTime)
+
+    acts = db.relationship('ConformityRunAct', backref='run', lazy='dynamic', cascade='all, delete-orphan')
+    findings = db.relationship('ConformityFinding', backref='run', lazy='dynamic', cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.public_id, 'status': self.status,
+            'constitution_document_id': self.constitution_document_id,
+            'triage_model': self.triage_model, 'verify_model': self.verify_model,
+            'changes_version': self.changes_version,
+            'norms_total': self.norms_total, 'norms_done': self.norms_done,
+            'counts': self.counts_json or {'0': 0, '1': 0, '2': 0, '3': 0, 'errors': 0},
+            'tokens_used': self.tokens_used,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+        }
+
+
+class ConformityRunAct(db.Model):
+    """Ход обхода: по строке на акт — когда агент начал, когда закончил, что нашёл."""
+    __tablename__ = 'conformity_run_acts'
+    __table_args__ = (db.UniqueConstraint('run_id', 'document_id', name='uq_conformity_run_act'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    run_id = db.Column(db.Integer, db.ForeignKey('conformity_runs.id'), nullable=False, index=True)
+    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=False, index=True)
+    position = db.Column(db.Integer, nullable=False)
+    tier = db.Column(db.Integer, nullable=False)
+    code = db.Column(db.String(64), default='')
+    norms_total = db.Column(db.Integer, default=0, nullable=False)
+    norms_done = db.Column(db.Integer, default=0, nullable=False)
+    counts_json = db.Column(db.JSON)
+    tokens = db.Column(db.BigInteger, default=0, nullable=False)
+    started_at = db.Column(db.DateTime)
+    finished_at = db.Column(db.DateTime)
+
+    document = db.relationship('Document', lazy='joined')
+
+    def to_dict(self):
+        return {
+            'document_id': self.document_id, 'code': self.code, 'tier': self.tier, 'position': self.position,
+            'title': self.document.title if self.document else '',
+            'norms_total': self.norms_total, 'norms_done': self.norms_done,
+            'counts': self.counts_json or {'0': 0, '1': 0, '2': 0, '3': 0, 'errors': 0}, 'tokens': self.tokens,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+        }
+
+
+class ConformityFinding(db.Model):
+    """Оценка одной нормы. Уровень 0 тоже хранится: «каждая норма проверена» должно быть проверяемо."""
+    __tablename__ = 'conformity_findings'
+    __table_args__ = (
+        db.UniqueConstraint('run_id', 'chunk_id', name='uq_conformity_finding_chunk'),
+        db.Index('ix_conformity_findings_run_doc_level', 'run_id', 'document_id', 'level'),
+        db.Index('ix_conformity_findings_run_level', 'run_id', 'level'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    run_id = db.Column(db.Integer, db.ForeignKey('conformity_runs.id'), nullable=False)
+    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=False)
+    chunk_id = db.Column(db.Integer, db.ForeignKey('document_chunks.id'), nullable=False)
+    article_no = db.Column(db.String(16), default='')
+    article_title = db.Column(db.Text, default='')
+    level = db.Column(db.Integer, nullable=True)          # 0..3; NULL — не разобрана
+    category = db.Column(db.String(16), default='none')
+    method = db.Column(db.String(48), default='')
+    constitution_articles_json = db.Column(db.JSON)
+    change_ids_json = db.Column(db.JSON)
+    quote_norm = db.Column(db.Text, default='')
+    explanation = db.Column(db.Text, default='')
+    recommendation = db.Column(db.Text, default='')
+    model = db.Column(db.String(64), default='')
+    tokens = db.Column(db.Integer, default=0, nullable=False)
+    error = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'document_id': self.document_id, 'chunk_id': self.chunk_id,
+            'article_no': self.article_no, 'article_title': self.article_title,
+            'level': self.level, 'category': self.category, 'method': self.method,
+            'constitution_articles': self.constitution_articles_json or [],
+            'change_ids': self.change_ids_json or [],
+            'quote_norm': self.quote_norm, 'explanation': self.explanation,
+            'recommendation': self.recommendation, 'model': self.model, 'tokens': self.tokens,
+            'error': self.error,
+        }
+
+
 def apply_light_migrations():
     """Колонки, добавленные после первого create_all.
 
