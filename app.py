@@ -1603,6 +1603,7 @@ SPA_PATHS = [
     '/contracts', '/contracts/<path:rest>',
     '/laws', '/laws/<path:rest>',
     '/workspace', '/workspace/<path:rest>',
+    '/constitution', '/constitution/<path:rest>',
     '/matters', '/analytics', '/admin-panel',
 ]
 

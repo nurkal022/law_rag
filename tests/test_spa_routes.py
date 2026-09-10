@@ -27,7 +27,7 @@ def rules():
     return re.findall(r"'([^']+)'", paths.group(1))
 
 
-PRODUCT_PATHS = ('/', '/about', '/chat', '/contracts', '/laws', '/workspace', '/matters')
+PRODUCT_PATHS = ('/', '/about', '/chat', '/contracts', '/laws', '/workspace', '/matters', '/constitution')
 
 
 @pytest.mark.parametrize('path', PRODUCT_PATHS)
@@ -37,7 +37,7 @@ def test_product_path_belongs_to_the_app(rules, path):
 
 def test_nested_paths_are_covered(rules):
     """Внутренние адреса — документ, конструктор — тоже принадлежат приложению."""
-    for prefix in ('/chat', '/contracts', '/laws', '/workspace'):
+    for prefix in ('/chat', '/contracts', '/laws', '/workspace', '/constitution'):
         assert f'{prefix}/<path:rest>' in rules, f'{prefix} без вложенных адресов'
 
 
