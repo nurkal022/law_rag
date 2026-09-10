@@ -68,9 +68,15 @@ def test_prompt_without_context_still_asks_for_a_full_answer():
     assert 'По общим сведениям о законодательстве РК' in prompt
 
 
-def test_prompt_asks_for_plain_text_because_the_chat_renders_no_markdown():
+def test_prompt_asks_for_a_long_structured_markdown_answer():
+    """Коллеги сравнивают с LawVision: там медиана ответа 4750 знаков, заголовки,
+    списки и таблицы. Чат теперь рисует markdown, и промпт просит той же формы."""
     prompt = build_system_prompt('вопрос', context='x')
-    assert 'без markdown' in prompt.lower()
+    assert '2500–5000 знаков' in prompt
+    assert '**Кратко:**' in prompt
+    assert '## Что говорит закон' in prompt and '## Итог' in prompt
+    assert 'таблицу' in prompt
+    assert 'без markdown' not in prompt.lower()
 
 
 class FakeProvider:

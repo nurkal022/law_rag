@@ -47,7 +47,70 @@
 .chat__answer {
   margin-top: var(--s-5);
   color: var(--ink);
-  white-space: pre-wrap;
+}
+
+/* ---------- Разметка ответа ----------
+   Ответ — markdown: «Кратко», разделы, списки, таблицы. Заголовки той же
+   антиквой, что и текст; таблица — гротеском и линиями, без заливок. */
+.chat__answer > :first-child { margin-top: 0; }
+.chat__answer > :last-child { margin-bottom: 0; }
+.chat__answer p { margin: 0 0 var(--s-3); }
+.chat__answer h1,
+.chat__answer h2 {
+  font-family: var(--font-serif);
+  font-size: var(--t-h2-size);
+  line-height: var(--t-h2-lh);
+  font-weight: var(--t-h2-weight);
+  margin: var(--s-6) 0 var(--s-3);
+}
+.chat__answer h3,
+.chat__answer h4 {
+  font-family: var(--font-serif);
+  font-size: var(--t-h3-size);
+  line-height: var(--t-h3-lh);
+  font-weight: var(--t-h3-weight);
+  margin: var(--s-5) 0 var(--s-2);
+}
+.chat__answer ul,
+.chat__answer ol { margin: 0 0 var(--s-3); padding-left: var(--s-6); }
+.chat__answer li { margin: 0 0 var(--s-1); }
+.chat__answer li > p { margin: 0; }
+.chat__answer blockquote {
+  margin: 0 0 var(--s-3);
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--seal-weak);
+  color: var(--ink-2);
+}
+.chat__answer hr { border: 0; border-top: var(--border); margin: var(--s-5) 0; }
+.chat__answer table {
+  display: block;            /* широкая таблица прокручивается сама, не страница */
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 var(--s-4);
+  font-family: var(--font-sans);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-lh);
+}
+.chat__answer th,
+.chat__answer td {
+  text-align: left;
+  vertical-align: top;
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.chat__answer th {
+  font-size: var(--t-caption-size);
+  line-height: var(--t-caption-lh);
+  font-weight: var(--t-label-weight);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--mute);
+  border-bottom: var(--border);
+}
+.chat__answer code {
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-size);
 }
 
 /* Ответа не будет: текст ошибки — и, если дело в гостевом лимите, два пути

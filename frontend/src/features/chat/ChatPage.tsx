@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
 import {
   Button,
   Caption,
@@ -17,6 +16,7 @@ import { citeCode } from '../legal/cite'
 import { useVoiceInput } from './useVoiceInput'
 import { EXAMPLES } from './examples'
 import { dateGroup, parseAnswer } from './answer'
+import { AnswerMarkdown, citeLink } from './AnswerMarkdown'
 import type { Answer, ChatReply, DateGroup, HistoryItem, Seg } from './answer'
 import { ApiError, api } from '../../shared/api'
 import { useMe } from '../../shared/me'
@@ -202,6 +202,11 @@ function toPlain(units: Unit[]): string {
   return units.map((u) => ('cite' in u ? u.cite : u.word)).join('')
 }
 
+/** Напечатанная часть ответа как markdown: координаты — ссылками для <AnswerMarkdown>. */
+function toMarkdown(units: Unit[]): string {
+  return units.map((u) => ('cite' in u ? citeLink(u.cite) : u.word)).join('')
+}
+
 function useReducedMotion() {
   const [reduced, setReduced] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -213,25 +218,6 @@ function useReducedMotion() {
     return () => mq.removeEventListener('change', on)
   }, [])
   return reduced
-}
-
-/** Собирает видимую часть ответа: текст антиквой, координаты — через <Cite>. */
-function renderUnits(units: Unit[], onCite: (code: string) => void) {
-  const nodes: ReactNode[] = []
-  let buf = ''
-  units.forEach((u, i) => {
-    if ('cite' in u) {
-      if (buf) {
-        nodes.push(buf)
-        buf = ''
-      }
-      nodes.push(<Cite key={`c${i}`} code={u.cite} onClick={() => onCite(u.cite)} />)
-    } else {
-      buf += u.word
-    }
-  })
-  if (buf) nodes.push(buf)
-  return nodes
 }
 
 /* ---------- Одна пара «вопрос — ответ» ---------- */
@@ -353,7 +339,7 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
           aria-busy={busy || undefined}
           aria-live={busy ? 'polite' : undefined}
         >
-          {renderUnits(visible, openCite)}
+          <AnswerMarkdown text={toMarkdown(visible)} onCite={openCite} />
           {busy ? <Caret /> : null}
         </div>
       )}
