@@ -33,6 +33,7 @@ const dict: Dict = {
   navAssistant: { ru: 'Консультант', kz: 'Кеңесші', en: 'Assistant' },
   navContracts: { ru: 'Договоры', kz: 'Шарттар', en: 'Contracts' },
   navLaws: { ru: 'Законопроекты', kz: 'Заң жобалары', en: 'Draft laws' },
+  navConstitution: { ru: 'Конституция', kz: 'Конституция', en: 'Constitution' },
   navAnalytics: { ru: 'Аналитика', kz: 'Талдау', en: 'Analytics' },
 
   colCompany: { ru: 'Проект', kz: 'Жоба', en: 'Project' },
@@ -116,6 +117,7 @@ export function PublicHeader() {
           <Link to="/chat" className="pub-link">{t('navAssistant')}</Link>
           <Link to="/contracts" className="pub-link">{t('navContracts')}</Link>
           <Link to="/laws" className="pub-link">{t('navLaws')}</Link>
+          <Link to="/constitution" className="pub-link">{t('navConstitution')}</Link>
           <Link to="/about" className="pub-link">{t('about')}</Link>
         </nav>
         <div className="pub-hdr__spacer" />
@@ -182,6 +184,7 @@ export function PublicFooter() {
             <Link to="/chat" className="pub-link">{t('navAssistant')}</Link>
             <Link to="/contracts" className="pub-link">{t('navContracts')}</Link>
             <Link to="/laws" className="pub-link">{t('navLaws')}</Link>
+            <Link to="/constitution" className="pub-link">{t('navConstitution')}</Link>
             <Link to="/analytics" className="pub-link">{t('navAnalytics')}</Link>
           </nav>
 

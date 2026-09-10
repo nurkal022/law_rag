@@ -27,11 +27,10 @@ export const dict: Dict = {
 
   walkHead: { ru: 'Ход обхода', kz: 'Қарау барысы', en: 'The walk' },
   walkLead: {
-    ru: 'Лента времени прогона: ширина полосы — сколько агент провёл на акте, слои внутри — доля норм с замечаниями по уровням. Маркер повторяет обход; наведите на полосу, чтобы остановить его на акте, нажмите — чтобы открыть акт.',
-    kz: 'Жүргізудің уақыт лентасы: жолақ ені — агенттің актіде өткізген уақыты, ішіндегі қабаттар — деңгейлер бойынша ескертуі бар нормалар үлесі. Маркер қарауды қайталайды; актіде тоқтату үшін жолаққа меңзеңіз, ашу үшін басыңыз.',
-    en: 'Timeline of the run: bar width is how long the agent spent on the act, the layers inside are the share of flagged provisions by level. The marker replays the walk; hover a bar to hold it on an act, click to open the act.',
+    ru: 'Лента обхода: ширина полосы — число норм в акте, слои внутри — доля норм с замечаниями по уровням. Маркер повторяет обход; наведите на полосу, чтобы остановить его на акте, нажмите — чтобы открыть акт.',
+    kz: 'Қарау лентасы: жолақ ені — актідегі нормалар саны, ішіндегі қабаттар — деңгейлер бойынша ескертуі бар нормалар үлесі. Маркер қарауды қайталайды; актіде тоқтату үшін жолаққа меңзеңіз, ашу үшін басыңыз.',
+    en: 'Walk ribbon: bar width is the number of provisions in the act, the layers inside are the share of flagged provisions by level. The marker replays the walk; hover a bar to hold it on an act, click to open the act.',
   },
-  walkClock: { ru: 'Время прогона', kz: 'Жүргізу уақыты', en: 'Run clock' },
   walkNow: { ru: 'сейчас разбирает', kz: 'қазір қарап жатыр', en: 'now analysing' },
   walkNorms: { ru: 'норм', kz: 'норма', en: 'provisions' },
   walkTokens: { ru: 'токенов', kz: 'токен', en: 'tokens' },
@@ -74,9 +73,9 @@ export const dict: Dict = {
 
   replayHead: { ru: 'Обход в сжатом времени', kz: 'Қысқартылған уақыттағы қарау', en: 'The walk, time-compressed' },
   replayLead: {
-    ru: 'Каждая точка — норма, каждый блок — акт. Агент проходит корпус за полминуты в том же порядке и с теми же пропорциями времени, что и в настоящем прогоне; найденное вспыхивает и остаётся.',
-    kz: 'Әр нүкте — норма, әр блок — акт. Агент корпусты нақты жүргізудегідей ретпен және уақыт үлесімен жарты минутта өтеді; табылғандар жанып, қалады.',
-    en: 'Each dot is a provision, each block an act. The agent crosses the corpus in half a minute, in the same order and time proportions as the real run; findings flash and stay lit.',
+    ru: 'Каждая точка — норма, каждый блок — акт. Агент проходит корпус в том же порядке, что и в настоящем прогоне; найденное вспыхивает и остаётся.',
+    kz: 'Әр нүкте — норма, әр блок — акт. Агент корпусты нақты жүргізудегідей ретпен өтеді; табылғандар жанып, қалады.',
+    en: 'Each dot is a provision, each block an act. The agent crosses the corpus in the same order as the real run; findings flash and stay lit.',
   },
   play: { ru: 'Запустить', kz: 'Іске қосу', en: 'Play' },
   pause: { ru: 'Пауза', kz: 'Кідірту', en: 'Pause' },

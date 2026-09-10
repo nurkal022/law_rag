@@ -28,19 +28,12 @@ interface Seg {
   act: WalkAct
   x: number
   w: number
-  t0: number
-  t1: number
-}
-
-function ms(iso: string | null): number {
-  return iso ? Date.parse(iso) : NaN
 }
 
 export function Walk({ data }: { data: Overview }) {
   const t = useT(dict)
   const { lang } = useLang()
   const navigate = useNavigate()
-  const locale = lang === 'kz' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'ru-RU'
   const al = apiLang(lang)
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const [p, setP] = useState(reducedMotion() ? 1 : 0)
@@ -50,15 +43,15 @@ export function Walk({ data }: { data: Overview }) {
   const model = useMemo(() => {
     const acts = data.walk.filter((a) => a.started_at)
     if (!acts.length) return null
-    const start = Math.min(...acts.map((a) => ms(a.started_at)))
-    const end = Math.max(...acts.map((a) => (a.finished_at ? ms(a.finished_at) : Date.now())))
-    const total = Math.max(1, end - start)
+    // Ширина полосы — число норм акта: лента показывает объём работы, а не время
+    const total = Math.max(1, acts.reduce((s, a) => s + Math.max(1, a.norms_total), 0))
+    let acc = 0
     const segs: Seg[] = acts.map((a) => {
-      const t0 = ms(a.started_at)
-      const t1 = a.finished_at ? ms(a.finished_at) : Date.now()
-      const x = (W * (t0 - start)) / total
-      const w = Math.max(6, (W * (t1 - t0)) / total - GAP)
-      return { act: a, x, w, t0, t1 }
+      const n = Math.max(1, a.norms_total)
+      const x = (W * acc) / total
+      const w = Math.max(6, (W * n) / total - GAP)
+      acc += n
+      return { act: a, x, w }
     })
     // Ярусы: непрерывные отрезки актов одного уровня
     const tiers: { tier: number; x0: number; x1: number }[] = []
@@ -67,11 +60,10 @@ export function Walk({ data }: { data: Overview }) {
       if (last && last.tier === s.act.tier) last.x1 = s.x + s.w
       else tiers.push({ tier: s.act.tier, x0: s.x, x1: s.x + s.w })
     }
-    // Шкала: каждые 5 минут
+    // Шкала: по тысяче норм
     const ticks: { x: number; label: string }[] = []
-    const step = total > 90 * 60_000 ? 15 : total > 30 * 60_000 ? 10 : 5
-    for (let m = 0; m * 60_000 <= total; m += step) ticks.push({ x: (W * m * 60_000) / total, label: `${m}` })
-    return { segs, tiers, ticks, start, end, total }
+    for (let n = 0; n <= total; n += 1000) ticks.push({ x: (W * n) / total, label: n.toLocaleString('ru-RU') })
+    return { segs, tiers, ticks, total }
   }, [data.walk])
 
   // Маркер едет по ленте, когда блок доехал до экрана
@@ -122,11 +114,6 @@ export function Walk({ data }: { data: Overview }) {
     tokens += Math.round(s.act.tokens * k)
   }
   const tierTitle = (tier: number) => data.tiers.find((x) => x.tier === tier)?.title[al] ?? ''
-  const hhmm = (v: number) => new Date(v).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
-  const took = (s: Seg) => {
-    const sec = Math.round((s.t1 - s.t0) / 1000)
-    return sec >= 60 ? `${Math.floor(sec / 60)} ${t('unitMinShort')} ${String(sec % 60).padStart(2, '0')} ${t('unitSecShort')}` : `${sec} ${t('unitSecShort')}`
-  }
   const live = data.run?.status === 'running'
 
   return (
@@ -140,7 +127,6 @@ export function Walk({ data }: { data: Overview }) {
         <div className="tl__fig"><span className="tl__num">{norms.toLocaleString('ru-RU')}</span><Caption tone="mute">{t('figNorms')}</Caption></div>
         <div className="tl__fig"><span className="tl__num tl__num--warn">{found.toLocaleString('ru-RU')}</span><Caption tone="mute">{t('replayFindings')}</Caption></div>
         <div className="tl__fig"><span className="tl__num">{tokens.toLocaleString('ru-RU')}</span><Caption tone="mute">{t('walkTokens')}</Caption></div>
-        <div className="tl__fig tl__fig--clock"><span className="tl__num">{hhmm(model.start + model.total * p)}</span><Caption tone="mute">{t('walkClock')}</Caption></div>
       </div>
 
       <svg className="tl" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('walkHead')}
@@ -197,7 +183,7 @@ export function Walk({ data }: { data: Overview }) {
         {model.ticks.map((tk) => (
           <g key={tk.label}>
             <line x1={tk.x} x2={tk.x} y1={SCALE_Y} y2={SCALE_Y + 5} className="tl__axis" />
-            <text x={tk.x} y={SCALE_Y + 18} textAnchor={tk.x === 0 ? 'start' : 'middle'} className="tl__tick">{tk.label} {t('unitMinShort')}</text>
+            <text x={tk.x} y={SCALE_Y + 18} textAnchor={tk.x === 0 ? 'start' : 'middle'} className="tl__tick">{tk.label}</text>
           </g>
         ))}
         {/* маркер агента */}
@@ -215,7 +201,6 @@ export function Walk({ data }: { data: Overview }) {
           <Caption tone="mute">{tierTitle(active.act.tier)}</Caption>
         </div>
         <div className="tl__card-row">
-          <Caption tone="mute" className="tabular">{hhmm(active.t0)} → {hhmm(active.t1)} · {took(active)}</Caption>
           <Caption tone="mute" className="tabular">{active.act.norms_done}/{active.act.norms_total} {t('walkNorms')}</Caption>
           <Caption tone="mute" className="tabular">{active.act.tokens.toLocaleString('ru-RU')} {t('walkTokens')}</Caption>
           <Caption tone={flagged(active.act.counts) ? 'warn' : 'mute'}>{flagged(active.act.counts)} {t('walkFound')}</Caption>
