@@ -165,7 +165,12 @@ def split_by_articles(text: str, section_keyword: str = 'Глава') -> list:
         if not current_article_title and not current_article_lines:
             return
         body = '\n'.join(current_article_lines).strip()
-        if len(body) < 30:
+        # Статья из одного абзаца без нумерованных пунктов после склейки строк
+        # целиком оказывается в строке заголовка, а тело пустое. Раньше такая
+        # статья отбрасывалась как короткая — так пропали ст. 88 ТК («двадцать
+        # четыре календарных дня») и пятая часть статей КоАП, ГПК, ПК. Короткий
+        # хвост без заголовка — мусор, статья с заголовком — нет.
+        if not current_article_title and len(body) < 30:
             return
         context = ''
         if current_section:
@@ -209,8 +214,13 @@ def split_by_articles(text: str, section_keyword: str = 'Глава') -> list:
     return chunks
 
 
-def load_document(doc_filename: str, meta: dict):
-    """Загрузка одного документа в базу данных."""
+def load_document(doc_filename: str, meta: dict, replace: bool = False, embed: bool = False):
+    """Загрузка одного документа в базу данных.
+
+    replace — заменить уже загруженный документ (старые чанки удаляются вместе с ним);
+    embed — сразу посчитать эмбеддинги чанков, чтобы документ был доступен поиску
+    без отдельного прохода «Обновить embeddings» в админке.
+    """
     from app import app
     from database.models import db, Document, DocumentChunk
 
@@ -230,12 +240,23 @@ def load_document(doc_filename: str, meta: dict):
         print('   ⚠️  Нет чанков, пропускаем')
         return 0
 
+    embeddings = None
+    if embed:
+        from embeddings.client import EmbeddingClient
+        embeddings = EmbeddingClient().encode([c['content'] for c in chunks])
+        print(f'   Эмбеддингов: {len(embeddings)}')
+
     with app.app_context():
         # Проверяем, существует ли документ
         existing = Document.query.filter_by(filename=doc_filename).first()
-        if existing:
+        if existing and not replace:
             print(f'   ℹ️  Уже в базе (id={existing.id}), пропускаем')
             return 0
+        if existing:
+            old = existing.chunks.count()
+            db.session.delete(existing)  # чанки уходят каскадом
+            db.session.flush()
+            print(f'   ♻️  Старая версия удалена (id={existing.id}, чанков {old})')
 
         # Полный текст документа
         full_text = '\n\n'.join(c['content'] for c in chunks)
@@ -262,6 +283,8 @@ def load_document(doc_filename: str, meta: dict):
                 end_position=position + len(content),
                 chunk_size=len(content)
             )
+            if embeddings is not None:
+                dc.set_embedding(embeddings[i])
             db.session.add(dc)
             position += len(content) + 2
 
@@ -271,7 +294,17 @@ def load_document(doc_filename: str, meta: dict):
 
 
 def main():
+    import argparse
+
+    ap = argparse.ArgumentParser(description='Загрузка кодексов и законов из docs/ в базу')
+    ap.add_argument('--replace', action='store_true', help='заменить уже загруженные документы')
+    ap.add_argument('--embed', action='store_true', help='сразу посчитать эмбеддинги чанков')
+    ap.add_argument('--only', nargs='*', default=None, help='имена PDF, которые загрузить (по умолчанию все)')
+    args = ap.parse_args()
+
     pdf_files = [f for f in os.listdir(DOCS_DIR) if f.endswith('.pdf')]
+    if args.only:
+        pdf_files = [f for f in pdf_files if f in set(args.only)]
 
     if not pdf_files:
         print(f'❌ Нет PDF файлов в {DOCS_DIR}')
@@ -285,10 +318,11 @@ def main():
         if not meta:
             print(f'⚠️  Нет метаданных для {filename}, пропускаем')
             continue
-        total_chunks += load_document(filename, meta)
+        total_chunks += load_document(filename, meta, replace=args.replace, embed=args.embed)
 
     print(f'\n✅ Итого загружено чанков: {total_chunks}')
-    print('🔄 Теперь запусти обработку embeddings в /admin → "Обновить embeddings"')
+    if not args.embed:
+        print('🔄 Теперь запусти обработку embeddings в /admin → "Обновить embeddings"')
 
 
 if __name__ == '__main__':
