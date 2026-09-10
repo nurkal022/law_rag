@@ -159,6 +159,45 @@ def repair_cites(answer: str, sources: List[Dict]) -> str:
     return re.sub(r' +(?=[.,;:!?])', '', text)
 
 
+_SMALL_TALK = {
+    'greeting': {
+        'words': {'привет', 'здравствуйте', 'здравствуй', 'добрый', 'день', 'вечер', 'утро', 'доброе',
+                  'сәлем', 'сәлеметсіз', 'бе', 'сәлеметсізбе', 'қайырлы', 'күн', 'hello', 'hi', 'hey'},
+        'ru': 'Здравствуйте! Я консультант по законодательству Республики Казахстан: разъясню нормы кодексов и '
+              'законов, права и обязанности, порядок действий, сроки и документы. Задайте ваш вопрос.',
+        'kk': 'Сәлеметсіз бе! Мен Қазақстан Республикасының заңнамасы бойынша кеңесшімін: кодекстер мен '
+              'заңдардың нормаларын, құқықтар мен міндеттерді, іс-қимыл тәртібі мен мерзімдерін түсіндіремін. '
+              'Сұрағыңызды қойыңыз.',
+        'en': 'Hello! I am a consultant on the law of Kazakhstan: I explain the codes and laws, rights and '
+              'duties, procedures, deadlines and documents. Ask your question.',
+    },
+    'thanks': {
+        'words': {'спасибо', 'благодарю', 'спс', 'помог', 'помогли', 'очень', 'большое', 'ты', 'вы', 'мне',
+                  'рахмет', 'рақмет', 'көп', 'thanks', 'thank', 'you', 'a', 'lot'},
+        'ru': 'Пожалуйста! Если появятся новые вопросы по праву Казахстана — спрашивайте.',
+        'kk': 'Оқасы жоқ! Қазақстан құқығы бойынша тағы сұрақтар туындаса — сұраңыз.',
+        'en': 'You are welcome! If you have more questions about the law of Kazakhstan, just ask.',
+    },
+}
+
+
+def _small_talk_answer(query: str) -> str | None:
+    """Готовый ответ на приветствие или благодарность без обращения к модели.
+
+    На «спасибо» модель порой отвечала четырьмя разделами с заголовком «Что
+    говорит закон»; на приветствие человек ждал ответа пять секунд. Реплика,
+    целиком состоящая из слов приветствия или благодарности, не требует поиска
+    и модели вовсе. Одно лишнее слово — уже вопрос, и он идёт обычным путём.
+    """
+    words = re.findall(r'[a-zа-яёәғқңөұүһі]+', (query or '').lower())
+    if not words or len(words) > 6:
+        return None
+    for kind, spec in _SMALL_TALK.items():
+        if all(w in spec['words'] for w in words):
+            return spec[detect_language(query)]
+    return None
+
+
 def _identity_answer(query: str) -> str | None:
     """Возвращает фиксированный ответ для identity-вопросов или None."""
     if not _IDENTITY_RE.search(query):
@@ -245,10 +284,10 @@ class ResponseGenerator:
         # Identity-вопросы («кто ты», «какая модель», «кто создал»)
         # обрабатываем хардкод-ответом — не отправляем в LLM, чтобы исключить
         # утечку базовой модели и подмешивание самопредставления в обычные ответы.
-        identity = _identity_answer(user_query)
-        if identity:
+        canned = _identity_answer(user_query) or _small_talk_answer(user_query)
+        if canned:
             return {
-                'answer': identity,
+                'answer': canned,
                 'sources': [],
                 'confidence': 1.0,
                 'model_used': 'identity',

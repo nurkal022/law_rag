@@ -144,6 +144,22 @@ def test_identity_answer_names_dalel_and_no_one_else():
     assert _identity_answer('Как открыть ИП?') is None
 
 
+def test_greetings_and_thanks_get_an_instant_reply_in_their_language():
+    from rag.generator import _small_talk_answer
+    assert _small_talk_answer('спасибо, ты мне очень помог').startswith('Пожалуйста')
+    assert _small_talk_answer('Привет!').startswith('Здравствуйте')
+    assert 'Сәлеметсіз' in _small_talk_answer('сәлем')
+    assert 'Рақмет' not in _small_talk_answer('көп рақмет') and 'Оқасы жоқ' in _small_talk_answer('көп рақмет')
+    assert _small_talk_answer('thank you').startswith('You are welcome')
+
+
+def test_a_greeting_with_a_question_goes_to_the_model():
+    from rag.generator import _small_talk_answer
+    assert _small_talk_answer('Привет, как открыть ИП?') is None
+    assert _small_talk_answer('dfsfsd') is None
+    assert _small_talk_answer('Какой общий срок исковой давности?') is None
+
+
 def test_prompt_tells_to_skip_irrelevant_fragments():
     prompt = build_system_prompt('вопрос', context='x')
     assert 'остальные молча пропускайте' in prompt
