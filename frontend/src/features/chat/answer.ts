@@ -64,8 +64,9 @@ export function parseAnswer(text: string, sources: ApiSource[]): Answer {
   const byId = new Map(sources.map((s) => [s.id, s]))
   const segs: Seg[] = []
   let last = 0
-  // Жирный markdown в нормативном тексте — шум: убираем маркеры, слова оставляем.
-  const clean = (text || '').replace(/\*\*/g, '')
+  // Разметка остаётся как есть: ответ рисует <AnswerMarkdown>, полужирный
+  // «**Кратко:**» и названия норм ему нужны целыми.
+  const clean = text || ''
   for (const m of clean.matchAll(GROUP)) {
     const before = clean.slice(last, m.index)
     if (before) segs.push(before)
