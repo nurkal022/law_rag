@@ -72,9 +72,14 @@ def app(monkeypatch):
         application.config['LAW_ID'] = law.id
         application.config['FINDING_LEVEL3_CHUNK'] = law_ids[0]
 
+    with application.app_context():
+        doc('code.pdf', 'Трудовой кодекс РК', ['Глава 1\nСтатья 1. Отношения\nТекст.'])  # в плане, но ещё не пройден
+        db.session.commit()
+
     tiny = Registry(load_registry().tiers, {
         'const.txt': ActMeta('const.txt', 1, 'Конституция РК'),
         'law.pdf': ActMeta('law.pdf', 5, 'ЗРК О ПА', adilet='Z1600000480', edition='2026-01-09', url='https://adilet.zan.kz/rus/docs/Z1600000480'),
+        'code.pdf': ActMeta('code.pdf', 4, 'ТК РК'),
     })
     monkeypatch.setattr(routes, 'load_registry', lambda: tiny)
     return application
@@ -93,6 +98,8 @@ def test_overview_has_run_walk_tiers_map_and_changes(client, app):
     assert body['walk'][0]['code'] == 'ЗРК О ПА' and body['walk'][0]['norms_done'] == 3
     tiers = {t['tier']: t for t in body['tiers']}
     assert len(tiers) == 11 and tiers[5]['acts'][0]['worst'] == 3 and tiers[6]['acts'] == []
+    # акт из плана, до которого обход ещё не дошёл, стоит на своём ярусе с нулями
+    assert tiers[4]['acts'][0]['code'] == 'ТК РК' and tiers[4]['acts'][0]['done'] == 0 and tiers[4]['acts'][0]['norms'] == 1
     assert tiers[5]['title']['ru'] == 'Законы'
     sections = body['constitution']['sections']
     art = {a['no']: a for s in sections for a in s['articles']}
@@ -110,6 +117,7 @@ def test_act_page_lists_barcode_and_findings_with_wording(client, app):
     assert [a['level'] for a in body['articles']] == [3, 2, 0]
     assert [f['level'] for f in body['findings']] == [3, 2]
     assert body['findings'][0]['wording']['ru'] == 'выявлен высокий риск несоответствия'
+    assert body['wording']['1']['ru'] == 'норма требует экспертной проверки'
     assert body['findings'][0]['category_label']['ru']
     r2 = client.get(f"/api/constitution/acts/{app.config['LAW_ID']}?level=2")
     assert [f['level'] for f in r2.get_json()['findings']] == [2]

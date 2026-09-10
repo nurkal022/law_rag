@@ -61,7 +61,7 @@
 /* --step приходит из разметки (номер яруса), здесь — значение по умолчанию */
 .pyr__tier { --step: 0; display: flex; justify-content: center; }
 .pyr__band {
-  width: calc(44% + var(--step) * 5.6%);
+  width: calc(56% + var(--step) * 4.4%);
   max-width: 100%;
   border: var(--border);
   border-top: 0;
@@ -79,7 +79,7 @@
 .pyr__acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
 .pyr__act {
   display: grid;
-  grid-template-columns: minmax(90px, auto) 1fr minmax(120px, 200px) 5ch;
+  grid-template-columns: minmax(90px, auto) minmax(0, 1fr) minmax(90px, 160px) 5ch;
   align-items: center;
   gap: var(--s-3);
   color: inherit;
@@ -89,7 +89,7 @@
 }
 .pyr__act:hover { background: var(--ink-wash); }
 .pyr__code { font-family: var(--font-mono); font-size: var(--t-mono-size); line-height: var(--t-mono-lh); font-weight: var(--t-mono-weight); color: var(--seal); }
-.pyr__title { font-family: var(--font-serif); font-size: var(--t-body-size); line-height: var(--t-body-lh); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pyr__title { font-family: var(--font-serif); font-size: var(--t-body-size); line-height: var(--t-body-lh); color: var(--ink); min-width: 0; }
 .pyr__n { text-align: right; }
 
 /* ---------- Карта Конституции ---------- */

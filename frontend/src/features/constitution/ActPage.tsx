@@ -30,10 +30,10 @@ export function ActPage() {
     [id, query],
   )
 
-  // Формулировки уровней для подписей штрихов берём из находок: код их не дублирует
+  // Формулировки уровней приходят с сервера: код их не дублирует
   const wording = useMemo(() => {
     const out: Record<number, Tri> = {}
-    for (const f of data?.findings ?? []) if (f.level !== null && f.wording) out[f.level] = f.wording
+    for (const [k, v] of Object.entries(data?.wording ?? {})) out[Number(k)] = v
     return out
   }, [data])
 

@@ -171,6 +171,7 @@ def run_conformity(app, provider=None, threads: int = 6, resume: bool = True, re
                 act = ConformityRunAct(run_id=run.id, document_id=doc.id, position=position, tier=meta.tier,
                                        code=meta.code, norms_total=doc.chunks.count(), counts_json=dict(EMPTY_COUNTS))
                 db.session.add(act)
+            act.position = position   # порядок обхода — всегда по плану, даже после пробного запуска
             if act.started_at is None:
                 act.started_at = datetime.utcnow()
             act.finished_at = None

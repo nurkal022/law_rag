@@ -15,6 +15,7 @@ from flask import jsonify, request
 from conformity.changes import load_changes
 from conformity.constitution import ConstitutionIndex
 from conformity.registry import load_registry
+from conformity.run import EMPTY_COUNTS, plan_acts
 from conformity.wording import LEVELS, category_label, wording
 from database.models import ConformityFinding, ConformityRun, ConformityRunAct, Document, DocumentChunk, db
 
@@ -84,13 +85,18 @@ def overview():
         for cid in f.change_ids_json or []:
             per_change[cid] += 1
 
+    # Ярусы — по всем актам корпуса, а не только пройденным: пока прогон идёт,
+    # непройденный акт стоит на своём ярусе с нулями, а не пропадает из пирамиды.
     tiers = []
     by_tier: Dict[int, list] = defaultdict(list)
-    for a in acts:
-        by_tier[a.tier].append({
-            'document_id': a.document_id, 'code': a.code, 'title': a.document.title if a.document else '',
-            'norms': a.norms_total, 'done': a.norms_done, 'counts': a.counts_json or {},
-            'worst': _worst(int(k) for k, v in (a.counts_json or {}).items() if k.isdigit() and v),
+    walked = {a.document_id: a for a in acts}
+    for doc, meta in plan_acts(registry):
+        a = walked.get(doc.id)
+        by_tier[meta.tier].append({
+            'document_id': doc.id, 'code': meta.code, 'title': doc.title,
+            'norms': a.norms_total if a else doc.chunks.count(), 'done': a.norms_done if a else 0,
+            'counts': (a.counts_json if a else None) or dict(EMPTY_COUNTS),
+            'worst': _worst(int(k) for k, v in ((a.counts_json if a else None) or {}).items() if k.isdigit() and v),
         })
     for t in sorted(registry.tiers):
         tiers.append({'tier': t, 'title': {lang: registry.tier_title(t, lang) for lang in LANGS}, 'acts': by_tier.get(t, [])})
@@ -154,6 +160,7 @@ def act(document_id: int):
                 'started_at': run_act.started_at.isoformat() if run_act and run_act.started_at else None,
                 'finished_at': run_act.finished_at.isoformat() if run_act and run_act.finished_at else None},
         'articles': articles,
+        'wording': {str(lv): _wording(lv) for lv in LEVELS},
         'findings': [_finding_payload(f) for f in flagged],
     })
 

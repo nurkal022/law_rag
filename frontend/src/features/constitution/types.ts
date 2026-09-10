@@ -134,6 +134,7 @@ export interface ActResponse {
   run: Run
   act: ActMeta
   articles: ArticleStrip[]
+  wording: Record<'0' | '1' | '2' | '3', Tri>
   findings: Finding[]
 }
 

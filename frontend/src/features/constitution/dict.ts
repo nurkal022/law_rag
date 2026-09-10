@@ -108,6 +108,8 @@ export const dict: Dict = {
   method_dictionary: { ru: 'словарь', kz: 'сөздік', en: 'dictionary' },
   method_model: { ru: 'модель', kz: 'модель', en: 'model' },
   method_verified: { ru: 'модель, проверено', kz: 'модель, тексерілді', en: 'model, verified' },
+  method_both: { ru: 'словарь + модель', kz: 'сөздік + модель', en: 'dictionary + model' },
+  method_both_verified: { ru: 'словарь + модель, проверено', kz: 'сөздік + модель, тексерілді', en: 'dictionary + model, verified' },
   loadFailed: { ru: 'Не загрузилось', kz: 'Жүктелмеді', en: 'Failed to load' },
 
   artSection: { ru: 'Раздел', kz: 'Бөлім', en: 'Section' },
@@ -117,8 +119,13 @@ export const dict: Dict = {
 }
 
 /** Метод находки → ключ словаря. */
-export function methodKey(method: string): 'method_dictionary' | 'method_model' | 'method_verified' {
-  if (method.includes('verified')) return 'method_verified'
+export function methodKey(
+  method: string,
+): 'method_dictionary' | 'method_model' | 'method_verified' | 'method_both' | 'method_both_verified' {
+  const dict = method.includes('dictionary')
+  const verified = method.includes('verified')
+  if (dict && method.includes('model')) return verified ? 'method_both_verified' : 'method_both'
+  if (verified) return 'method_verified'
   if (method.includes('model')) return 'method_model'
   return 'method_dictionary'
 }
