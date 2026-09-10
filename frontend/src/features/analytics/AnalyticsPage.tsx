@@ -329,6 +329,7 @@ const toneKey: Record<StatusKind, Key> = {
   idle: 'toneNeu',
   err: 'toneNeg',
   warn: 'toneNeu',
+  note: 'toneNeu',
 }
 
 const levelKey: Record<StatusKind, Key> = {
@@ -336,6 +337,7 @@ const levelKey: Record<StatusKind, Key> = {
   warn: 'levelWarn',
   err: 'levelErr',
   idle: 'levelIdle',
+  note: 'levelIdle',
 }
 
 const kindKey = {

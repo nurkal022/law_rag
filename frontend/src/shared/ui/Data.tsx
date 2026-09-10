@@ -10,7 +10,7 @@ export function Chip({ active, className, ...rest }: ChipProps) {
 }
 
 /* ---------- Статус ---------- */
-export type StatusKind = 'ok' | 'warn' | 'err' | 'idle'
+export type StatusKind = 'ok' | 'warn' | 'err' | 'idle' | 'note'
 export function Status({ kind, children }: { kind: StatusKind; children: ReactNode }) {
   return <span className={`status status--${kind}`}>{children}</span>
 }

@@ -56,6 +56,15 @@ const AnalyticsPage = lazy(() =>
   import('../features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
 )
 const AdminPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.AdminPage })))
+const ConstitutionOverviewPage = lazy(() =>
+  import('../features/constitution/OverviewPage').then((m) => ({ default: m.OverviewPage })),
+)
+const ConstitutionActPage = lazy(() =>
+  import('../features/constitution/ActPage').then((m) => ({ default: m.ActPage })),
+)
+const ConstitutionArticlePage = lazy(() =>
+  import('../features/constitution/ArticlePage').then((m) => ({ default: m.ArticlePage })),
+)
 
 /** Пока подгружается экран — тонкая линия набора, а не пустота и не спиннер. */
 function Deferred({ children }: { children: React.ReactNode }) {
@@ -101,6 +110,9 @@ const pages: RouteObject[] = [
       { path: 'laws', element: <Deferred><LawsRegistryPage /></Deferred> },
       { path: 'laws/new', element: <Deferred><LawWizardPage /></Deferred> },
       { path: 'laws/:id', element: <Deferred><LawDocumentPage /></Deferred> },
+      { path: 'constitution', element: <Deferred><ConstitutionOverviewPage /></Deferred> },
+      { path: 'constitution/acts/:id', element: <Deferred><ConstitutionActPage /></Deferred> },
+      { path: 'constitution/articles/:no', element: <Deferred><ConstitutionArticlePage /></Deferred> },
       { path: 'analytics', element: <Deferred><AnalyticsPage /></Deferred> },
       { path: 'admin', element: <Deferred><AdminPage /></Deferred> },
     ],

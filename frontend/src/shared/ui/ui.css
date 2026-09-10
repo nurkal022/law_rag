@@ -127,6 +127,7 @@ button.chip:hover { border-color: var(--ink-2); color: var(--ink); }
 .status--warn { color: var(--warn); }
 .status--err { color: var(--err); }
 .status--idle { color: var(--mute); }
+.status--note { color: var(--ochre-ink); } /* «требует проверки»: охра читаемым оттенком */
 
 /* ---------- Линия ---------- */
 .rule { border: 0; border-top: var(--border); margin: 0; }
