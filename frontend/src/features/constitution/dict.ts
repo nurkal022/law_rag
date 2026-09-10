@@ -100,6 +100,8 @@ export const dict: Dict = {
     en: 'Left: the constitutional changes; middle: the acts; right: the 2026 articles. Ribbon width is the number of flagged provisions; particles show the direction.',
   },
 
+  sankeyOther: { ru: 'Прочие статьи', kz: 'Басқа баптар', en: 'Other articles' },
+
   isoHead: { ru: 'Рельеф Конституции', kz: 'Конституция бедері', en: 'Relief of the Constitution' },
   isoLead: {
     ru: 'Те же 96 статей объёмом: высота столбика — сколько норм действующих актов касаются статьи, цвет — наихудший уровень среди них. Нажмите на столбик, чтобы открыть статью.',

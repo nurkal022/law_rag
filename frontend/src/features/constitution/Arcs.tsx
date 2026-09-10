@@ -14,9 +14,9 @@ import type { Viz } from './types'
  */
 
 const W = 1000
-const H = 400
-const TOP = 78
-const BOTTOM = 318
+const H = 420
+const TOP = 96
+const BOTTOM = 336
 const MARGIN = 28
 const SECTION_GAP = 9
 
@@ -90,8 +90,8 @@ export function Arcs({ viz }: { viz: Viz }) {
       <svg className={['arcs', filtered ? 'arcs--filtered' : ''].filter(Boolean).join(' ')} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('arcsHead')}>
         {model.sectionSpans.map((s) => (
           <g key={s.s} className="arcs__section">
-            <line x1={s.x0} x2={s.x1} y1={TOP - 26} y2={TOP - 26} className="arcs__bracket" />
-            <text x={(s.x0 + s.x1) / 2} y={TOP - 32} textAnchor="middle" className="arcs__roman">{s.s}</text>
+            <line x1={s.x0} x2={s.x1} y1={TOP - 44} y2={TOP - 44} className="arcs__bracket" />
+            <text x={(s.x0 + s.x1) / 2} y={TOP - 50} textAnchor="middle" className="arcs__roman">{s.s}</text>
           </g>
         ))}
         {model.links.map((l, i) => {
@@ -108,10 +108,11 @@ export function Arcs({ viz }: { viz: Viz }) {
             />
           )
         })}
-        {viz.articles.map((a) => {
+        {viz.articles.map((a, i) => {
           const x = model.ax.get(a.no) ?? 0
           const n = model.perArticle.get(a.no) ?? 0
           const isOn = focus?.article === a.no
+          const labelY = TOP - (i % 2 ? 30 : 18)   // соседние номера — в два ряда, иначе наезжают
           return (
             <g
               key={a.no}
@@ -121,7 +122,7 @@ export function Arcs({ viz }: { viz: Viz }) {
               onClick={() => navigate(withLang(`/constitution/articles/${a.no}`, lang))}
             >
               <rect x={x - 4} y={TOP - 14} width={8} height={14} className={`arcs__tick ${levelClass(model.worst.get(a.no) ?? 0)}`} rx={0} />
-              {n >= 4 || isOn ? <text x={x} y={TOP - 18} textAnchor="middle" className="arcs__no">{a.no}</text> : null}
+              {n >= 4 || isOn ? <text x={x} y={labelY} textAnchor="middle" className="arcs__no">{a.no}</text> : null}
               <title>{`${t('mapArticle')} ${a.no} · ${a.title} · ${n}`}</title>
             </g>
           )

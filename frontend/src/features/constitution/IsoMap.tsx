@@ -13,9 +13,9 @@ import type { Section } from './types'
  */
 
 const COLS = 12
-const TW = 44
-const TH = 22
-const MAX_H = 96
+const TW = 64
+const TH = 32
+const MAX_H = 130
 const W = 1000
 
 export function IsoMap({ sections }: { sections: Section[] }) {
@@ -26,7 +26,7 @@ export function IsoMap({ sections }: { sections: Section[] }) {
     const max = Math.max(1, ...flat.map((a) => a.norms))
     const rows = Math.ceil(flat.length / COLS)
     const ox = W / 2 + ((rows - COLS) * TW) / 4
-    const oy = 40 + MAX_H
+    const oy = 24 + MAX_H
     const out = flat.map((a, i) => {
       const c = i % COLS
       const r = Math.floor(i / COLS)

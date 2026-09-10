@@ -16,8 +16,8 @@ import { fmtDuration, levelToken, reducedMotion, token } from './viz'
  * работа для DOM. Цвета читаются из токенов во время выполнения.
  */
 
-const PITCH = 6
-const DOT = 4
+const PITCH = 5
+const DOT = 3
 const PAD = 8
 const LABEL = 18
 const GAP = 14

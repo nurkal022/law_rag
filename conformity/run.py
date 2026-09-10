@@ -174,7 +174,6 @@ def run_conformity(app, provider=None, threads: int = 6, resume: bool = True, re
             act.position = position   # порядок обхода — всегда по плану, даже после пробного запуска
             if act.started_at is None:
                 act.started_at = datetime.utcnow()
-            act.finished_at = None
             db.session.commit()
 
             done_q = ConformityFinding.query.filter_by(run_id=run.id, document_id=doc.id)
@@ -186,6 +185,10 @@ def run_conformity(app, provider=None, threads: int = 6, resume: bool = True, re
             if limit is not None:
                 norms = norms[:limit]
             log(f'[{meta.tier}] {meta.code}: норм {act.norms_total}, к разбору {len(norms)}')
+            if not norms and act.finished_at is not None:
+                continue   # акт уже пройден целиком: время обхода не трогаем
+            act.finished_at = None
+            db.session.commit()
 
             def work(n: Norm) -> Tuple[Norm, Finding]:
                 try:

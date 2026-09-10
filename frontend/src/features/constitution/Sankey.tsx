@@ -15,7 +15,9 @@ import type { Change, Viz } from './types'
 const W = 1000
 const H = 600
 const NODE_W = 12
-const PAD = 10
+const PADS = [26, 14, 12]   // зазоры между узлами по колонкам: слева подписи антиквой выше
+const TOP_ARTICLES = 12
+const OTHER = 'a:other'
 const COLS = [30, 500, 940]
 
 interface Node {
@@ -49,10 +51,15 @@ export function Sankey({ viz, changes }: { viz: Viz; changes: Change[] }) {
   const model = useMemo(() => {
     const f01 = new Map<string, number>()
     const f12 = new Map<string, number>()
+    // Статьи справа — только самые нагруженные, остальные одной лентой «прочие»
+    const perArticle = new Map<number, number>()
+    for (const f of viz.findings) if (f.c.length) for (const a of new Set(f.a)) perArticle.set(a, (perArticle.get(a) ?? 0) + 1)
+    const top = new Set([...perArticle.entries()].sort((p, q) => q[1] - p[1]).slice(0, TOP_ARTICLES).map(([a]) => a))
+    const artKey = (a: number) => (top.has(a) ? `a:${a}` : OTHER)
     for (const f of viz.findings) {
       if (!f.c.length) continue
       for (const c of new Set(f.c)) f01.set(`${c}|${f.d}`, (f01.get(`${c}|${f.d}`) ?? 0) + 1)
-      for (const a of new Set(f.a)) f12.set(`${f.d}|${a}`, (f12.get(`${f.d}|${a}`) ?? 0) + 1)
+      for (const k of new Set([...new Set(f.a)].map(artKey))) f12.set(`${f.d}|${k}`, (f12.get(`${f.d}|${k}`) ?? 0) + 1)
     }
     const val = new Map<string, { in: number; out: number }>()
     const bump = (id: string, k: 'in' | 'out', v: number) => {
@@ -68,7 +75,7 @@ export function Sankey({ viz, changes }: { viz: Viz; changes: Change[] }) {
     for (const [k, v] of f12) {
       const [d, a] = k.split('|')
       bump(`d:${d}`, 'out', v)
-      bump(`a:${a}`, 'in', v)
+      bump(a, 'in', v)
     }
     const byId = new Map<string, Change>(changes.map((c) => [c.id, c]))
     const cols: Node[][] = [[], [], []]
@@ -84,18 +91,20 @@ export function Sankey({ viz, changes }: { viz: Viz; changes: Change[] }) {
       const v = val.get(`a:${a.no}`)
       if (v && v.in) cols[2].push({ id: `a:${a.no}`, col: 2, label: `${t('mapArticle')} ${a.no}`, value: v.in, y0: 0, y1: 0, href: `/constitution/articles/${a.no}` })
     }
+    const other = val.get(OTHER)
     cols[0].sort((p, q) => q.value - p.value)
     cols[2].sort((p, q) => q.value - p.value)
-    const scale = Math.min(...cols.map((c) => (H - PAD * Math.max(0, c.length - 1)) / Math.max(1, c.reduce((s, n) => s + n.value, 0))))
-    for (const c of cols) {
-      const used = c.reduce((s, n) => s + n.value * scale, 0) + PAD * Math.max(0, c.length - 1)
+    if (other && other.in) cols[2].push({ id: OTHER, col: 2, label: t('sankeyOther'), value: other.in, y0: 0, y1: 0 })
+    const scale = Math.min(...cols.map((c, i) => (H - PADS[i] * Math.max(0, c.length - 1)) / Math.max(1, c.reduce((s, n) => s + n.value, 0))))
+    cols.forEach((c, i) => {
+      const used = c.reduce((s, n) => s + n.value * scale, 0) + PADS[i] * Math.max(0, c.length - 1)
       let y = (H - used) / 2
       for (const n of c) {
         n.y0 = y
         n.y1 = y + n.value * scale
-        y = n.y1 + PAD
+        y = n.y1 + PADS[i]
       }
-    }
+    })
     const nodes = new Map<string, Node>()
     for (const c of cols) for (const n of c) nodes.set(n.id, n)
     // Ленты: смещения по узлам накапливаются в порядке колонок
@@ -119,8 +128,8 @@ export function Sankey({ viz, changes }: { viz: Viz; changes: Change[] }) {
     }
     for (const mid of cols[1]) {
       const did = mid.id.slice(2)
-      const targets = [...f12].filter(([k]) => k.startsWith(`${did}|`)).sort((p, q) => (nodes.get(`a:${p[0].split('|')[1]}`)?.y0 ?? 0) - (nodes.get(`a:${q[0].split('|')[1]}`)?.y0 ?? 0))
-      for (const [k, v] of targets) place(mid.id, `a:${k.split('|')[1]}`, v, undefined)
+      const targets = [...f12].filter(([k]) => k.startsWith(`${did}|`)).sort((p, q) => (nodes.get(p[0].split('|')[1])?.y0 ?? 0) - (nodes.get(q[0].split('|')[1])?.y0 ?? 0))
+      for (const [k, v] of targets) place(mid.id, k.split('|')[1], v, undefined)
     }
     return { cols, flows, nodes }
   }, [viz, changes, lang, t])

@@ -114,3 +114,18 @@ def test_model_failure_on_one_norm_is_recorded_and_run_completes(app):
         ok = FakeProvider()
         run2 = runner.run_conformity(app, provider=ok, threads=1, retry_errors=True, log=lambda *a: None)
         assert run2.id == run.id and run2.counts_json['errors'] == 0 and ok.calls == 1
+
+
+def test_resume_keeps_finish_time_of_acts_already_complete(app):
+    from database.models import ConformityRunAct
+
+    p = FakeProvider()
+    with app.app_context():
+        run_id = runner.run_conformity(app, provider=p, threads=1, log=lambda *a: None).id
+        before = {a.code: a.finished_at for a in ConformityRunAct.query.filter_by(run_id=run_id).all()}
+        from database.models import ConformityRun, db
+        db.session.get(ConformityRun, run_id).status = 'running'   # объект прогона после выхода из контекста отсоединён — берём заново
+        db.session.commit()
+        again = runner.run_conformity(app, provider=p, threads=1, log=lambda *a: None)
+        after = {a.code: a.finished_at for a in ConformityRunAct.query.filter_by(run_id=run_id).all()}
+        assert again.id == run_id and before == after and p.calls == 4
