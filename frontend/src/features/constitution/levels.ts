@@ -27,3 +27,11 @@ export function flagged(counts: Counts | undefined): number {
 export function apiLang(lang: Lang): ApiLang {
   return lang === 'kz' ? 'kk' : lang
 }
+
+/**
+ * «Статья 52» / «52-бап» / «Article 52». В казахском номер идёт перед словом
+ * и присоединяется дефисом — иначе выходит «бап 52», чего в языке нет.
+ */
+export function articleLabel(no: number | string, lang: Lang, word: string): string {
+  return lang === 'kz' ? `${no}-${word}` : `${word} ${no}`
+}

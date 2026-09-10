@@ -1,7 +1,8 @@
 import { useParams } from 'react-router-dom'
 import { Body, Caption, Display, Empty, H2, Legal, UIText } from '../../shared/ui'
 import { Link } from '../../shared/nav'
-import { useT } from '../../i18n'
+import { useLang, useT } from '../../i18n'
+import { articleLabel } from './levels'
 import { api } from '../../shared/api'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import { Findings } from './Findings'
@@ -14,6 +15,7 @@ import './constitution.motion.css'
 export function ArticlePage() {
   const { no } = useParams()
   const t = useT(dict)
+  const { lang } = useLang()
   const { data, error, loading, reload } = useLoader<ArticleResponse>(
     () => api.get<ArticleResponse>(`/constitution/articles/${no}`),
     [no],
@@ -33,7 +35,7 @@ export function ArticlePage() {
         <>
           <div className="page__head">
             <div className="page__title">
-              <Display>{t('mapArticle')} {a.no}</Display>
+              <Display>{articleLabel(a.no, lang, t('mapArticle'))}</Display>
               <Body tone="mute">{t('artSection')} {a.section.no}. {a.section.title}</Body>
             </div>
           </div>

@@ -6,11 +6,12 @@ import { useLang, useT, withLang } from '../../i18n'
 import { api, errorMessage } from '../../shared/api'
 import { citeCode } from '../legal/cite'
 import { dict, methodKey } from './dict'
-import { apiLang, levelKind } from './levels'
+import { apiLang, articleLabel, levelKind } from './levels'
 import type { ActMeta, Finding, FindingDetail } from './types'
 
 function Detail({ id }: { id: number }) {
   const t = useT(dict)
+  const { lang } = useLang()
   const [data, setData] = useState<FindingDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fallback = t('loadFailed')
@@ -33,7 +34,7 @@ function Detail({ id }: { id: number }) {
         <Label>{t('constArticles')}</Label>
         {data.articles.map((a) => (
           <div key={a.no} className="fnd__col">
-            <UIText tone="ink2">{t('mapArticle')} {a.no} · {a.section.title}</UIText>
+            <UIText tone="ink2">{articleLabel(a.no, lang, t('mapArticle'))} · {a.section.title}</UIText>
             <Legal className="fnd__norm">{a.text}</Legal>
           </div>
         ))}

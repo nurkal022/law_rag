@@ -4,7 +4,7 @@ import { Body, H2 } from '../../shared/ui'
 import { useLang, useT, withLang } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { dict } from './dict'
-import { levelClass } from './levels'
+import { articleLabel, levelClass } from './levels'
 import type { Viz } from './types'
 
 /**
@@ -123,7 +123,7 @@ export function Arcs({ viz }: { viz: Viz }) {
             >
               <rect x={x - 4} y={TOP - 14} width={8} height={14} className={`arcs__tick ${levelClass(model.worst.get(a.no) ?? 0)}`} rx={0} />
               {n >= 4 || isOn ? <text x={x} y={labelY} textAnchor="middle" className="arcs__no">{a.no}</text> : null}
-              <title>{`${t('mapArticle')} ${a.no} · ${a.title} · ${n}`}</title>
+              <title>{`${articleLabel(a.no, lang, t('mapArticle'))} · ${a.title} · ${n}`}</title>
             </g>
           )
         })}

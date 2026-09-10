@@ -5,7 +5,7 @@ import { Body, Caption, H2, Label, UIText } from '../../shared/ui'
 import { useLang, useT, withLang } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { dict } from './dict'
-import { apiLang, flagged } from './levels'
+import { apiLang, articleLabel, flagged } from './levels'
 import type { Overview, WalkAct } from './types'
 import { reducedMotion } from './viz'
 
@@ -205,7 +205,7 @@ export function Walk({ data }: { data: Overview }) {
           <Caption tone="mute" className="tabular">{active.act.tokens.toLocaleString('ru-RU')} {t('walkTokens')}</Caption>
           <Caption tone={flagged(active.act.counts) ? 'warn' : 'mute'}>{flagged(active.act.counts)} {t('walkFound')}</Caption>
           {live && data.current?.document_id === active.act.document_id ? (
-            <Caption tone="seal">{t('walkNow')}: {t('mapArticle').toLowerCase()} {data.current.article_no}</Caption>
+            <Caption tone="seal">{t('walkNow')}: {articleLabel(data.current.article_no, lang, t('mapArticle').toLowerCase())}</Caption>
           ) : null}
         </div>
       </div>

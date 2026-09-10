@@ -4,6 +4,7 @@ import { Body, H2 } from '../../shared/ui'
 import { useLang, useT, withLang } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { dict } from './dict'
+import { articleLabel } from './levels'
 import type { Change, Viz } from './types'
 
 /**
@@ -89,7 +90,7 @@ export function Sankey({ viz, changes }: { viz: Viz; changes: Change[] }) {
     }
     for (const a of viz.articles) {
       const v = val.get(`a:${a.no}`)
-      if (v && v.in) cols[2].push({ id: `a:${a.no}`, col: 2, label: `${t('mapArticle')} ${a.no}`, value: v.in, y0: 0, y1: 0, href: `/constitution/articles/${a.no}` })
+      if (v && v.in) cols[2].push({ id: `a:${a.no}`, col: 2, label: articleLabel(a.no, lang, t('mapArticle')), value: v.in, y0: 0, y1: 0, href: `/constitution/articles/${a.no}` })
     }
     const other = val.get(OTHER)
     cols[0].sort((p, q) => q.value - p.value)

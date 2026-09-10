@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { Body, H2 } from '../../shared/ui'
 import { Link } from '../../shared/nav'
-import { useT } from '../../i18n'
+import { useLang, useT } from '../../i18n'
 import { dict } from './dict'
-import { levelClass } from './levels'
+import { articleLabel, levelClass } from './levels'
 import type { Section } from './types'
 
 /**
@@ -20,6 +20,7 @@ const W = 1000
 
 export function IsoMap({ sections }: { sections: Section[] }) {
   const t = useT(dict)
+  const { lang } = useLang()
   const tiles = useMemo(() => {
     const flat: { no: number; norms: number; worst: number; si: number; first: boolean; section: string; title: string }[] = []
     sections.forEach((s, si) => s.articles.forEach((a, ai) => flat.push({ no: a.no, norms: a.norms, worst: a.worst, si, first: ai === 0, section: s.no, title: s.title })))
@@ -66,7 +67,7 @@ export function IsoMap({ sections }: { sections: Section[] }) {
                 ) : null}
                 <text x={x} y={y - h + TH / 2 + 3} textAnchor="middle" className="iso__no">{a.no}</text>
                 {a.first ? <text x={x - TW / 2 - 4} y={y + TH / 2 + 3} textAnchor="end" className="iso__roman">{a.section}</text> : null}
-                <title>{`${t('mapArticle')} ${a.no} · ${a.title} · ${a.norms}`}</title>
+                <title>{`${articleLabel(a.no, lang, t('mapArticle'))} · ${a.title} · ${a.norms}`}</title>
               </g>
             </Link>
           )
