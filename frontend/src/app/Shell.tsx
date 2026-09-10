@@ -19,6 +19,7 @@ const dict: Dict = {
   documents: { ru: 'Документы', kz: 'Құжаттар', en: 'Documents' },
   contracts: { ru: 'Договоры', kz: 'Шарттар', en: 'Contracts' },
   laws: { ru: 'Законопроекты', kz: 'Заң жобалары', en: 'Draft laws' },
+  constitution: { ru: 'Конституция', kz: 'Конституция', en: 'Constitution' },
   analytics: { ru: 'Аналитика', kz: 'Талдау', en: 'Analytics' },
   sections: { ru: 'Разделы', kz: 'Бөлімдер', en: 'Sections' },
   login: { ru: 'Войти', kz: 'Кіру', en: 'Sign in' },
@@ -30,6 +31,7 @@ const sections = [
   { to: '/workspace', key: 'documents' },
   { to: '/contracts', key: 'contracts' },
   { to: '/laws', key: 'laws' },
+  { to: '/constitution', key: 'constitution' },
   { to: '/analytics', key: 'analytics' },
 ] as const
 

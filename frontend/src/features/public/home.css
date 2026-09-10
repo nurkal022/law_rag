@@ -691,6 +691,20 @@
 .modc--peach .modc__icon { background: var(--h-peach); }
 .modc--lilac .modc__icon { background: var(--h-lilac); }
 .modc--mint .modc__icon { background: var(--h-mint); }
+.modc--lemon .modc__icon { background: var(--h-lemon); }
+/* Пятая карточка — одна в последней строке: занимает всю ширину, как витрина блока */
+.modc:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* Миниатюра «Конституция»: штрих-код */
+.mini--const { display: flex; flex-direction: column; gap: var(--s-3); }
+.mbc { display: flex; gap: 2px; height: 44px; align-items: flex-end; }
+.mbc__bar { flex: 1 1 0; height: 100%; background: var(--h-line); transform-origin: bottom; transform: scaleY(0); transition: transform var(--h-draw) var(--ease-out); transition-delay: calc(var(--i, 0) * 25ms); }
+.mini--on .mbc__bar { transform: scaleY(1); }
+.mbc__bar--1 { background: var(--h-neu); }
+.mbc__bar--2 { background: var(--h-warn); }
+.mbc__bar--3 { background: var(--h-err); }
+.mbc__legend { display: flex; align-items: center; gap: var(--s-2); font-size: var(--t-caption-size); color: var(--h-mute); }
+.mbc__dot { width: var(--s-2); height: var(--s-2); display: inline-block; }
 .modc__name {
   margin: 0;
   font-family: var(--font-serif);

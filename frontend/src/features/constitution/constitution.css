@@ -1,0 +1,183 @@
+/* frontend/src/features/constitution/constitution.css
+   TURA — блок «Конституция». Значения только через var(--...) из tokens.css.
+   Диаграммы — блоки и инлайновый SVG на токенах; библиотек нет. */
+
+.cn-lead { max-width: var(--measure); }
+.cn-disclaimer { display: block; max-width: var(--measure); padding: var(--s-3) 0; border-top: var(--border); border-bottom: var(--border); }
+
+/* ---------- Показатели: числа через вертикальные линии ---------- */
+.cn-figures { display: flex; flex-wrap: wrap; padding: var(--s-6) 0; border-bottom: var(--border); }
+.cn-figure { flex: 1 1 0; min-width: 0; padding: 0 var(--s-5); border-left: var(--border); }
+.cn-figure:first-child { padding-left: 0; border-left: 0; }
+.cn-figure__value {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--t-display-size);
+  line-height: var(--t-display-lh);
+  font-weight: var(--t-display-weight);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.cn-figure__value--err { color: var(--err); }
+.cn-figure__value--warn { color: var(--warn); }
+.cn-figure__value--note { color: var(--ochre-ink); }
+.cn-figure__label { display: block; margin-top: var(--s-1); }
+
+/* ---------- Блок с заголовком ---------- */
+.cn-block { margin-top: var(--s-12); }
+.cn-block__head { display: flex; flex-direction: column; gap: var(--s-2); margin-bottom: var(--s-5); }
+.cn-block__lead { max-width: var(--measure); }
+
+/* ---------- Цвета уровней: одно место на весь раздел ---------- */
+.lv--3 { --lv: var(--err); }
+.lv--2 { --lv: var(--warn); }
+.lv--1 { --lv: var(--ochre); }
+.lv--0 { --lv: var(--rule); }
+.lv--x { --lv: var(--rule-soft); }
+
+/* ---------- Полоса долей ---------- */
+.lvbar { display: flex; width: 100%; height: var(--s-2); background: var(--rule-soft); overflow: hidden; }
+.lvbar__seg { height: 100%; background: var(--lv); }
+
+/* ---------- Ход обхода ---------- */
+.walk { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--rule); }
+.walk__item { position: relative; padding: 0 0 var(--s-6) var(--s-6); }
+.walk__item:last-child { padding-bottom: 0; }
+.walk__dot {
+  position: absolute; left: -7px; top: 5px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--paper); border: 2px solid var(--ink-2);
+}
+.walk__item--done .walk__dot { background: var(--ink-2); }
+.walk__item--wait .walk__dot { border-color: var(--rule); }
+.walk__body { display: flex; flex-direction: column; gap: var(--s-2); }
+.walk__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-3); }
+.walk__title { color: var(--ink); }
+.walk__meta { display: flex; flex-wrap: wrap; gap: var(--s-4); }
+.walk__bar { max-width: 420px; }
+
+/* ---------- Пирамида юридической силы ---------- */
+.pyr { list-style: none; margin: 0; padding: 0; }
+/* --step приходит из разметки (номер яруса), здесь — значение по умолчанию */
+.pyr__tier { --step: 0; display: flex; justify-content: center; }
+.pyr__band {
+  width: calc(44% + var(--step) * 5.6%);
+  max-width: 100%;
+  border: var(--border);
+  border-top: 0;
+  background: var(--surface);
+  padding: var(--s-3) var(--s-4);
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) 1fr;
+  gap: var(--s-3) var(--s-5);
+}
+.pyr__tier:first-child .pyr__band { border-top: var(--border); }
+.pyr__tier--top .pyr__band { background: var(--seal); color: var(--paper); border-color: var(--seal); }
+.pyr__tier--top .pyr__band .t-ui, .pyr__tier--top .pyr__band .t-label, .pyr__tier--top .pyr__band .t-caption { color: var(--paper); }
+.pyr__tier--empty .pyr__band { background: transparent; border-style: dashed; }
+.pyr__label { display: flex; flex-direction: column; gap: var(--s-1); }
+.pyr__acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.pyr__act {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr minmax(120px, 200px) 5ch;
+  align-items: center;
+  gap: var(--s-3);
+  color: inherit;
+  border-bottom: 0;
+  padding: var(--s-1) 0;
+  transition: background var(--motion);
+}
+.pyr__act:hover { background: var(--ink-wash); }
+.pyr__code { font-family: var(--font-mono); font-size: var(--t-mono-size); line-height: var(--t-mono-lh); font-weight: var(--t-mono-weight); color: var(--seal); }
+.pyr__title { font-family: var(--font-serif); font-size: var(--t-body-size); line-height: var(--t-body-lh); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pyr__n { text-align: right; }
+
+/* ---------- Карта Конституции ---------- */
+.cmap { display: flex; flex-direction: column; gap: var(--s-2); }
+.cmap__row { display: grid; grid-template-columns: minmax(160px, 240px) 1fr; gap: var(--s-4); align-items: start; }
+.cmap__sec { display: flex; gap: var(--s-2); align-items: baseline; padding-top: var(--s-1); }
+.cmap__cells { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+/* --w приходит из разметки (доля норм относительно самой нагруженной статьи) */
+.cmap__cell {
+  --w: 0;
+  position: relative;
+  width: 36px; height: 30px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 0;
+  transition: border-color var(--motion), color var(--motion);
+}
+.cmap__cell.lv--1, .cmap__cell.lv--2, .cmap__cell.lv--3 { border-color: var(--lv); border-width: 2px; }
+.cmap__cell:hover { border-color: var(--ink); color: var(--ink); }
+.cmap__fill { position: absolute; inset: 0; background: var(--ink-2); opacity: calc(var(--w) * 0.5); }
+.cmap__no { position: relative; font-family: var(--font-mono); font-size: var(--t-mono-size); line-height: var(--t-mono-lh); font-weight: var(--t-mono-weight); }
+
+/* ---------- Что изменилось ---------- */
+.chg-filters { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-4); }
+.chg { border-top: var(--border); }
+.chg:last-child { border-bottom: var(--border); }
+.chg__sum {
+  display: grid;
+  grid-template-columns: minmax(90px, 120px) 1fr minmax(60px, 80px);
+  gap: var(--s-4);
+  align-items: baseline;
+  padding: var(--s-3) var(--s-2);
+  cursor: pointer;
+  list-style: none;
+}
+.chg__sum::-webkit-details-marker { display: none; }
+.chg__sum:hover { background: var(--ink-wash); }
+.chg__title { font-family: var(--font-serif); font-size: var(--t-legal-size); line-height: var(--t-body-lh); color: var(--ink); }
+.chg__n { display: flex; align-items: center; gap: var(--s-2); justify-content: flex-end; }
+.chg__body { padding: 0 var(--s-2) var(--s-5); display: flex; flex-direction: column; gap: var(--s-4); }
+.chg__cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6); }
+.chg__col { display: flex; flex-direction: column; gap: var(--s-2); }
+.chg__refs { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+/* ---------- Метод ---------- */
+.cn-method__grid { display: grid; grid-template-columns: max-content 1fr; gap: var(--s-2) var(--s-5); margin: var(--s-4) 0; }
+.cn-method__grid dt, .cn-method__grid dd { margin: 0; }
+
+/* ---------- Акт: реквизиты и штрих-код ---------- */
+.act-meta { display: flex; flex-wrap: wrap; gap: var(--s-5); padding: var(--s-3) 0; border-bottom: var(--border); }
+.act-meta__item { display: flex; flex-direction: column; gap: var(--s-1); }
+.bc { display: block; width: 100%; height: 36px; margin-top: var(--s-3); }
+.bc__bar { fill: var(--lv); cursor: default; transition: opacity var(--motion); }
+.bc__bar--link { cursor: pointer; }
+.bc__bar:hover { opacity: 0.65; }
+.bc-scale { display: flex; justify-content: space-between; margin-top: var(--s-1); }
+.act-filters { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-5) 0 var(--s-3); }
+
+/* ---------- Находки: строки через линии ---------- */
+.fnd-list { border-top: var(--border); }
+.fnd { display: grid; grid-template-columns: 4ch 1fr; gap: var(--s-2) var(--s-4); padding: var(--s-5) var(--s-2); border-bottom: var(--border); scroll-margin-top: calc(var(--header-h) + var(--s-4)); }
+.fnd__no { font-family: var(--font-serif); font-size: var(--t-h2-size); line-height: var(--t-h2-lh); color: var(--ink-2); text-align: right; }
+.fnd__main { display: flex; flex-direction: column; gap: var(--s-3); min-width: 0; }
+.fnd__title { margin: 0; font-family: var(--font-serif); font-size: var(--t-h3-size); line-height: var(--t-h3-lh); font-weight: var(--t-h2-weight); color: var(--ink); }
+.fnd__tags { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-3); }
+.fnd__quote { margin: 0; padding-left: var(--s-4); border-left: 2px solid var(--ochre); max-width: var(--measure); }
+.fnd__why { max-width: var(--measure); }
+.fnd__refs { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.fnd__detail { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6); padding: var(--s-4); background: var(--surface); }
+.fnd__col { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+.fnd__norm { white-space: pre-wrap; }
+.fnd--target { background: var(--seal-wash); }
+
+/* ---------- Статья Конституции ---------- */
+.art-text { max-width: var(--measure); white-space: pre-wrap; margin: var(--s-4) 0; }
+.art-was { display: flex; flex-direction: column; gap: var(--s-3); }
+
+@media (max-width: 860px) {
+  .cn-figures { gap: var(--s-4) 0; }
+  .cn-figure { flex-basis: 50%; border-left: 0; padding: 0; }
+  .pyr__band { width: 100%; grid-template-columns: 1fr; }
+  .pyr__act { grid-template-columns: minmax(80px, auto) 1fr; }
+  .pyr__act .lvbar, .pyr__n { display: none; }
+  .cmap__row { grid-template-columns: 1fr; }
+  .chg__sum { grid-template-columns: 1fr; }
+  .chg__cols, .fnd__detail { grid-template-columns: 1fr; }
+  .fnd { grid-template-columns: 1fr; }
+  .fnd__no { text-align: left; }
+}

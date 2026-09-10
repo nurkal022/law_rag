@@ -193,6 +193,14 @@ const dict: Dict = {
     kz: 'Құқықтық мәселелер бойынша өтініштердің тақырыптары мен реңкі — сандар мен динамикада.',
     en: 'Topics and sentiment of legal inquiries, in numbers and over time.',
   },
+  mod5: { ru: 'Конституция', kz: 'Конституция', en: 'Constitution' },
+  mod5d: {
+    ru: 'Агент прошёл кодексы и законы и показал, где они расходятся с Конституцией 2026 года.',
+    kz: 'Агент кодекстер мен заңдарды қарап, олардың 2026 жылғы Конституциямен қайда алшақтайтынын көрсетті.',
+    en: 'The agent walked the codes and laws and shows where they diverge from the 2026 Constitution.',
+  },
+  mod5High: { ru: 'высокий риск', kz: 'жоғары тәуекел', en: 'high risk' },
+  mod5Possible: { ru: 'возможное противоречие', kz: 'ықтимал қайшылық', en: 'possible conflict' },
   modOpen: { ru: 'Открыть', kz: 'Ашу', en: 'Open' },
   mcQ: {
     ru: 'Работодатель задерживает зарплату на месяц. Что мне делать?',
@@ -858,11 +866,31 @@ function MiniAnalytics({ shown }: { shown: boolean }) {
   )
 }
 
+/** Миниатюра раздела «Конституция»: штрих-код статей акта, три штриха с замечаниями. */
+const MINI_BARS = [0, 0, 0, 3, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 3, 0]
+function MiniConstitution({ shown }: { shown: boolean }) {
+  const t = useT(dict)
+  return (
+    <div className={['mini', 'mini--const', shown ? 'mini--on' : ''].filter(Boolean).join(' ')} aria-hidden="true">
+      <div className="mbc">
+        {MINI_BARS.map((lv, i) => (
+          <span key={i} className={`mbc__bar mbc__bar--${lv}`} style={idx(i)} />
+        ))}
+      </div>
+      <div className="mbc__legend">
+        <span className="mbc__dot mbc__bar--3" /> <span>{t('mod5High')}</span>
+        <span className="mbc__dot mbc__bar--2" /> <span>{t('mod5Possible')}</span>
+      </div>
+    </div>
+  )
+}
+
 const MODS = [
   { id: 'chat', icon: 'chat', name: 'mod1', body: 'mod1d', to: '/chat', tone: 'sky' },
   { id: 'docs', icon: 'doc', name: 'mod2', body: 'mod2d', to: '/contracts', tone: 'peach' },
   { id: 'laws', icon: 'gavel', name: 'mod3', body: 'mod3d', to: '/laws', tone: 'lilac' },
   { id: 'stats', icon: 'chart', name: 'mod4', body: 'mod4d', to: '/analytics', tone: 'mint' },
+  { id: 'const', icon: 'scale', name: 'mod5', body: 'mod5d', to: '/constitution', tone: 'lemon' },
 ] as const
 
 function Modules() {
@@ -889,6 +917,7 @@ function Modules() {
             {m.id === 'docs' ? <MiniContracts shown={shown} /> : null}
             {m.id === 'laws' ? <MiniLaws shown={shown} /> : null}
             {m.id === 'stats' ? <MiniAnalytics shown={shown} /> : null}
+            {m.id === 'const' ? <MiniConstitution shown={shown} /> : null}
           </div>
           <span className="modc__open">
             {t('modOpen')}
