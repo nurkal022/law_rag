@@ -17,10 +17,18 @@ DOCS_DIR = os.path.join(PROJECT_DIR, 'docs')
 # Метаданные документов (имя файла → читаемое название)
 DOC_META = {
     # ── Конституция ──
-    'k950001000_.01-01-2023.rus.pdf': {
-        'title': 'Конституция Республики Казахстан',
+    'k2600000000.01-07-2026.rus.txt': {
+        'title': 'Конституция Республики Казахстан (2026)',
         'type': 'constitution',
         'section_keyword': 'Раздел',
+    },
+    # Прекратила действие 1 июля 2026 года (ст. 94 Конституции 2026). Остаётся в базе
+    # для сравнения «было → стало», но из поиска и ответов консультанта исключена.
+    'k950001000_.01-01-2023.rus.pdf': {
+        'title': 'Конституция Республики Казахстан (1995, утратила силу 01.07.2026)',
+        'type': 'constitution',
+        'section_keyword': 'Раздел',
+        'retired': '2026-07-01',
     },
     # ── Кодексы ──
     'k940001000_.12-03-2026.rus.pdf': {
@@ -131,6 +139,18 @@ def pdf_to_text(pdf_path: str) -> str:
     return result.stdout
 
 
+def read_source(path: str) -> str:
+    """Текст документа: PDF через pdftotext, .txt — как есть.
+
+    Конституция 2026 приходит текстом с зеркала (см. scripts/fetch_constitution_2026.py),
+    остальные акты — PDF с «Әділет».
+    """
+    if path.lower().endswith('.txt'):
+        with open(path, encoding='utf-8') as f:
+            return f.read()
+    return pdf_to_text(path)
+
+
 def clean_text(text: str) -> str:
     """Очистка текста от артефактов PDF."""
     # Убираем повторяющиеся пробелы и лишние переносы
@@ -228,7 +248,7 @@ def load_document(doc_filename: str, meta: dict, replace: bool = False, embed: b
     print(f'\n📄 Обработка: {meta["title"]}')
 
     # Извлекаем текст
-    raw_text = pdf_to_text(pdf_path)
+    raw_text = read_source(pdf_path)
     text = clean_text(raw_text)
     print(f'   Извлечено символов: {len(text):,}')
 
@@ -302,7 +322,7 @@ def main():
     ap.add_argument('--only', nargs='*', default=None, help='имена PDF, которые загрузить (по умолчанию все)')
     args = ap.parse_args()
 
-    pdf_files = [f for f in os.listdir(DOCS_DIR) if f.endswith('.pdf')]
+    pdf_files = [f for f in os.listdir(DOCS_DIR) if f.endswith(('.pdf', '.txt'))]
     if args.only:
         pdf_files = [f for f in pdf_files if f in set(args.only)]
 
