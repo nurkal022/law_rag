@@ -1,0 +1,42 @@
+# Реестр актов корпуса для блока «Конституция».
+# tier — уровень иерархии юридической силы по ТЗ (1 — высший, 11 — местные акты).
+# code — короткое обозначение, как в frontend/src/features/legal/cite.ts.
+# adilet — номер документа в ИПС «Әділет», edition — дата редакции в корпусе.
+tiers:
+  1:  {ru: Конституция Республики Казахстан, kk: Қазақстан Республикасының Конституциясы, en: Constitution of the Republic of Kazakhstan}
+  2:  {ru: Законы о внесении изменений и дополнений в Конституцию, kk: Конституцияға өзгерістер мен толықтырулар енгізу туралы заңдар, en: Laws amending the Constitution}
+  3:  {ru: Конституционные законы, kk: Конституциялық заңдар, en: Constitutional laws}
+  4:  {ru: Кодексы, kk: Кодекстер, en: Codes}
+  5:  {ru: Законы, kk: Заңдар, en: Laws}
+  6:  {ru: Нормативные правовые указы Президента, kk: Президенттің нормативтік құқықтық жарлықтары, en: Normative decrees of the President}
+  7:  {ru: Нормативные постановления Курултая, kk: Құрылтайдың нормативтік қаулылары, en: Normative resolutions of the Kurultai}
+  8:  {ru: Нормативные правовые постановления Правительства, kk: Үкіметтің нормативтік құқықтық қаулылары, en: Normative resolutions of the Government}
+  9:  {ru: Нормативные приказы министров и постановления центральных органов, kk: Министрлердің нормативтік бұйрықтары және орталық органдардың қаулылары, en: Ministerial orders and resolutions of central bodies}
+  10: {ru: Нормативные приказы руководителей ведомств, kk: Ведомство басшыларының нормативтік бұйрықтары, en: Orders of heads of agencies}
+  11: {ru: Местные нормативные правовые акты, kk: Жергілікті нормативтік құқықтық актілер, en: Local normative legal acts}
+
+acts:
+  k2600000000.01-07-2026.rus.txt: {tier: 1, code: Конституция РК, adilet: K2600000000, edition: 2026-07-01, url: https://adilet.zan.kz/rus/docs/K2600000000}
+  k950001000_.01-01-2023.rus.pdf: {tier: 1, code: Конституция РК (1995), adilet: K950001000_, edition: 2023-01-01, url: https://adilet.zan.kz/rus/docs/K950001000_, retired: true}
+
+  z000000132_.01-07-2025.rus.pdf: {tier: 3, code: КЗРК О судебной системе, adilet: Z000000132_, edition: 2025-07-01, url: https://adilet.zan.kz/rus/docs/Z000000132_}
+  z2200000153.01-01-2024.rus.pdf: {tier: 3, code: КЗРК О КС, adilet: Z2200000153, edition: 2024-01-01, url: https://adilet.zan.kz/rus/docs/Z2200000153}
+  z2200000155.12-09-2023.rus.pdf: {tier: 3, code: КЗРК О прокуратуре, adilet: Z2200000155, edition: 2023-09-12, url: https://adilet.zan.kz/rus/docs/Z2200000155}
+
+  k940001000_.12-03-2026.rus.pdf: {tier: 4, code: ГК РК, adilet: K940001000_, edition: 2026-03-12, url: https://adilet.zan.kz/rus/docs/K940001000_}
+  k990000409_.16-01-2026.rus.pdf: {tier: 4, code: ГК РК, adilet: K990000409_, edition: 2026-01-16, url: https://adilet.zan.kz/rus/docs/K990000409_}
+  k030000442_.16-01-2026.rus.pdf: {tier: 4, code: ЗК РК, adilet: K030000442_, edition: 2026-01-16, url: https://adilet.zan.kz/rus/docs/K030000442_}
+  k1100000518.09-01-2026.rus.pdf: {tier: 4, code: КоБС РК, adilet: K1100000518, edition: 2026-01-09, url: https://adilet.zan.kz/rus/docs/K1100000518}
+  k1400000226.08-03-2026.rus.pdf: {tier: 4, code: УК РК, adilet: K1400000226, edition: 2026-03-08, url: https://adilet.zan.kz/rus/docs/K1400000226}
+  k1400000231.08-03-2026.rus.pdf: {tier: 4, code: УПК РК, adilet: K1400000231, edition: 2026-03-08, url: https://adilet.zan.kz/rus/docs/K1400000231}
+  k1400000235.12-03-2026.rus.pdf: {tier: 4, code: КоАП РК, adilet: K1400000235, edition: 2026-03-12, url: https://adilet.zan.kz/rus/docs/K1400000235}
+  k1500000375.01-02-2026.rus.pdf: {tier: 4, code: ПК РК, adilet: K1500000375, edition: 2026-02-01, url: https://adilet.zan.kz/rus/docs/K1500000375}
+  k1500000377.16-01-2026.rus.pdf: {tier: 4, code: ГПК РК, adilet: K1500000377, edition: 2026-01-16, url: https://adilet.zan.kz/rus/docs/K1500000377}
+  k1500000414.20-01-2026.rus.pdf: {tier: 4, code: ТК РК, adilet: K1500000414, edition: 2026-01-20, url: https://adilet.zan.kz/rus/docs/K1500000414}
+  k2000000350.16-01-2026.rus.pdf: {tier: 4, code: АППК РК, adilet: K2000000350, edition: 2026-01-16, url: https://adilet.zan.kz/rus/docs/K2000000350}
+  k2100000400.09-01-2026.rus.pdf: {tier: 4, code: ЭК РК, adilet: K2100000400, edition: 2026-01-09, url: https://adilet.zan.kz/rus/docs/K2100000400}
+  k2500000171.16-01-2026.rus.pdf: {tier: 4, code: БК РК, adilet: K2500000171, edition: 2026-01-16, url: https://adilet.zan.kz/rus/docs/K2500000171}
+  k2500000214.18-07-2025.rus.pdf: {tier: 4, code: НК РК, adilet: K2500000214, edition: 2025-07-18, url: https://adilet.zan.kz/rus/docs/K2500000214}
+
+  z1600000480.09-01-2026.rus.pdf: {tier: 5, code: ЗРК О ПА, adilet: Z1600000480, edition: 2026-01-09, url: https://adilet.zan.kz/rus/docs/Z1600000480}
+  z980000213_.06-04-2016.rus.pdf: {tier: 5, code: ЗРК О НПА, adilet: Z980000213_, edition: 2016-04-06, url: https://adilet.zan.kz/rus/docs/Z980000213_}
