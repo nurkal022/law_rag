@@ -71,6 +71,42 @@ export const dict: Dict = {
   was: { ru: 'Было', kz: 'Бұрын', en: 'Was' },
   became: { ru: 'Стало', kz: 'Қазір', en: 'Now' },
 
+  replayHead: { ru: 'Обход в сжатом времени', kz: 'Қысқартылған уақыттағы қарау', en: 'The walk, time-compressed' },
+  replayLead: {
+    ru: 'Каждая точка — норма, каждый блок — акт. Агент проходит корпус за полминуты в том же порядке и с теми же пропорциями времени, что и в настоящем прогоне; найденное вспыхивает и остаётся.',
+    kz: 'Әр нүкте — норма, әр блок — акт. Агент корпусты нақты жүргізудегідей ретпен және уақыт үлесімен жарты минутта өтеді; табылғандар жанып, қалады.',
+    en: 'Each dot is a provision, each block an act. The agent crosses the corpus in half a minute, in the same order and time proportions as the real run; findings flash and stay lit.',
+  },
+  play: { ru: 'Запустить', kz: 'Іске қосу', en: 'Play' },
+  pause: { ru: 'Пауза', kz: 'Кідірту', en: 'Pause' },
+  restart: { ru: 'Сначала', kz: 'Басынан', en: 'Restart' },
+  elapsed: { ru: 'Прошло времени прогона', kz: 'Жүргізу уақыты өтті', en: 'Run time elapsed' },
+  unitMinShort: { ru: 'мин', kz: 'мин', en: 'min' },
+  unitSecShort: { ru: 'с', kz: 'с', en: 's' },
+  replayFindings: { ru: 'С замечаниями', kz: 'Ескертумен', en: 'Flagged' },
+  replayHint: { ru: 'Наведите на блок, чтобы увидеть акт; нажмите, чтобы открыть его', kz: 'Актіні көру үшін блокқа меңзеңіз; ашу үшін басыңыз', en: 'Hover a block to see the act; click to open it' },
+
+  arcsHead: { ru: 'Куда давит законодательство', kz: 'Заңнама қайда қысым жасайды', en: 'Where the legislation presses' },
+  arcsLead: {
+    ru: 'Сверху — 96 статей Конституции по разделам, снизу — акты. Каждая дуга — находка, связывающая норму акта со статьёй; цвет — уровень. Наведите на статью или акт, чтобы оставить только их дуги.',
+    kz: 'Жоғарыда — Конституцияның 96 бабы бөлімдер бойынша, төменде — актілер. Әр доға — акт нормасын баппен байланыстыратын табылған; түс — деңгей. Тек солардың доғаларын қалдыру үшін бапқа немесе актіге меңзеңіз.',
+    en: 'Top: the 96 articles of the Constitution by section; bottom: the acts. Each arc is a finding linking a provision to an article; colour is the level. Hover an article or an act to keep only its arcs.',
+  },
+
+  sankeyHead: { ru: 'Как изменения расходятся по актам', kz: 'Өзгерістер актілерге қалай тарайды', en: 'How the changes spread through the acts' },
+  sankeyLead: {
+    ru: 'Слева — изменения Конституции, в середине — акты, справа — статьи 2026 года. Толщина ленты — число норм с замечаниями; частицы показывают направление.',
+    kz: 'Сол жақта — Конституция өзгерістері, ортада — актілер, оң жақта — 2026 жылғы баптар. Лента қалыңдығы — ескертуі бар нормалар саны; бөлшектер бағытты көрсетеді.',
+    en: 'Left: the constitutional changes; middle: the acts; right: the 2026 articles. Ribbon width is the number of flagged provisions; particles show the direction.',
+  },
+
+  isoHead: { ru: 'Рельеф Конституции', kz: 'Конституция бедері', en: 'Relief of the Constitution' },
+  isoLead: {
+    ru: 'Те же 96 статей объёмом: высота столбика — сколько норм действующих актов касаются статьи, цвет — наихудший уровень среди них. Нажмите на столбик, чтобы открыть статью.',
+    kz: 'Сол 96 бап көлемде: бағанның биіктігі — бапқа қатысты нормалар саны, түсі — олардың ішіндегі ең жоғары деңгей. Бапты ашу үшін бағанды басыңыз.',
+    en: 'The same 96 articles in relief: bar height is how many provisions touch the article, colour the worst level among them. Click a bar to open the article.',
+  },
+
   methodHead: { ru: 'Метод', kz: 'Әдіс', en: 'Method' },
   methodModels: { ru: 'Модели', kz: 'Модельдер', en: 'Models' },
   methodRun: { ru: 'Прогон', kz: 'Жүргізу', en: 'Run' },

@@ -13,3 +13,16 @@
 .lvbar__seg { transition: width var(--dur-3) var(--ease-out); }
 .cmap__cell { animation: tura-enter var(--motion-enter) both; animation-delay: calc(min(var(--i, 0), 12) * (var(--stagger) / 2)); }
 .fnd { animation: tura-enter var(--motion-enter) both; animation-delay: calc(min(var(--i, 0), 12) * var(--stagger)); }
+
+/* ---------- Дуги прорисовываются волной от Конституции к актам ---------- */
+@keyframes cn-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.arc { stroke-dasharray: 1; stroke-dashoffset: 1; animation: cn-draw calc(var(--dur-3) * 2) var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 120) * 9ms); }
+
+/* ---------- Ленты потока проявляются, узлы — сразу ---------- */
+@keyframes cn-fade { from { opacity: 0; } }
+.sankey__flow { animation: cn-fade var(--motion-enter) both; animation-delay: calc(min(var(--i, 0), 40) * 30ms); }
+
+/* ---------- Рельеф вырастает от дальнего угла к ближнему ---------- */
+@keyframes cn-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.iso__tile { animation: cn-rise var(--motion-enter) both; animation-delay: calc(var(--i, 0) * 28ms); }
+.iso__tile:hover { animation: none; }

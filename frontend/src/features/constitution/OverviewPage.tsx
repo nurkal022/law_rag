@@ -4,12 +4,16 @@ import { useCountUpInt } from '../../shared/motion'
 import { useLang, useT } from '../../i18n'
 import { api } from '../../shared/api'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
+import { Arcs } from './Arcs'
 import { Changes } from './Changes'
 import { ConstitutionMap } from './ConstitutionMap'
+import { IsoMap } from './IsoMap'
 import { Pyramid } from './Pyramid'
+import { Replay } from './Replay'
+import { Sankey } from './Sankey'
 import { Walk } from './Walk'
 import { dict } from './dict'
-import type { Overview } from './types'
+import type { Overview, Viz } from './types'
 import '../drafts/drafts.css'
 import './constitution.css'
 import './constitution.motion.css'
@@ -29,12 +33,14 @@ export function OverviewPage() {
   const { lang } = useLang()
   const locale = lang === 'kz' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'ru-RU'
   const { data, error, loading, reload } = useLoader<Overview>(() => api.get<Overview>('/constitution/overview'), [])
+  // Данные визуализаций — вторым запросом: семь тысяч уровней норм обзору-списку не нужны
+  const viz = useLoader<Viz>(() => api.get<Viz>('/constitution/viz'), [])
   const status = data?.run?.status
 
   // Идущий прогон: обзор обновляется сам, раз в двадцать секунд — чаще незачем, акт разбирается минутами
   useEffect(() => {
     if (status !== 'running') return
-    const id = window.setInterval(reload, 20_000)
+    const id = window.setInterval(() => { reload(); viz.reload() }, 20_000)
     return () => window.clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
@@ -69,9 +75,17 @@ export function OverviewPage() {
             <Figure value={counts?.['0'] ?? 0} label={t('figClean')} />
           </div>
 
+          {viz.data?.run && viz.data.acts.length ? <Replay viz={viz.data} /> : null}
           <Walk data={data} />
+          {viz.data?.run && viz.data.findings.length ? <Arcs viz={viz.data} /> : null}
           <Pyramid data={data} />
-          {data.constitution ? <ConstitutionMap sections={data.constitution.sections} /> : null}
+          {data.constitution ? (
+            <>
+              <IsoMap sections={data.constitution.sections} />
+              <div className="cn-narrow-only"><ConstitutionMap sections={data.constitution.sections} /></div>
+            </>
+          ) : null}
+          {viz.data?.run && viz.data.findings.length ? <Sankey viz={viz.data} changes={data.changes} /> : null}
           <Changes changes={data.changes} />
 
           <section className="cn-block cn-method">

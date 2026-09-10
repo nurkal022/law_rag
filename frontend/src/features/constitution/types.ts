@@ -69,6 +69,7 @@ export interface Change {
   id: string
   kind: 'institution' | 'new' | 'removed' | 'procedure' | 'reference'
   title: string
+  short?: string
   summary: string
   old_articles: number[]
   new_articles: number[]
@@ -156,4 +157,40 @@ export interface ArticleResponse {
     was: Change[]
     norms: (Finding & { act: ActMeta | null })[]
   }
+}
+
+/* ---------- /api/constitution/viz — данные для реплея, дуг и потоков ---------- */
+
+export interface VizAct {
+  document_id: number
+  code: string
+  tier: number
+  title: string
+  /** Уровень каждой нормы в порядке акта; -1 — не разобрана. */
+  levels: number[]
+  tokens: number
+  started_at: string | null
+  finished_at: string | null
+}
+
+/** Находка коротко: акт, статьи Конституции, изменения, уровень, номер статьи акта. */
+export interface VizFinding {
+  d: number
+  a: number[]
+  c: string[]
+  l: number
+  n: string
+}
+
+export interface VizArticle {
+  no: number
+  section: string
+  title: string
+}
+
+export interface Viz {
+  run: Run | null
+  acts: VizAct[]
+  findings: VizFinding[]
+  articles: VizArticle[]
 }

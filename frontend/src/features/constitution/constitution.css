@@ -181,3 +181,90 @@
   .fnd { grid-template-columns: 1fr; }
   .fnd__no { text-align: left; }
 }
+
+/* ---------- Реплей обхода: холст точек ---------- */
+.replay__hud { display: flex; flex-wrap: wrap; gap: var(--s-6); padding: var(--s-3) 0 var(--s-4); }
+.replay__fig { display: flex; flex-direction: column; gap: 2px; min-width: 120px; }
+.replay__num {
+  font-family: var(--font-serif);
+  font-size: var(--t-h1-size);
+  line-height: var(--t-h1-lh);
+  font-weight: var(--t-h1-weight);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.replay__num--warn { color: var(--warn); }
+.replay__field { width: 100%; }
+.replay__canvas { display: block; cursor: pointer; }
+.replay__controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-top: var(--s-4); }
+.replay__range { flex: 1 1 220px; accent-color: var(--seal); height: var(--s-4); }
+.replay__hover { flex: 1 1 100%; display: flex; flex-direction: column; gap: 2px; min-height: 34px; }
+
+/* ---------- Дуги Конституция ↔ акты ---------- */
+.arcs { width: 100%; height: auto; display: block; overflow: visible; }
+.arc { fill: none; stroke: var(--lv); stroke-linecap: round; opacity: 0.55; transition: opacity var(--motion-state); }
+.arcs--filtered .arc { opacity: 0.06; }
+.arcs--filtered .arc--on { opacity: 0.95; }
+.arcs__tick { fill: var(--lv); opacity: 0.9; }
+.arcs__art { cursor: pointer; }
+.arcs__art:not(.arcs__art--linked) .arcs__tick { fill: var(--rule); }
+.arcs__art--on .arcs__tick { fill: var(--ink); }
+.arcs__no { font-family: var(--font-mono); font-size: var(--t-label-size); fill: var(--ink-2); }
+.arcs__roman { font-family: var(--font-mono); font-size: var(--t-label-size); letter-spacing: var(--track-label); fill: var(--mute); }
+.arcs__bracket { stroke: var(--rule); stroke-width: 1; }
+.arcs__act { cursor: pointer; }
+.arcs__base { fill: var(--ink-2); }
+.arcs__act--on .arcs__base { fill: var(--seal); }
+.arcs__code { font-family: var(--font-mono); font-size: var(--t-label-size); fill: var(--ink-2); }
+.arcs__act--on .arcs__code { fill: var(--seal); }
+
+/* ---------- Поток изменений ---------- */
+.sankey { width: 100%; height: auto; display: block; overflow: visible; }
+.sankey__flow { fill: var(--ochre); opacity: 0.32; transition: opacity var(--motion-state); }
+.sankey__flow--institution { fill: var(--warn); }
+.sankey__flow--removed { fill: var(--err); }
+.sankey__flow--procedure { fill: var(--ochre); }
+.sankey__flow--new { fill: var(--ok); }
+.sankey__flow--reference { fill: var(--ochre-ink); }
+.sankey__flow--act { fill: var(--ink-2); opacity: 0.16; }
+.sankey--filtered .sankey__flow { opacity: 0.05; }
+.sankey--filtered .sankey__flow--on { opacity: 0.6; }
+.sankey__particle { fill: var(--seal); opacity: 0.8; }
+.sankey__bar { fill: var(--ink-2); }
+.sankey__bar--institution { fill: var(--warn); }
+.sankey__bar--removed { fill: var(--err); }
+.sankey__bar--procedure { fill: var(--ochre); }
+.sankey__bar--new { fill: var(--ok); }
+.sankey__bar--reference { fill: var(--ochre-ink); }
+.sankey__node { cursor: default; }
+.sankey__node--link { cursor: pointer; }
+.sankey__node--on .sankey__bar { fill: var(--seal); }
+.sankey__label { font-family: var(--font-mono); font-size: var(--t-mono-size); fill: var(--ink); }
+.sankey__label--serif { font-family: var(--font-serif); font-size: var(--t-ui-size); }
+.sankey__count { fill: var(--mute); font-family: var(--font-mono); font-size: var(--t-label-size); }
+
+/* ---------- Рельеф Конституции ---------- */
+.iso { width: 100%; height: auto; display: block; overflow: visible; }
+.iso__link { border-bottom: 0; }
+.iso__tile { cursor: pointer; transition: transform var(--motion-state); }
+.iso__tile:hover { transform: translateY(-6px); }
+.iso__base { fill: var(--surface); stroke: var(--rule); stroke-width: 0.6; }
+.iso__tile--alt .iso__base { fill: var(--rule-soft); }
+.iso__face { stroke: var(--paper); stroke-width: 0.5; }
+.iso__face--t { fill: var(--lv); }
+.iso__face--l { fill: var(--lv); filter: brightness(0.82); }
+.iso__face--r { fill: var(--lv); filter: brightness(0.68); }
+.iso__tile.lv--0 .iso__face--t { fill: var(--ink-2); }
+.iso__tile.lv--0 .iso__face--l, .iso__tile.lv--0 .iso__face--r { fill: var(--ink-2); }
+.iso__no { font-family: var(--font-mono); font-size: var(--t-label-size); fill: var(--ink); pointer-events: none; }
+.iso__tile.lv--2 .iso__no, .iso__tile.lv--3 .iso__no, .iso__tile.lv--0 .iso__no { fill: var(--paper); }
+.iso__tile--empty .iso__no { fill: var(--mute); }
+.iso__roman { font-family: var(--font-mono); font-size: var(--t-label-size); fill: var(--mute); letter-spacing: var(--track-label); }
+.cn-wide-only { display: block; }
+.cn-narrow-only { display: none; }
+
+@media (max-width: 860px) {
+  .cn-wide-only { display: none; }
+  .cn-narrow-only { display: block; }
+  .replay__hud { gap: var(--s-4); }
+}
