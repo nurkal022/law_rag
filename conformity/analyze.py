@@ -29,7 +29,7 @@ class AnalyzeConfig:
     triage_model: str
     verify_model: str
     top_articles: int = 4
-    verify_from_level: int = 2
+    verify_from_level: int = 1
     max_norm_chars: int = 3500
     max_article_chars: int = 1800
 
@@ -55,9 +55,12 @@ TRIAGE_SYSTEM = (
     'иначе. 3 — норма прямо утверждает то, что Конституция 2026 исключила или запрещает.\n'
     'Уровень 1–3 допустим только при опоре: quote_norm — дословный фрагмент проверяемой нормы, и хотя бы одна '
     'статья Конституции 2026 из приведённых (constitution_articles) или изменение (change_ids). Без опоры — 0.\n\n'
-    'НЕ считается противоречием: норма детализирует или развивает Конституцию; норма о том же предмете без '
-    'расхождения; норма не упоминает новые институты; орган, не названный в справке, — он существует, '
-    'отсутствие в справке не означает упразднения.\n\n'
+    'НЕ считается противоречием: норма детализирует, повторяет или развивает общую формулу Конституции; норма о '
+    'том же предмете без конкретного расхождения; норма не упоминает новые институты; общие слова «может не '
+    'соответствовать», «требует уточнения» без названного слова или правила нормы, которое расходится. Список '
+    'органов, предусмотренных Конституцией 2026, — факт: объявлять любой из них упразднённым или отсутствующим '
+    'запрещено; отсутствующие органы перечислены отдельно, и только они. Орган, не названный ни в одном списке, '
+    'существует.\n\n'
     'КАТЕГОРИИ: terminology — упомянут орган из списка отсутствующих; competence — полномочие закреплено за '
     'другим органом или иначе; rights — норма сужает право или гарантию Конституции 2026; procedure — порядок, '
     'срок, процедура расходятся; reference — ссылка на статью Конституции, которой нет или она изменилась; '
@@ -74,8 +77,32 @@ VERIFY_SYSTEM = (
     'Понизьте, если: цитата не содержится в норме; названная статья Конституции не о том предмете; вывод '
     'опирается на «упразднение» органа, которого нет в списке отсутствующих (такой орган существует); норма '
     'лишь детализирует Конституцию; расхождение построено на домысле, а не на тексте.\n'
+    'Если вывод не подтверждается — keep: false и level: 0; keep: false с уровнем выше нуля означает «расхождение '
+    'есть, но слабее, чем заявлено». Изменения Конституции из реестра — факты: если норма воспроизводит то, что '
+    'реестр называет исключённым или устроенным иначе, это расхождение подтверждается.\n'
     'ОТВЕТ — только JSON: {"keep": true|false, "level": 0-3, "reason": "одно предложение"}'
 )
+
+
+_ABOLISH = re.compile(r'(упраздн\w+|отсутству\w+|не предусмотрен\w*|исключ[её]н\w*|ликвидирован\w*|больше нет)', re.IGNORECASE)
+
+
+def contradicts_facts(text: str, cs: ChangeSet) -> str:
+    """Орган из списка существующих назван упразднённым или отсутствующим — домысел модели.
+
+    Возвращает имя органа или пустую строку. Проверяется окно в 120 знаков вокруг
+    слова об упразднении: «Конституционный Суд упразднён» и «упразднён … Конституционный Суд».
+    """
+    if not text:
+        return ''
+    for m in _ABOLISH.finditer(text):
+        window = text[max(0, m.start() - 120):m.end() + 120]
+        for name in cs.present_institutions:
+            stem = name.split(' (')[0]
+            stem = stem[:-1] if len(stem) > 6 else stem   # «Конституционный Суд» → «Конституционный Су»: ловим падежи
+            if stem and stem in window:
+                return name
+    return ''
 
 
 def facts(cs: ChangeSet) -> str:
@@ -132,7 +159,22 @@ def enforce_support(f: Finding, norm_text: str, index: ConstitutionIndex, cs: Ch
         f.explanation = (f.explanation + ' ' if f.explanation else '') + \
             '(Понижено системой: нет опоры — дословной цитаты нормы вместе со статьёй Конституции или изменением.)'
         f.recommendation = ''
+        return f
+    named = contradicts_facts(f.explanation, cs)
+    if named:
+        f.level = 0
+        f.category = 'none'
+        f.explanation = (f.explanation + ' ' if f.explanation else '') + \
+            f'(Понижено системой: орган «{named}» предусмотрен Конституцией 2026, вывод о его упразднении не подтверждён.)'
+        f.recommendation = ''
     return f
+
+
+def _changes_text(changes: List) -> str:
+    return '\n'.join(
+        f'[{c.id}] {c.title}. Было (ст. {", ".join(map(str, c.old_articles)) or "—"}): «{c.old_quote}». '
+        f'Стало (ст. {", ".join(map(str, c.new_articles)) or "—"}): «{c.new_quote}».'
+        for c in changes)
 
 
 def _context_articles(norm: Norm, index: ConstitutionIndex, cs: ChangeSet, mech: List[Finding],
@@ -156,10 +198,7 @@ def _context_articles(norm: Norm, index: ConstitutionIndex, cs: ChangeSet, mech:
 def _triage_user(norm: Norm, articles: List[Article], changes: List, cs: ChangeSet, cfg: AnalyzeConfig) -> str:
     parts = [facts(cs)]
     if changes:
-        parts.append('ИЗМЕНЕНИЯ КОНСТИТУЦИИ, относящиеся к норме:\n' + '\n'.join(
-            f'[{c.id}] {c.title}. Было (ст. {", ".join(map(str, c.old_articles)) or "—"}): «{c.old_quote}». '
-            f'Стало (ст. {", ".join(map(str, c.new_articles)) or "—"}): «{c.new_quote}».'
-            for c in changes))
+        parts.append('ИЗМЕНЕНИЯ КОНСТИТУЦИИ, относящиеся к норме:\n' + _changes_text(changes))
     parts.append('СТАТЬИ КОНСТИТУЦИИ 2026 (ближайшие по смыслу и названные в изменениях):\n' + '\n\n'.join(
         f'Статья {a.no} (раздел {a.section_no}, {a.section_title}):\n{a.text[:cfg.max_article_chars]}'
         for a in articles))
@@ -169,7 +208,9 @@ def _triage_user(norm: Norm, articles: List[Article], changes: List, cs: ChangeS
 
 def _verify(f: Finding, norm: Norm, index: ConstitutionIndex, cs: ChangeSet, provider, cfg: AnalyzeConfig) -> Finding:
     arts = '\n\n'.join(f'Статья {n}:\n{index.texts.get(n, "")[:cfg.max_article_chars]}' for n in f.constitution_articles)
-    user = (f'{facts(cs)}\n\nПРОВЕРЯЕМАЯ НОРМА ({norm.act_title}; {norm.article_title}):\n'
+    changes = [c for c in (cs.by_id(cid) for cid in f.change_ids) if c]
+    changes_block = f'\n\nИЗМЕНЕНИЯ КОНСТИТУЦИИ, на которые ссылается вывод:\n{_changes_text(changes)}' if changes else ''
+    user = (f'{facts(cs)}{changes_block}\n\nПРОВЕРЯЕМАЯ НОРМА ({norm.act_title}; {norm.article_title}):\n'
             f'{norm.text[:cfg.max_norm_chars]}\n\nВЫВОД ПЕРВОГО ПРОХОДА:\n'
             + json.dumps({'level': f.level, 'category': f.category, 'constitution_articles': f.constitution_articles,
                           'change_ids': f.change_ids, 'quote_norm': f.quote_norm, 'explanation': f.explanation},
@@ -189,8 +230,8 @@ def _verify(f: Finding, norm: Norm, index: ConstitutionIndex, cs: ChangeSet, pro
     if keep:
         f.level = min(f.level, max(0, proposed))
     else:
-        # «не подтверждаю» без явного уровня ниже — сомнение, а не опровержение: уровень 1
-        f.level = min(proposed, 1) if proposed < f.level else 1
+        # «не подтверждаю»: уровень — предложенный, если он ниже заявленного, иначе ноль
+        f.level = proposed if 0 <= proposed < f.level else 0
     reason = str(data.get('reason') or '').strip()
     if reason:
         f.explanation = (f.explanation + '\n\nПроверка: ' + reason).strip()

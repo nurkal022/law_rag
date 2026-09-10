@@ -79,13 +79,42 @@ def test_verifier_can_lower_but_not_raise():
         {'keep': False, 'level': 3, 'reason': 'вверх нельзя'},
     )
     f = analyze_norm(norm(TREATY), INDEX, CS, p, CFG)
-    assert f.level == 1  # keep=False без понижения ниже 2 означает «сомнительно» → 1
+    assert f.level == 0  # keep=False без уровня ниже заявленного — опровержение
     p2 = FakeProvider(
         {'level': 2, 'category': 'competence', 'constitution_articles': [5], 'change_ids': [],
          'quote_norm': 'имеют приоритет перед ее законами', 'explanation': 'x', 'recommendation': ''},
         {'keep': False, 'level': 0, 'reason': 'норма детализирует'},
     )
     assert analyze_norm(norm(TREATY), INDEX, CS, p2, CFG).level == 0
+
+
+def test_level_one_is_verified_too_and_verifier_sees_the_change_register():
+    p = FakeProvider(
+        {'level': 1, 'category': 'competence', 'constitution_articles': [5], 'change_ids': ['treaties_priority'],
+         'quote_norm': 'имеют приоритет перед ее законами', 'explanation': 'x', 'recommendation': ''},
+        {'keep': True, 'level': 1, 'reason': 'ok'},
+    )
+    f = analyze_norm(norm(TREATY), INDEX, CS, p, CFG)
+    assert f.level == 1 and f.method == 'model+verified' and len(p.calls) == 2
+    assert 'Было' in p.calls[1]['messages'][1]['content'] and 'приоритет' in p.calls[1]['messages'][1]['content']
+
+
+def test_claim_that_an_existing_body_is_abolished_is_downgraded():
+    p = FakeProvider({'level': 2, 'category': 'competence', 'constitution_articles': [80], 'change_ids': [],
+                      'quote_norm': 'имеют приоритет перед ее законами',
+                      'explanation': 'Конституционный Суд упразднён, его функции переданы другим органам.', 'recommendation': 'x'})
+    f = analyze_norm(norm(TREATY), INDEX, CS, p, CFG)
+    assert f.level == 0 and 'Конституционный Суд' in f.explanation and len(p.calls) == 1
+
+
+def test_merge_keeps_dictionary_names_and_drops_model_silence():
+    p = FakeProvider({'level': 0, 'category': 'none', 'constitution_articles': [], 'change_ids': [],
+                      'quote_norm': '', 'explanation': 'Норма не содержит элементов противоречия.', 'recommendation': ''})
+    text = 'Статья 27. Судья не может быть привлечен без согласия Сената Парламента. Парламентом утверждается бюджет.'
+    f = analyze_norm(norm(text, (0.0, 1.0)), INDEX, CS, p, CFG)
+    assert f.method == 'dictionary+model'
+    assert 'Парламент, Сенат' in f.explanation and 'Парламентом' not in f.explanation
+    assert 'не содержит элементов' not in f.explanation
 
 
 def test_dictionary_and_model_layers_merge():
@@ -105,7 +134,8 @@ def test_provider_failure_is_recorded_not_raised():
 
 def test_unknown_articles_and_categories_are_dropped():
     p = FakeProvider({'level': 1, 'category': 'weird', 'constitution_articles': [5, 999], 'change_ids': ['nope', 'treaties_priority'],
-                      'quote_norm': 'имеют приоритет', 'explanation': 'x', 'recommendation': ''})
+                      'quote_norm': 'имеют приоритет', 'explanation': 'x', 'recommendation': ''},
+                     {'keep': True, 'level': 1, 'reason': 'ok'})
     f = analyze_norm(norm(TREATY), INDEX, CS, p, CFG)
     assert f.level == 1 and f.category == 'none' and f.constitution_articles == [5] and f.change_ids == ['treaties_priority']
 

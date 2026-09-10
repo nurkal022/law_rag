@@ -129,7 +129,8 @@ def mechanical_findings(norm_text: str, cs: ChangeSet) -> List[Finding]:
             continue
         if hits_body:
             m = hits_body[0]
-            terms = sorted({h.group(0) for h in hits_body})
+            names = c.absent_names or [p.pattern for p in c.absent_terms]
+            terms = [name for p, name in zip(c.absent_terms, names) if p.search(body)]
             out.append(Finding(
                 level=2, category='terminology', method='dictionary',
                 constitution_articles=list(c.new_articles), change_ids=[c.id],

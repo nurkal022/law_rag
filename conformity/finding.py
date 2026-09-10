@@ -26,14 +26,18 @@ class Finding:
         и что увидела модель, а не только более строгий из двух выводов.
         """
         hi, lo = (self, other) if (self.level or 0) >= (other.level or 0) else (other, self)
+        methods = {m for f in (self, other) for m in f.method.split('+') if m}
+        # Объяснение «признаков не выявлено» рядом с находкой словаря читается как спор
+        # двух слоёв; в итоге остаётся только то, что нашло замечание.
+        explanations = [hi.explanation] + ([lo.explanation] if (lo.level or 0) >= 1 else [])
         return Finding(
             level=hi.level,
             category=hi.category if hi.category != 'none' else lo.category,
-            method='+'.join(sorted({m for m in (self.method, other.method) if m})),
+            method='+'.join(sorted(methods)),
             constitution_articles=sorted(set(self.constitution_articles) | set(other.constitution_articles)),
             change_ids=sorted(set(self.change_ids) | set(other.change_ids)),
             quote_norm=hi.quote_norm or lo.quote_norm,
-            explanation='\n\n'.join(x for x in (hi.explanation, lo.explanation) if x),
+            explanation='\n\n'.join(x for x in explanations if x),
             recommendation=hi.recommendation or lo.recommendation,
             model=self.model or other.model,
             tokens=self.tokens + other.tokens,
