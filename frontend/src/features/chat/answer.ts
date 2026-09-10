@@ -77,6 +77,8 @@ export function parseAnswer(text: string, sources: ApiSource[]): Answer {
       if (!src) continue
       const code = sourceCode(src)
       if (seen.has(code)) continue
+      // Между чипами одной группы — пробел, иначе «Конституция РК 15Конституция РК 16».
+      if (seen.size) segs.push(' ')
       seen.add(code)
       segs.push({ cite: code })
     }
