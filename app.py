@@ -663,9 +663,13 @@ def chat():
                     'stats': stats
                 }), 503
             
-            # Поиск релевантных документов
+            # Поиск релевантных документов. Бытовой вопрос («Как открыть ИП?»)
+            # словами кодексов не находится: дешёвая модель пересказывает его
+            # юридическим языком, поиск идёт по всем формулировкам (rag/expand.py).
             try:
-                search_results = retriever.hybrid_search(user_query, Config.TOP_K_RESULTS)
+                from rag.expand import expand_query
+                queries = [user_query] + expand_query(user_query, generator.provider)
+                search_results = retriever.hybrid_search_many(queries, Config.TOP_K_RESULTS)
                 formatted_results = retriever.format_search_results(search_results)
             except Exception as e:
                 log.exception(f"Ошибка при поиске документов: {e}")

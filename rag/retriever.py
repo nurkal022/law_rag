@@ -218,6 +218,34 @@ class DocumentRetriever:
 
         return deduplicated[:top_k]
 
+    def hybrid_search_many(self, queries: List[str], top_k: int = None) -> List[Dict]:
+        """Поиск по нескольким формулировкам одного вопроса с слиянием выдач.
+
+        Исходный вопрос и его пересказы языком кодексов (см. rag/expand.py)
+        ищутся по отдельности, а выдачи сливаются взаимными рангами (RRF):
+        фрагмент, попавший в несколько выдач, поднимается выше, и масштаб
+        оценок разных запросов не имеет значения. Для одного запроса — это
+        обычный hybrid_search.
+        """
+        top_k = top_k or Config.TOP_K_RESULTS
+        queries = list(dict.fromkeys(q.strip() for q in queries if q and q.strip()))
+        if not queries:
+            return []
+        if len(queries) == 1:
+            return self.hybrid_search(queries[0], top_k)[:top_k]
+
+        best: Dict[int, Dict] = {}
+        fused: Dict[int, float] = {}
+        for q in queries:
+            for rank, r in enumerate(self.hybrid_search(q, top_k), 1):
+                cid = r['id']
+                fused[cid] = fused.get(cid, 0.0) + 1.0 / (60 + rank)
+                if cid not in best or r.get('final_score', 0) > best[cid].get('final_score', 0):
+                    best[cid] = r
+        # sorted стабилен: при равной сумме порядок — как фрагменты встретились впервые
+        order = sorted(best, key=lambda cid: -fused[cid])
+        return [best[cid] for cid in order[:top_k]]
+
     def get_document_context(self, chunk_id: int, context_size: int = 2) -> Dict:
         """Получение контекста вокруг найденного чанка (соседние чанки)"""
         try:

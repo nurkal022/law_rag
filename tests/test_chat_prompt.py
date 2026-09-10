@@ -126,6 +126,20 @@ def test_group_of_cites_collapses_into_one_mark():
     assert out == 'права [Источники 1, 4].'
 
 
+def test_identity_answer_names_dalel_and_no_one_else():
+    from rag.generator import _identity_answer
+    ru, kk, en = _identity_answer('кто ты?'), _identity_answer('сен кімсің'), _identity_answer('who are you')
+    assert 'Dalel' in ru and 'LawVision' not in ru
+    assert 'Dalel' in kk and 'Dalel' in en
+    assert _identity_answer('Как открыть ИП?') is None
+
+
+def test_prompt_tells_to_skip_irrelevant_fragments():
+    prompt = build_system_prompt('вопрос', context='x')
+    assert 'остальные молча пропускайте' in prompt
+    assert 'бессмысленный набор символов' in prompt
+
+
 def test_prompt_keeps_greetings_short_and_headers_exact():
     prompt = build_system_prompt('вопрос', context='x')
     assert 'без заголовков и списков' in prompt
