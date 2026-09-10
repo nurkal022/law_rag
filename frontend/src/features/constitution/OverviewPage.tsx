@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { Body, Caption, Display, Empty, H2, Label, Mono, Status, UIText } from '../../shared/ui'
+import { Body, Caption, Display, Empty } from '../../shared/ui'
 import { useCountUpInt } from '../../shared/motion'
-import { useLang, useT } from '../../i18n'
+import { useT } from '../../i18n'
 import { api } from '../../shared/api'
 import { ListSkeleton, LoadFailure, useLoader } from '../drafts/shared'
 import { Arcs } from './Arcs'
@@ -30,8 +30,6 @@ function Figure({ value, label, tone }: { value: number; label: string; tone?: '
 
 export function OverviewPage() {
   const t = useT(dict)
-  const { lang } = useLang()
-  const locale = lang === 'kz' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'ru-RU'
   const { data, error, loading, reload } = useLoader<Overview>(() => api.get<Overview>('/constitution/overview'), [])
   // Данные визуализаций — вторым запросом: семь тысяч уровней норм обзору-списку не нужны
   const viz = useLoader<Viz>(() => api.get<Viz>('/constitution/viz'), [])
@@ -88,24 +86,6 @@ export function OverviewPage() {
           {viz.data?.run && viz.data.findings.length ? <Sankey viz={viz.data} changes={data.changes} /> : null}
           <Changes changes={data.changes} />
 
-          <section className="cn-block cn-method">
-            <H2>{t('methodHead')}</H2>
-            <dl className="cn-method__grid">
-              <dt><Label>{t('methodRun')}</Label></dt>
-              <dd>
-                <Status kind={run.status === 'done' ? 'ok' : 'warn'}>{run.status === 'done' ? t('done') : t('running')}</Status>{' '}
-                <UIText tone="mute">
-                  {run.started_at ? new Date(run.started_at).toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' }) : ''}
-                  {run.finished_at ? ` — ${new Date(run.finished_at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}` : ''}
-                </UIText>
-              </dd>
-              <dt><Label>{t('methodModels')}</Label></dt>
-              <dd><Mono>{run.triage_model}</Mono> <UIText tone="mute">→</UIText> <Mono>{run.verify_model}</Mono></dd>
-              <dt><Label>{t('methodTokens')}</Label></dt>
-              <dd><UIText className="tabular">{run.tokens_used.toLocaleString('ru-RU')}</UIText></dd>
-            </dl>
-            <Caption tone="mute">{t('disclaimer')}</Caption>
-          </section>
         </>
       )}
     </div>
