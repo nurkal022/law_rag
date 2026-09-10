@@ -184,6 +184,8 @@ function fromHistory(items: HistoryItem[]): Conv[] {
 type Unit = { word: string } | { cite: string }
 
 const STEP_MS = 30
+/** Верхняя граница времени набора ответа любой длины. */
+const TYPE_MAX_MS = 7000
 
 function toUnits(segs: Seg[]): Unit[] {
   const out: Unit[] = []
@@ -262,9 +264,12 @@ function Turn({ turn, streaming, onDone }: TurnProps) {
       onDone(turn.id)
       return
     }
+    // Развёрнутый ответ — до тысячи слов; по слову за тик он печатался бы
+    // полминуты. Шаг растёт так, чтобы набор уложился примерно в TYPE_MAX_MS.
+    const perTick = Math.max(1, Math.ceil(units.length / (TYPE_MAX_MS / STEP_MS)))
     let i = 0
     const timer = window.setInterval(() => {
-      i += 1
+      i = Math.min(i + perTick, units.length)
       setShown(i)
       if (i >= units.length) {
         window.clearInterval(timer)

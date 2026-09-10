@@ -94,6 +94,44 @@ def _generator():
     return gen
 
 
+SOURCES = [
+    {'id': 1, 'article': '12', 'title': 'Конституция Республики Казахстан'},
+    {'id': 2, 'article': '17', 'title': 'Конституция Республики Казахстан'},
+    {'id': 3, 'article': '', 'title': 'УПК РК'},
+    {'id': 4, 'article': '18', 'title': 'Конституция Республики Казахстан'},
+]
+
+
+def test_in_range_cites_are_kept_in_canonical_form():
+    from rag.generator import repair_cites
+    assert repair_cites('Три года [Источник 1]. Также [Источник 2: Статья 17].', SOURCES) == \
+        'Три года [Источник 1]. Также [Источник 2].'
+
+
+def test_article_number_mistaken_for_source_number_is_mapped_back():
+    from rag.generator import repair_cites
+    # «[Источник 18]» — про статью 18, она в источнике 4
+    assert repair_cites('Достоинство неприкосновенно [Источник 18].', SOURCES) == \
+        'Достоинство неприкосновенно [Источник 4].'
+
+
+def test_nonexistent_cites_vanish_with_their_commas():
+    from rag.generator import repair_cites
+    assert repair_cites('гарантированы [Источник 16], [Источник 99] .', SOURCES) == 'гарантированы.'
+
+
+def test_group_of_cites_collapses_into_one_mark():
+    from rag.generator import repair_cites
+    out = repair_cites('права [Источник 1], [Источник 18] и [Источник 1].', SOURCES)
+    assert out == 'права [Источники 1, 4].'
+
+
+def test_prompt_keeps_greetings_short_and_headers_exact():
+    prompt = build_system_prompt('вопрос', context='x')
+    assert 'без заголовков и списков' in prompt
+    assert '«## Что говорит закон»' in prompt
+
+
 def test_context_labels_carry_the_article_not_the_file_offset():
     gen = ResponseGenerator.__new__(ResponseGenerator)
     ctx = gen._prepare_context([

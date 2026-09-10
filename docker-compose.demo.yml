@@ -45,7 +45,9 @@ services:
       # отвечал «вопрос не связан с правом» на «права человека». Генерация
       # документов остаётся на LLM_MODEL, пока не проверена на думающей модели.
       CHAT_LLM_MODEL: ${CHAT_LLM_MODEL:-gpt-5-mini}
-      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-low}
+      # minimal: на развёрнутом ответе в 5000 знаков раздумья дают +3–5 с при
+      # той же структуре и ссылках, а человек и так ждёт 10–15 с.
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-minimal}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
       EMBEDDING_BASE_URL: https://api.openai.com/v1
