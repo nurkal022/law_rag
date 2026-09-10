@@ -75,6 +75,25 @@ def test_prompt_asks_for_a_long_structured_markdown_answer():
     assert 'не длиннее 450 слов' in prompt
     assert 'Каждую норму называйте один раз' in prompt
     assert 'три-шесть шагов' in prompt
+
+
+def test_prompt_ends_with_a_checklist_the_model_reads_last():
+    """Инструкции в начале длинного промпта модель теряет: ответ разрастался до
+    девяти шагов с дописанным заголовком. Короткий список в самом конце —
+    последнее, что она видит перед генерацией."""
+    prompt = build_system_prompt('вопрос', context='x')
+    tail = prompt[prompt.index('ПЕРЕД ОТПРАВКОЙ ПРОВЕРЬТЕ'):]
+    assert 'не больше 450 слов' in tail
+    assert 'без добавленных слов' in tail
+    assert 'шагов не больше шести' in tail
+    assert 'только в разделе «Что говорит закон»' in tail
+    # чеклист стоит после контекста — модель читает его последним
+    assert prompt.index('КОНТЕКСТ') < prompt.index('ПЕРЕД ОТПРАВКОЙ')
+
+
+def test_cites_are_asked_only_in_the_law_section():
+    prompt = build_system_prompt('вопрос', context='x')
+    assert 'ставьте только в разделе «Что говорит закон»' in prompt
     assert '**Кратко:**' in prompt
     assert '## Что говорит закон' in prompt and '## Итог' in prompt
     assert 'таблицу' in prompt
