@@ -83,3 +83,11 @@ def test_reference_to_a_dropped_constitution_article():
 def test_hints_attach_the_treaty_change_to_a_norm_about_treaty_priority():
     norm = 'Международные договоры, ратифицированные Республикой Казахстан, имеют приоритет перед ее законами.'
     assert 'treaties_priority' in [c.id for c in CS.hinted(norm)]
+
+
+def test_long_enumeration_quote_is_cut_at_word_boundaries():
+    words = ' '.join(f'слово{i}' for i in range(60))
+    norm = f'Статья 1. Понятия: {words}, постановления Сената Парламента, {words}.'
+    q = mechanical_findings(norm, CS)[0].quote_norm
+    assert 'Сената Парламента' in q and q.startswith('…') and q.endswith('…')
+    assert not q.lstrip('…').startswith('лово')  # не с обрывка слова

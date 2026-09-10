@@ -77,7 +77,16 @@ def _sentence(text: str, start: int, end: int) -> str:
     right_candidates = [i for i in (text.find('. ', end), text.find('\n', end), text.find('; ', end)) if i >= 0]
     right = min(right_candidates) + 1 if right_candidates else len(text)
     sent = text[left:right].strip()
-    return sent if len(sent) <= 300 else text[max(start - 140, 0):end + 140].strip()
+    if len(sent) <= 300:
+        return sent
+    # Длинное перечисление: окно вокруг совпадения, обрезанное по границам слов
+    lo, hi = max(start - 140, 0), min(end + 140, len(text))
+    if lo > 0 and not text[lo - 1].isspace():
+        lo = text.find(' ', lo) + 1 or lo
+    if hi < len(text) and not text[hi].isspace():
+        hi = text.rfind(' ', end, hi)
+        hi = hi if hi > end else min(end + 140, len(text))
+    return ('…' if lo > left else '') + text[lo:hi].strip() + ('…' if hi < right else '')
 
 
 @lru_cache(maxsize=1)
