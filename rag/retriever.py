@@ -4,6 +4,12 @@ from database.models import DatabaseManager
 from config import Config
 from embeddings.client import EmbeddingClient
 
+def active_chunks():
+    """Фрагменты действующих актов: утративший силу документ в поиске не участвует."""
+    from database.models import Document, DocumentChunk, db
+    return db.session.query(DocumentChunk).join(Document).filter(Document.retired_at.is_(None))
+
+
 class DocumentRetriever:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
@@ -25,7 +31,7 @@ class DocumentRetriever:
 
             from database.models import DocumentChunk, Document, db
 
-            results = db.session.query(DocumentChunk).join(Document).filter(
+            results = active_chunks().filter(
                 DocumentChunk.embedding.isnot(None)
             ).order_by(
                 DocumentChunk.embedding.cosine_distance(query_embedding)
@@ -97,7 +103,7 @@ class DocumentRetriever:
                        ts_rank(to_tsvector('russian', c.content), q.tq) AS rank
                 FROM document_chunks c
                 JOIN documents d ON d.id = c.document_id, q
-                WHERE to_tsvector('russian', c.content) @@ q.tq
+                WHERE to_tsvector('russian', c.content) @@ q.tq AND d.retired_at IS NULL
                 ORDER BY rank DESC
                 LIMIT :limit
             """)

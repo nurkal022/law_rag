@@ -313,6 +313,32 @@ def load_document(doc_filename: str, meta: dict, replace: bool = False, embed: b
         return len(chunks)
 
 
+def sync_meta() -> int:
+    """Названия и даты отставки из DOC_META — в уже загруженные документы.
+
+    Перезагружать документ ради нового названия незачем: чанки и векторы те же.
+    Возвращает число изменённых документов.
+    """
+    from datetime import datetime
+    from database.models import Document, db
+
+    application = globals().get('app') or __import__('app').app
+    changed = 0
+    with application.app_context():
+        for filename, meta in DOC_META.items():
+            doc = Document.query.filter_by(filename=filename).first()
+            if not doc:
+                continue
+            retired = datetime.fromisoformat(meta['retired']) if meta.get('retired') else None
+            if doc.title != meta['title'] or doc.retired_at != retired:
+                doc.title = meta['title']
+                doc.retired_at = retired
+                changed += 1
+                print(f'   ✎ {filename}: «{meta["title"]}»' + (f', утратил силу {meta["retired"]}' if retired else ''))
+        db.session.commit()
+    return changed
+
+
 def main():
     import argparse
 
@@ -320,7 +346,12 @@ def main():
     ap.add_argument('--replace', action='store_true', help='заменить уже загруженные документы')
     ap.add_argument('--embed', action='store_true', help='сразу посчитать эмбеддинги чанков')
     ap.add_argument('--only', nargs='*', default=None, help='имена PDF, которые загрузить (по умолчанию все)')
+    ap.add_argument('--sync-meta', action='store_true', help='обновить названия и отставку уже загруженных документов и выйти')
     args = ap.parse_args()
+
+    if args.sync_meta:
+        print(f'✅ Обновлено документов: {sync_meta()}')
+        return
 
     pdf_files = [f for f in os.listdir(DOCS_DIR) if f.endswith(('.pdf', '.txt'))]
     if args.only:

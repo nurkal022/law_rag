@@ -22,6 +22,9 @@ class Document(db.Model):
     file_size = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Дата, с которой документ утратил силу. Такой документ остаётся в базе
+    # (нужен для сравнения редакций), но не попадает в поиск и ответы консультанта.
+    retired_at = db.Column(db.DateTime, nullable=True)
     
     # Связь с чанками
     chunks = db.relationship('DocumentChunk', backref='document', lazy='dynamic', cascade='all, delete-orphan')
@@ -35,6 +38,7 @@ class Document(db.Model):
             'file_size': self.file_size,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'retired_at': self.retired_at.isoformat() if self.retired_at else None,
             'chunks_count': self.chunks.count()
         }
 
@@ -689,6 +693,20 @@ class ApiKey(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
         }
+
+
+def apply_light_migrations():
+    """Колонки, добавленные после первого create_all.
+
+    create_all создаёт недостающие таблицы, но не трогает существующие, поэтому
+    новая колонка в старой таблице появляется только так. Проверяем по
+    информации о схеме, а не ловим исключение: у SQLite и PostgreSQL они разные.
+    """
+    from sqlalchemy import inspect, text
+    columns = {c['name'] for c in inspect(db.engine).get_columns('documents')}
+    if 'retired_at' not in columns:
+        db.session.execute(text('ALTER TABLE documents ADD COLUMN retired_at TIMESTAMP'))
+        db.session.commit()
 
 
 class DatabaseManager:

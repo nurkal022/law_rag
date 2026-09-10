@@ -437,6 +437,8 @@ def add_language_header(response):
 # Создаём таблицу users если её ещё нет (db.create_all безопасен — не трогает существующие)
 with app.app_context():
     db.create_all()
+    from database.models import apply_light_migrations
+    apply_light_migrations()
 
 # Expose shared objects to blueprint via current_app
 app.db_manager = db_manager
