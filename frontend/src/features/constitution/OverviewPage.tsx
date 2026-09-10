@@ -54,7 +54,6 @@ export function OverviewPage() {
           <Body tone="mute" className="cn-lead">{t('lead')}</Body>
         </div>
       </div>
-      <Caption tone="mute" className="cn-disclaimer">{t('disclaimer')}</Caption>
 
       {loading ? (
         <ListSkeleton rows={8} />

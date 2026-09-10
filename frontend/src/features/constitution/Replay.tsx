@@ -5,7 +5,7 @@ import { useLang, useT, withLang } from '../../i18n'
 import { citeCode } from '../legal/cite'
 import { dict } from './dict'
 import type { Viz, VizAct } from './types'
-import { fmtDuration, levelToken, reducedMotion, token } from './viz'
+import { levelToken, reducedMotion, token } from './viz'
 
 /**
  * Обход в сжатом времени: весь корпус как поле точек, по одной на норму, блоками
@@ -87,7 +87,6 @@ export function Replay({ viz }: { viz: Viz }) {
   const normsRef = useRef<HTMLSpanElement | null>(null)
   const foundRef = useRef<HTMLSpanElement | null>(null)
   const tokensRef = useRef<HTMLSpanElement | null>(null)
-  const elapsedRef = useRef<HTMLSpanElement | null>(null)
   const rangeRef = useRef<HTMLInputElement | null>(null)
   const progress = useRef(reducedMotion() ? 1 : 0)
   const [width, setWidth] = useState(960)
@@ -211,7 +210,6 @@ export function Replay({ viz }: { viz: Viz }) {
       if (normsRef.current) normsRef.current.textContent = norms.toLocaleString('ru-RU')
       if (foundRef.current) foundRef.current.textContent = found.toLocaleString('ru-RU')
       if (tokensRef.current) tokensRef.current.textContent = Math.round(tokens).toLocaleString('ru-RU')
-      if (elapsedRef.current) elapsedRef.current.textContent = fmtDuration(p * realTotal, t('unitMinShort'), t('unitSecShort'))
       if (rangeRef.current && document.activeElement !== rangeRef.current) rangeRef.current.value = String(Math.round(p * 1000))
     }
 
@@ -253,7 +251,6 @@ export function Replay({ viz }: { viz: Viz }) {
         <div className="replay__fig"><span className="replay__num" ref={normsRef}>0</span><Caption tone="mute">{t('figNorms')}</Caption></div>
         <div className="replay__fig"><span className="replay__num replay__num--warn" ref={foundRef}>0</span><Caption tone="mute">{t('replayFindings')}</Caption></div>
         <div className="replay__fig"><span className="replay__num" ref={tokensRef}>0</span><Caption tone="mute">{t('walkTokens')}</Caption></div>
-        <div className="replay__fig"><span className="replay__num" ref={elapsedRef}>0</span><Caption tone="mute">{t('elapsed')}</Caption></div>
       </div>
       <div className="replay__field" ref={wrapRef}>
         <canvas
