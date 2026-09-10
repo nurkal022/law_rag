@@ -72,8 +72,9 @@ def test_prompt_asks_for_a_long_structured_markdown_answer():
     """Коллеги сравнивают с LawVision: там медиана ответа 4750 знаков, заголовки,
     списки и таблицы. Чат теперь рисует markdown, и промпт просит той же формы."""
     prompt = build_system_prompt('вопрос', context='x')
-    assert '1500–3500 знаков' in prompt
+    assert 'не длиннее 450 слов' in prompt
     assert 'Каждую норму называйте один раз' in prompt
+    assert 'три-шесть шагов' in prompt
     assert '**Кратко:**' in prompt
     assert '## Что говорит закон' in prompt and '## Итог' in prompt
     assert 'таблицу' in prompt
