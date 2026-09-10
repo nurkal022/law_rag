@@ -154,6 +154,22 @@ def test_greetings_and_thanks_get_an_instant_reply_in_their_language():
     assert _small_talk_answer('thank you').startswith('You are welcome')
 
 
+def test_section_titles_follow_the_answer_language():
+    kk = build_system_prompt('Талап қою мерзімі қандай?', context='x')
+    en = build_system_prompt('What is the limitation period?', context='x')
+    assert '## Заң не дейді' in kk and '**Қысқаша:**' in kk and '## Что говорит закон' not in kk
+    assert '## What the law says' in en and '**In short:**' in en
+
+
+def test_gibberish_gets_a_request_to_rephrase_but_abbreviations_do_not():
+    from rag.generator import _gibberish_answer
+    assert _gibberish_answer('dfsfsd').startswith('I could not read')
+    assert _gibberish_answer('фвпрлд').startswith('Не разобрал')
+    assert _gibberish_answer('ыфвыфв') is None  # есть гласная — на всякий случай отдаём модели
+    assert _gibberish_answer('ГК') is None
+    assert _gibberish_answer('Как открыть ИП?') is None
+
+
 def test_a_greeting_with_a_question_goes_to_the_model():
     from rag.generator import _small_talk_answer
     assert _small_talk_answer('Привет, как открыть ИП?') is None
