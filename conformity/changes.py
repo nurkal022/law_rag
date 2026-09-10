@@ -40,6 +40,7 @@ class Change:
     present_terms: List[str] = field(default_factory=list)
     hint_terms: List[re.Pattern] = field(default_factory=list)
     level_hint: int = 1
+    short: str = ''
 
 
 @dataclass
@@ -105,6 +106,7 @@ def load_changes(path: str = _PATH) -> ChangeSet:
             present_terms=list(row.get('present_terms') or []),
             hint_terms=[re.compile(p, re.IGNORECASE) for p in row.get('hint_terms') or []],
             level_hint=int(row.get('level_hint', 1)),
+            short=str(row.get('short') or '').strip(),
         ))
     article_map = {int(k): [int(x) for x in (v or [])] for k, v in (raw.get('article_map') or {}).items()}
     return ChangeSet(changes, article_map, list(raw.get('present_institutions') or []))

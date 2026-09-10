@@ -1,6 +1,7 @@
 # Реестр изменений между Конституцией 1995 года (редакция на 01.01.2023) и Конституцией 2026 года.
 # Сверено по текстам 10.09.2026. Поля:
 #   kind         institution | new | removed | procedure | reference
+#   short        короткое название для диаграмм
 #   old/new      статьи и цитата в каждой из Конституций
 #   absent_terms регулярные выражения (Python re, регистр учитывается): институты, которых нет в 2026;
 #                загрузка падает, если термин найден в статьях 1–93 текста 2026
@@ -32,6 +33,7 @@ present_institutions:
 
 changes:
   - id: kurultai
+    short: Курултай вместо Парламента
     kind: institution
     title: Двухпалатный Парламент (Сенат и Мажилис) заменён однопалатным Курултаем
     summary: >
@@ -47,6 +49,7 @@ changes:
     level_hint: 2
 
   - id: constitutional_council
+    short: Нет Конституционного Совета
     kind: institution
     title: Конституционного Совета нет — конституционный контроль осуществляет Конституционный Суд
     summary: >
@@ -61,6 +64,7 @@ changes:
     level_hint: 2
 
   - id: peoples_council
+    short: Народный Совет вместо Ассамблеи
     kind: institution
     title: Ассамблея народа Казахстана исчезла из Конституции, появился Қазақстан Халық Кеңесі
     summary: >
@@ -75,6 +79,7 @@ changes:
     level_hint: 2
 
   - id: vice_president
+    short: Вице-Президент
     kind: new
     title: Введена должность Вице-Президента
     summary: >
@@ -89,6 +94,7 @@ changes:
     level_hint: 1
 
   - id: treaties_priority
+    short: Приоритет договоров снят
     kind: removed
     title: Исключён приоритет ратифицированных международных договоров перед законами
     summary: >
@@ -105,6 +111,7 @@ changes:
     level_hint: 3
 
   - id: detention_terms
+    short: Срок задержания — законом
     kind: procedure
     title: Предельный срок задержания без суда установлен законом, а не Конституцией
     summary: >
@@ -120,6 +127,7 @@ changes:
     level_hint: 1
 
   - id: amendments_referendum
+    short: Поправки только референдумом
     kind: procedure
     title: Изменения в Конституцию вносятся только всенародным референдумом
     summary: >
@@ -135,6 +143,7 @@ changes:
     level_hint: 2
 
   - id: advocacy
+    short: Статус адвокатуры
     kind: new
     title: Адвокатура получила конституционный статус
     summary: >
@@ -150,6 +159,7 @@ changes:
     level_hint: 1
 
   - id: rights_limits_list
+    short: Перечень неограничиваемых прав
     kind: reference
     title: Перечень прав, не подлежащих ограничению, — п. 3 ст. 41 (был п. 3 ст. 39) с новыми номерами статей
     summary: >

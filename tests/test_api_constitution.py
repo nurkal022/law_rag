@@ -145,3 +145,17 @@ def test_constitution_article_lists_norms_touching_it(client):
 def test_changes_endpoint(client):
     body = client.get('/api/constitution/changes').get_json()
     assert any(c['id'] == 'kurultai' and c['norms'] == 1 for c in body['changes'])
+
+
+def test_viz_endpoint_gives_norm_levels_in_act_order_and_compact_findings(client, app):
+    body = client.get('/api/constitution/viz').get_json()
+    acts = body['acts']
+    law = next(a for a in acts if a['document_id'] == app.config['LAW_ID'])
+    assert law['code'] == 'ЗРК О ПА' and law['tier'] == 5
+    assert law['levels'] == [3, 2, 0]                      # по порядку статей акта
+    assert law['started_at'] and law['finished_at'] and law['tokens'] == 300
+    f = body['findings']
+    assert {'d': app.config['LAW_ID'], 'a': [5], 'c': ['treaties_priority'], 'l': 3, 'n': '6'} in f
+    assert all(x['l'] >= 1 for x in f)
+    assert body['run']['status'] == 'done'
+    assert body['articles'][0]['no'] == 5 and body['articles'][0]['section'] == 'I'

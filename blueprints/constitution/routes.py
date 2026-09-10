@@ -69,7 +69,7 @@ def overview():
         return jsonify({'success': True, 'run': None, 'walk': [], 'tiers': [
             {'tier': t, 'title': {lang: registry.tier_title(t, lang) for lang in LANGS}, 'acts': []}
             for t in sorted(registry.tiers)], 'constitution': None, 'changes': [
-            {'id': c.id, 'kind': c.kind, 'title': c.title, 'summary': c.summary,
+            {'id': c.id, 'kind': c.kind, 'title': c.title, 'short': c.short, 'summary': c.summary,
              'old_articles': c.old_articles, 'new_articles': c.new_articles,
              'old_quote': c.old_quote, 'new_quote': c.new_quote, 'norms': 0} for c in cs.changes],
             'current': None})
@@ -120,7 +120,7 @@ def overview():
         'walk': [a.to_dict() for a in acts],
         'tiers': tiers,
         'constitution': {'document_id': run.constitution_document_id, 'sections': sections},
-        'changes': [{'id': c.id, 'kind': c.kind, 'title': c.title, 'summary': c.summary,
+        'changes': [{'id': c.id, 'kind': c.kind, 'title': c.title, 'short': c.short, 'summary': c.summary,
                      'old_articles': c.old_articles, 'new_articles': c.new_articles,
                      'old_quote': c.old_quote, 'new_quote': c.new_quote, 'norms': per_change.get(c.id, 0)}
                     for c in cs.changes],
@@ -180,7 +180,7 @@ def finding(finding_id: int):
     payload['act'] = _act_payload(doc, load_registry().act(doc.filename)) if doc else None
     payload['articles'] = [{'no': a.no, 'section': {'no': a.section_no, 'title': a.section_title}, 'text': a.text}
                            for a in (index.article(n) for n in f.constitution_articles_json or []) if a]
-    payload['changes'] = [{'id': c.id, 'kind': c.kind, 'title': c.title, 'summary': c.summary,
+    payload['changes'] = [{'id': c.id, 'kind': c.kind, 'title': c.title, 'short': c.short, 'summary': c.summary,
                            'old_articles': c.old_articles, 'new_articles': c.new_articles,
                            'old_quote': c.old_quote, 'new_quote': c.new_quote}
                           for c in (cs.by_id(cid) for cid in f.change_ids_json or []) if c]
@@ -207,7 +207,7 @@ def article(no: int):
         norms.append({**_finding_payload(f), 'act': _act_payload(d, registry.act(d.filename)) if d else None})
     return jsonify({'success': True, 'article': {
         'no': a.no, 'section': {'no': a.section_no, 'title': a.section_title}, 'text': a.text,
-        'was': [{'id': c.id, 'kind': c.kind, 'title': c.title, 'summary': c.summary,
+        'was': [{'id': c.id, 'kind': c.kind, 'title': c.title, 'short': c.short, 'summary': c.summary,
                  'old_articles': c.old_articles, 'old_quote': c.old_quote, 'new_quote': c.new_quote}
                 for c in cs.changes if no in c.new_articles],
         'norms': norms,
@@ -224,6 +224,42 @@ def changes():
             for cid in f.change_ids_json or []:
                 per_change[cid] += 1
     return jsonify({'success': True, 'changes': [
-        {'id': c.id, 'kind': c.kind, 'title': c.title, 'summary': c.summary, 'old_articles': c.old_articles,
+        {'id': c.id, 'kind': c.kind, 'title': c.title, 'short': c.short, 'summary': c.summary, 'old_articles': c.old_articles,
          'new_articles': c.new_articles, 'old_quote': c.old_quote, 'new_quote': c.new_quote,
          'norms': per_change.get(c.id, 0)} for c in cs.changes]})
+
+
+@constitution_bp.route('/viz')
+def viz():
+    """Данные для визуализаций обзора одним ответом.
+
+    Реплею обхода нужен уровень каждой нормы в порядке акта (7 тысяч чисел),
+    дугам и потокам — связи «находка → статьи Конституции → изменения».
+    Отдельные ручки по актам дали бы двадцать запросов на одну страницу.
+    """
+    run = _latest_run()
+    if run is None:
+        return jsonify({'success': True, 'run': None, 'acts': [], 'findings': [], 'articles': []})
+    acts = ConformityRunAct.query.filter_by(run_id=run.id).order_by(ConformityRunAct.position).all()
+    rows = ConformityFinding.query.filter_by(run_id=run.id) \
+        .join(DocumentChunk, DocumentChunk.id == ConformityFinding.chunk_id) \
+        .with_entities(ConformityFinding.document_id, ConformityFinding.level, ConformityFinding.article_no,
+                       ConformityFinding.constitution_articles_json, ConformityFinding.change_ids_json) \
+        .order_by(ConformityFinding.document_id, DocumentChunk.chunk_index).all()
+    levels: Dict[int, list] = defaultdict(list)
+    findings = []
+    for doc_id, level, article_no, arts, changes in rows:
+        levels[doc_id].append(-1 if level is None else level)
+        if (level or 0) >= 1:
+            findings.append({'d': doc_id, 'a': list(arts or []), 'c': list(changes or []), 'l': level, 'n': article_no})
+    index = ConstitutionIndex.from_document(run.constitution_document_id)
+    return jsonify({
+        'success': True,
+        'run': run.to_dict(),
+        'acts': [{'document_id': a.document_id, 'code': a.code, 'tier': a.tier,
+                  'title': a.document.title if a.document else '', 'levels': levels.get(a.document_id, []),
+                  'tokens': a.tokens, 'started_at': a.started_at.isoformat() if a.started_at else None,
+                  'finished_at': a.finished_at.isoformat() if a.finished_at else None} for a in acts],
+        'findings': findings,
+        'articles': [{'no': a.no, 'section': a.section_no, 'title': a.section_title} for a in index.articles],
+    })
