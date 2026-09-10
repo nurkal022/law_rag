@@ -361,6 +361,10 @@ from blueprints.workspace import workspace_bp
 from workspace import indexing as _workspace_indexing  # регистрирует обработчик очереди
 app.register_blueprint(workspace_bp)
 
+# ─── Блок «Конституция»: результаты прогона соответствия, только чтение ────
+from blueprints.constitution import constitution_bp
+app.register_blueprint(constitution_bp)
+
 if os.getenv('DOCENGINE_INLINE_WORKER', '1') == '1' and not os.getenv('WERKZEUG_RUN_MAIN_DONE'):
     # В разработке воркер живёт в потоке того же процесса. На производстве
     # его запускают отдельно (scripts/worker.py), иначе он делит с веб-сервером
