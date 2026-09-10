@@ -164,8 +164,10 @@ def test_section_titles_follow_the_answer_language():
 
 def test_gibberish_gets_a_request_to_rephrase_but_abbreviations_do_not():
     from rag.generator import _gibberish_answer
-    assert _gibberish_answer('dfsfsd').startswith('I could not read')
+    # «dfsfsd» — русская раскладка, а не английский: отвечаем по-русски
+    assert _gibberish_answer('dfsfsd').startswith('Не разобрал')
     assert _gibberish_answer('фвпрлд').startswith('Не разобрал')
+    assert _gibberish_answer('қққжжж').startswith('Сұрақты')
     assert _gibberish_answer('ыфвыфв') is None  # есть гласная — на всякий случай отдаём модели
     assert _gibberish_answer('ГК') is None
     assert _gibberish_answer('Как открыть ИП?') is None

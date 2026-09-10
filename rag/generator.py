@@ -90,11 +90,13 @@ def _gibberish_answer(query: str) -> str | None:
     words = re.findall(r'[a-zа-яёәғқңөұүһі]+', (query or '').lower())
     if not words or not all(len(w) >= 4 and not any(c in _VOWELS for c in w) for w in words):
         return None
+    # Язык по буквам тут не определить: «dfsfsd» — это русская раскладка, а не
+    # английский. Отвечаем по-русски, кроме случая с казахскими буквами.
+    lang = 'kk' if any(c in _KK_LETTERS for c in query.lower()) else 'ru'
     return {
         'ru': 'Не разобрал вопрос. Напишите его словами: что произошло и что хотите узнать.',
         'kk': 'Сұрақты түсінбедім. Оны сөзбен жазыңыз: не болды және не білгіңіз келеді.',
-        'en': 'I could not read that. Please write your question in words: what happened and what you want to know.',
-    }[detect_language(query)]
+    }[lang]
 
 
 def build_system_prompt(query: str, context: Optional[str], lang: Optional[str] = None) -> str:
