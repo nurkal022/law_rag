@@ -39,22 +39,38 @@
 .lvbar { display: flex; width: 100%; height: var(--s-2); background: var(--rule-soft); overflow: hidden; }
 .lvbar__seg { height: 100%; background: var(--lv); }
 
-/* ---------- Ход обхода ---------- */
-.walk { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--rule); }
-.walk__item { position: relative; padding: 0 0 var(--s-6) var(--s-6); }
-.walk__item:last-child { padding-bottom: 0; }
-.walk__dot {
-  position: absolute; left: -7px; top: 5px;
-  width: 12px; height: 12px; border-radius: 50%;
-  background: var(--paper); border: 2px solid var(--ink-2);
+/* ---------- Ход обхода: лента времени ---------- */
+.tl__hud { display: flex; flex-wrap: wrap; gap: var(--s-6); padding: var(--s-2) 0 var(--s-3); }
+.tl__fig { display: flex; flex-direction: column; gap: 2px; min-width: 110px; }
+.tl__fig--clock { margin-left: auto; text-align: right; }
+.tl__num {
+  font-family: var(--font-serif);
+  font-size: var(--t-h1-size);
+  line-height: var(--t-h1-lh);
+  font-weight: var(--t-h1-weight);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
-.walk__item--done .walk__dot { background: var(--ink-2); }
-.walk__item--wait .walk__dot { border-color: var(--rule); }
-.walk__body { display: flex; flex-direction: column; gap: var(--s-2); }
-.walk__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-3); }
-.walk__title { color: var(--ink); }
-.walk__meta { display: flex; flex-wrap: wrap; gap: var(--s-4); }
-.walk__bar { max-width: 420px; }
+.tl__num--warn { color: var(--warn); }
+.tl { width: 100%; height: auto; display: block; overflow: visible; }
+.tl__tier-line { stroke: var(--rule); stroke-width: 1; }
+.tl__tier-label { font-family: var(--font-mono); font-size: var(--t-label-size); letter-spacing: var(--track-label); fill: var(--mute); }
+.tl__seg { cursor: pointer; }
+.tl__base { fill: var(--surface); stroke: var(--rule); stroke-width: 0.6; transition: fill var(--motion-state), stroke var(--motion-state); }
+.tl__seg--on .tl__base { fill: var(--rule-soft); }
+.tl__seg--active .tl__base { fill: var(--ink-wash); stroke: var(--ink); }
+.tl__layer { fill: var(--lv); opacity: 0; transition: opacity var(--motion-enter); }
+.tl__seg--on .tl__layer { opacity: 0.95; }
+.tl__code { font-family: var(--font-mono); font-size: var(--t-label-size); fill: var(--mute); pointer-events: none; }
+.tl__seg--on .tl__code { fill: var(--ink-2); }
+.tl__seg--active .tl__code { fill: var(--seal); }
+.tl__axis { stroke: var(--rule); stroke-width: 1; }
+.tl__tick { font-family: var(--font-mono); font-size: var(--t-label-size); fill: var(--mute); }
+.tl__cursor-line { stroke: var(--seal); stroke-width: 1.2; }
+.tl__cursor-dot { fill: var(--seal); }
+.tl__card { margin-top: var(--s-3); padding: var(--s-3) var(--s-4); border-left: 2px solid var(--seal); display: flex; flex-direction: column; gap: var(--s-2); min-height: 62px; }
+.tl__card-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-4); }
+.tl__card-title { color: var(--ink); }
 
 /* ---------- Пирамида юридической силы ---------- */
 .pyr { list-style: none; margin: 0; padding: 0; }

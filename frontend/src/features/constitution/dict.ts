@@ -27,10 +27,11 @@ export const dict: Dict = {
 
   walkHead: { ru: 'Ход обхода', kz: 'Қарау барысы', en: 'The walk' },
   walkLead: {
-    ru: 'Сначала словарь институтов, которых нет в Конституции 2026, и ссылок на прежнюю нумерацию; затем модель на каждой норме с ближайшими статьями Конституции в контексте; для найденного — второй проверочный проход другой моделью.',
-    kz: 'Алдымен 2026 жылғы Конституцияда жоқ институттар мен бұрынғы нөмірлеуге сілтемелер сөздігі; сосын әр нормада Конституцияның жақын баптары контекстінде модель; табылғанға — басқа модельмен екінші тексеру.',
-    en: 'First a dictionary of bodies absent from the 2026 Constitution and references to old numbering; then a model on every provision with the nearest Constitution articles in context; a second verification pass for what it found.',
+    ru: 'Лента времени прогона: ширина полосы — сколько агент провёл на акте, слои внутри — доля норм с замечаниями по уровням. Маркер повторяет обход; наведите на полосу, чтобы остановить его на акте, нажмите — чтобы открыть акт.',
+    kz: 'Жүргізудің уақыт лентасы: жолақ ені — агенттің актіде өткізген уақыты, ішіндегі қабаттар — деңгейлер бойынша ескертуі бар нормалар үлесі. Маркер қарауды қайталайды; актіде тоқтату үшін жолаққа меңзеңіз, ашу үшін басыңыз.',
+    en: 'Timeline of the run: bar width is how long the agent spent on the act, the layers inside are the share of flagged provisions by level. The marker replays the walk; hover a bar to hold it on an act, click to open the act.',
   },
+  walkClock: { ru: 'Время прогона', kz: 'Жүргізу уақыты', en: 'Run clock' },
   walkNow: { ru: 'сейчас разбирает', kz: 'қазір қарап жатыр', en: 'now analysing' },
   walkNorms: { ru: 'норм', kz: 'норма', en: 'provisions' },
   walkTokens: { ru: 'токенов', kz: 'токен', en: 'tokens' },

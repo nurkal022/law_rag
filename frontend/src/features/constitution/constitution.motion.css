@@ -8,7 +8,9 @@
 .bc__bar { transform-origin: bottom; animation: cn-grow var(--motion-state) both; animation-delay: calc(min(var(--i, 0), 60) * (var(--stagger) / 3)); }
 
 @keyframes cn-pulse { 0%, 100% { box-shadow: none; opacity: 1; } 50% { opacity: 0.35; } }
-.walk__dot--pulse { border-color: var(--seal); background: var(--seal); animation: cn-pulse 1.6s var(--ease) infinite; }
+.tl__cursor-dot--pulse { animation: cn-pulse 1.6s var(--ease) infinite; }
+@keyframes cn-card { from { opacity: 0; transform: translateY(var(--enter-shift)); } to { opacity: 1; transform: none; } }
+.tl__card { animation: cn-card var(--motion-state) both; }
 
 .lvbar__seg { transition: width var(--dur-3) var(--ease-out); }
 .cmap__cell { animation: tura-enter var(--motion-enter) both; animation-delay: calc(min(var(--i, 0), 12) * (var(--stagger) / 2)); }

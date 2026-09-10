@@ -1,27 +1,39 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Body, Caption, Cite, H2, UIText } from '../../shared/ui'
+import { Body, Caption, H2, Label, UIText } from '../../shared/ui'
 import { useLang, useT, withLang } from '../../i18n'
 import { citeCode } from '../legal/cite'
-import { LevelBar } from './Bars'
 import { dict } from './dict'
 import { apiLang, flagged } from './levels'
 import type { Overview, WalkAct } from './types'
+import { reducedMotion } from './viz'
 
 /**
- * Как агент шёл по корпусу: линия времени по актам в порядке обхода.
- * Это демонстрация работы, поэтому у каждого акта видны время, объём и цена.
+ * Ход обхода как лента времени. Ширина полосы акта — сколько времени агент на нём
+ * провёл, высота заливки внутри — доля норм с замечаниями по уровням. Сверху —
+ * ярусы иерархии, по которым шёл обход; снизу — шкала часов прогона. По ленте
+ * едет маркер агента: акт под ним раскрывается в карточку с деталями.
  */
 
-function hhmm(iso: string | null, locale: string) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+const W = 1000
+const LANE_Y = 64
+const LANE_H = 88
+const SCALE_Y = LANE_Y + LANE_H + 22
+const H = SCALE_Y + 26
+const GAP = 3
+const SWEEP = 14_000
+
+interface Seg {
+  act: WalkAct
+  x: number
+  w: number
+  t0: number
+  t1: number
 }
 
-function duration(a: WalkAct, min: string, sec: string): string {
-  if (!a.started_at || !a.finished_at) return ''
-  const s = Math.max(0, Math.round((Date.parse(a.finished_at) - Date.parse(a.started_at)) / 1000))
-  return s >= 60 ? `${Math.floor(s / 60)} ${min} ${s % 60} ${sec}` : `${s} ${sec}`
+function ms(iso: string | null): number {
+  return iso ? Date.parse(iso) : NaN
 }
 
 export function Walk({ data }: { data: Overview }) {
@@ -30,45 +42,188 @@ export function Walk({ data }: { data: Overview }) {
   const navigate = useNavigate()
   const locale = lang === 'kz' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'ru-RU'
   const al = apiLang(lang)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const [p, setP] = useState(reducedMotion() ? 1 : 0)
+  const [pin, setPin] = useState<number | null>(null)
+  const [armed, setArmed] = useState(reducedMotion())
+
+  const model = useMemo(() => {
+    const acts = data.walk.filter((a) => a.started_at)
+    if (!acts.length) return null
+    const start = Math.min(...acts.map((a) => ms(a.started_at)))
+    const end = Math.max(...acts.map((a) => (a.finished_at ? ms(a.finished_at) : Date.now())))
+    const total = Math.max(1, end - start)
+    const segs: Seg[] = acts.map((a) => {
+      const t0 = ms(a.started_at)
+      const t1 = a.finished_at ? ms(a.finished_at) : Date.now()
+      const x = (W * (t0 - start)) / total
+      const w = Math.max(6, (W * (t1 - t0)) / total - GAP)
+      return { act: a, x, w, t0, t1 }
+    })
+    // Ярусы: непрерывные отрезки актов одного уровня
+    const tiers: { tier: number; x0: number; x1: number }[] = []
+    for (const s of segs) {
+      const last = tiers[tiers.length - 1]
+      if (last && last.tier === s.act.tier) last.x1 = s.x + s.w
+      else tiers.push({ tier: s.act.tier, x0: s.x, x1: s.x + s.w })
+    }
+    // Шкала: каждые 5 минут
+    const ticks: { x: number; label: string }[] = []
+    const step = total > 90 * 60_000 ? 15 : total > 30 * 60_000 ? 10 : 5
+    for (let m = 0; m * 60_000 <= total; m += step) ticks.push({ x: (W * m * 60_000) / total, label: `${m}` })
+    return { segs, tiers, ticks, start, end, total }
+  }, [data.walk])
+
+  // Маркер едет по ленте, когда блок доехал до экрана
+  useEffect(() => {
+    if (armed) return
+    const el = wrapRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setArmed(true)
+      return
+    }
+    const io = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting)) {
+        setArmed(true)
+        io.disconnect()
+      }
+    }, { threshold: 0.4 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [armed])
+
+  useEffect(() => {
+    if (!armed || p >= 1 || reducedMotion()) return
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - t0) / SWEEP)
+      setP(1 - Math.pow(1 - k, 2))
+      if (k < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [armed])
+
+  if (!model) return null
+
+  const cursorX = W * p
+  const under = pin ?? model.segs.findIndex((s) => cursorX >= s.x && cursorX <= s.x + s.w + GAP)
+  const active = under >= 0 ? model.segs[under] : model.segs[model.segs.length - 1]
+  // Накопленные счётчики до маркера
+  let norms = 0
+  let found = 0
+  let tokens = 0
+  for (const s of model.segs) {
+    const k = cursorX >= s.x + s.w ? 1 : cursorX <= s.x ? 0 : (cursorX - s.x) / s.w
+    norms += Math.round(s.act.norms_done * k)
+    found += Math.round(flagged(s.act.counts) * k)
+    tokens += Math.round(s.act.tokens * k)
+  }
   const tierTitle = (tier: number) => data.tiers.find((x) => x.tier === tier)?.title[al] ?? ''
+  const hhmm = (v: number) => new Date(v).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+  const took = (s: Seg) => {
+    const sec = Math.round((s.t1 - s.t0) / 1000)
+    return sec >= 60 ? `${Math.floor(sec / 60)} ${t('unitMinShort')} ${String(sec % 60).padStart(2, '0')} ${t('unitSecShort')}` : `${sec} ${t('unitSecShort')}`
+  }
+  const live = data.run?.status === 'running'
 
   return (
-    <section className="cn-block">
+    <section className="cn-block" ref={wrapRef}>
       <div className="cn-block__head">
         <H2>{t('walkHead')}</H2>
         <Body tone="mute" className="cn-block__lead">{t('walkLead')}</Body>
       </div>
-      <ol className="walk">
-        {data.walk.map((a, i) => {
-          const state = a.finished_at ? 'done' : a.started_at ? 'live' : 'wait'
-          const isCurrent = data.current?.document_id === a.document_id && data.run?.status === 'running'
-          const took = duration(a, t('unitMin'), t('unitSec'))
+
+      <div className="tl__hud">
+        <div className="tl__fig"><span className="tl__num">{norms.toLocaleString('ru-RU')}</span><Caption tone="mute">{t('figNorms')}</Caption></div>
+        <div className="tl__fig"><span className="tl__num tl__num--warn">{found.toLocaleString('ru-RU')}</span><Caption tone="mute">{t('replayFindings')}</Caption></div>
+        <div className="tl__fig"><span className="tl__num">{tokens.toLocaleString('ru-RU')}</span><Caption tone="mute">{t('walkTokens')}</Caption></div>
+        <div className="tl__fig tl__fig--clock"><span className="tl__num">{hhmm(model.start + model.total * p)}</span><Caption tone="mute">{t('walkClock')}</Caption></div>
+      </div>
+
+      <svg className="tl" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('walkHead')}
+           onMouseLeave={() => setPin(null)}>
+        {/* ярусы */}
+        {model.tiers.map((tr, i) => {
+          const wide = tr.x1 - tr.x0 >= 150
+          const atEnd = tr.x0 > W - 170
           return (
-            <li key={a.document_id} className={`walk__item walk__item--${state} enter-item`} style={{ '--i': i } as CSSProperties}>
-              <span className={`walk__dot ${isCurrent ? 'walk__dot--pulse' : ''}`} aria-hidden="true" />
-              <div className="walk__body">
-                <div className="walk__row">
-                  <Cite code={citeCode(a.code, lang)} onClick={() => navigate(withLang(`/constitution/acts/${a.document_id}`, lang))} />
-                  <UIText className="walk__title">{a.title}</UIText>
-                  <Caption tone="mute">{tierTitle(a.tier)}</Caption>
-                </div>
-                <div className="walk__meta">
-                  <Caption tone="mute" className="tabular">
-                    {hhmm(a.started_at, locale)} → {hhmm(a.finished_at, locale)} {took ? `· ${took}` : ''}
-                  </Caption>
-                  <Caption tone="mute" className="tabular">{a.norms_done}/{a.norms_total} {t('walkNorms')}</Caption>
-                  <Caption tone="mute" className="tabular">{a.tokens.toLocaleString('ru-RU')} {t('walkTokens')}</Caption>
-                  {isCurrent && data.current ? (
-                    <Caption tone="seal">{t('walkNow')}: {t('mapArticle').toLowerCase()} {data.current.article_no}</Caption>
-                  ) : null}
-                </div>
-                <LevelBar counts={a.counts} total={a.norms_done} className="walk__bar" />
-                <Caption tone="mute">{flagged(a.counts)} {t('walkFound')}</Caption>
-              </div>
-            </li>
+            <g key={i} className="tl__tier">
+              <line x1={tr.x0} x2={tr.x1} y1={LANE_Y - 22} y2={LANE_Y - 22} className="tl__tier-line" />
+              <text x={atEnd ? tr.x1 : tr.x0} y={LANE_Y - 30} textAnchor={atEnd ? 'end' : 'start'} className="tl__tier-label">
+                {wide || atEnd ? `${tr.tier} · ${tierTitle(tr.tier)}` : String(tr.tier)}
+              </text>
+              <title>{`${tr.tier} · ${tierTitle(tr.tier)}`}</title>
+            </g>
           )
         })}
-      </ol>
+        {/* полосы актов */}
+        {model.segs.map((s, i) => {
+          const c = s.act.counts
+          const n = Math.max(1, s.act.norms_done)
+          const h3 = (LANE_H * (c['3'] ?? 0)) / n
+          const h2 = (LANE_H * (c['2'] ?? 0)) / n
+          const h1 = (LANE_H * (c['1'] ?? 0)) / n
+          // Слои замечаний — от нижней кромки, увеличены в 4 раза, чтобы 5 % не были невидимы
+          const k = 4
+          const y3 = LANE_Y + LANE_H - h3 * k
+          const y2 = y3 - h2 * k
+          const y1 = y2 - h1 * k
+          const reached = cursorX >= s.x
+          const isActive = active === s
+          return (
+            <g
+              key={s.act.document_id}
+              className={['tl__seg', reached ? 'tl__seg--on' : '', isActive ? 'tl__seg--active' : ''].filter(Boolean).join(' ')}
+              style={{ '--i': i } as CSSProperties}
+              onMouseEnter={() => setPin(i)}
+              onClick={() => navigate(withLang(`/constitution/acts/${s.act.document_id}`, lang))}
+            >
+              <rect x={s.x} y={LANE_Y} width={s.w} height={LANE_H} className="tl__base" />
+              <rect x={s.x} y={Math.max(LANE_Y, y1)} width={s.w} height={Math.min(LANE_H, h1 * k)} className="tl__layer lv--1" />
+              <rect x={s.x} y={Math.max(LANE_Y, y2)} width={s.w} height={Math.min(LANE_H, h2 * k)} className="tl__layer lv--2" />
+              <rect x={s.x} y={Math.max(LANE_Y, y3)} width={s.w} height={Math.min(LANE_H, h3 * k)} className="tl__layer lv--3" />
+              {s.w > 34 ? (
+                <text x={s.x + 4} y={LANE_Y + 13} className="tl__code">{citeCode(s.act.code, lang)}</text>
+              ) : null}
+              <title>{`${s.act.title} · ${s.act.norms_done} · ${flagged(s.act.counts)}`}</title>
+            </g>
+          )
+        })}
+        {/* шкала минут */}
+        <line x1={0} x2={W} y1={SCALE_Y} y2={SCALE_Y} className="tl__axis" />
+        {model.ticks.map((tk) => (
+          <g key={tk.label}>
+            <line x1={tk.x} x2={tk.x} y1={SCALE_Y} y2={SCALE_Y + 5} className="tl__axis" />
+            <text x={tk.x} y={SCALE_Y + 18} textAnchor={tk.x === 0 ? 'start' : 'middle'} className="tl__tick">{tk.label} {t('unitMinShort')}</text>
+          </g>
+        ))}
+        {/* маркер агента */}
+        <g className="tl__cursor" transform={`translate(${cursorX} 0)`}>
+          <line x1={0} x2={0} y1={LANE_Y - 8} y2={SCALE_Y} className="tl__cursor-line" />
+          <circle cx={0} cy={LANE_Y - 8} r={5} className={live && p >= 1 ? 'tl__cursor-dot tl__cursor-dot--pulse' : 'tl__cursor-dot'} />
+        </g>
+      </svg>
+
+      {/* карточка активного акта */}
+      <div className="tl__card" key={active.act.document_id}>
+        <div className="tl__card-row">
+          <Label>{citeCode(active.act.code, lang)}</Label>
+          <UIText className="tl__card-title">{active.act.title}</UIText>
+          <Caption tone="mute">{tierTitle(active.act.tier)}</Caption>
+        </div>
+        <div className="tl__card-row">
+          <Caption tone="mute" className="tabular">{hhmm(active.t0)} → {hhmm(active.t1)} · {took(active)}</Caption>
+          <Caption tone="mute" className="tabular">{active.act.norms_done}/{active.act.norms_total} {t('walkNorms')}</Caption>
+          <Caption tone="mute" className="tabular">{active.act.tokens.toLocaleString('ru-RU')} {t('walkTokens')}</Caption>
+          <Caption tone={flagged(active.act.counts) ? 'warn' : 'mute'}>{flagged(active.act.counts)} {t('walkFound')}</Caption>
+          {live && data.current?.document_id === active.act.document_id ? (
+            <Caption tone="seal">{t('walkNow')}: {t('mapArticle').toLowerCase()} {data.current.article_no}</Caption>
+          ) : null}
+        </div>
+      </div>
     </section>
   )
 }
