@@ -88,6 +88,19 @@ def _generator():
     return gen
 
 
+def test_context_labels_carry_the_article_not_the_file_offset():
+    gen = ResponseGenerator.__new__(ResponseGenerator)
+    ctx = gen._prepare_context([
+        {'title': 'Конституция Республики Казахстан', 'start_position': 13000, 'end_position': 14000,
+         'full_content': 'Раздел II Человек и гражданин\nСтатья 18\n1. Каждый имеет право…'},
+        {'title': 'Закон РК «О правовых актах»', 'start_position': 0, 'end_position': 900,
+         'full_content': 'Глава 1. Общие положения'},
+    ])
+    assert '[Источник 1: Конституция Республики Казахстан, статья 18]' in ctx
+    assert '[Источник 2: Закон РК «О правовых актах»]' in ctx
+    assert 'позиция' not in ctx
+
+
 def test_consultant_uses_the_chat_model_not_the_drafting_one(monkeypatch):
     monkeypatch.setattr(Config, 'LLM_MODEL', 'gpt-4o-mini')
     monkeypatch.setattr(Config, 'CHAT_LLM_MODEL', 'gpt-5-mini')

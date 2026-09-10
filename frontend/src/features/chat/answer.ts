@@ -49,7 +49,14 @@ export function sourceCode(s: ApiSource): string {
   return normCode(s.title, s.article)
 }
 
-const MARK = /\[\s*Источник[иа]?\s*([\d\s,и]+?)\s*(?:[:;,][^\]]*)?\]/gi
+// Хвост после номеров — только через «:» или «;»: запятая внутри скобок — это
+// перечисление номеров («[Источники 4, 6]»), а не пояснение к ним.
+const ONE_MARK = String.raw`\[\s*Источник[иа]?\s*([\d\s,и]+?)\s*(?:[:;][^\]]*)?\]`
+const MARK = new RegExp(ONE_MARK, 'gi')
+// Подряд идущие метки «[Источник 1], [Источник 4] и [Источник 9]» — одна группа.
+// Иначе между чипами остаются висящие запятые, особенно когда часть номеров
+// модель перепутала с номерами статей и чипа для них нет.
+const GROUP = new RegExp(`${ONE_MARK}(?:\\s*(?:,|;|и|and)?\\s*${ONE_MARK})*`, 'gi')
 
 export function parseAnswer(text: string, sources: ApiSource[]): Answer {
   const byId = new Map(sources.map((s) => [s.id, s]))
@@ -57,10 +64,11 @@ export function parseAnswer(text: string, sources: ApiSource[]): Answer {
   let last = 0
   // Жирный markdown в нормативном тексте — шум: убираем маркеры, слова оставляем.
   const clean = (text || '').replace(/\*\*/g, '')
-  for (const m of clean.matchAll(MARK)) {
+  for (const m of clean.matchAll(GROUP)) {
     const before = clean.slice(last, m.index)
     if (before) segs.push(before)
-    const ids = (m[1].match(/\d+/g) ?? []).map(Number)
+    const ids: number[] = []
+    for (const one of m[0].matchAll(MARK)) ids.push(...(one[1].match(/\d+/g) ?? []).map(Number))
     const seen = new Set<string>()
     for (const id of ids) {
       const src = byId.get(id)
